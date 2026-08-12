@@ -1,1 +1,17 @@
+# Core - config parsing and controller input
 pyyaml
+
+# Capture / perception (AVerMedia ExtremeCap UVC, verified working)
+opencv-python
+numpy
+
+# Serial diagnostics (console_connector.py)
+pyserial
+
+# Optional - OCR for the perception layer
+# paddleocr
+# pytesseract
+# pillow
+
+# Optional - agent layer
+# anthropic

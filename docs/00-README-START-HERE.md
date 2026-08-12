@@ -77,6 +77,7 @@ Read them in this order:
 | 07 | [Lessons Learned](07-lessons-learned.md) | Mistakes made during development — read this |
 | 08 | [Roadmap](08-roadmap-agentic-framework.md) | The AI testing framework we're building next |
 | 09 | [GIMX Session](09-gimx-session-docs.md) | Starting the session + Guide-button auth |
+| 10 | [Capture Card](10-capture-card-docs.md) | AVerMedia + ReCentral — screen capture (VERIFIED) |
 
 **If you only read two, read 04 (buttons) and 07 (lessons learned).** Those two
 contain the non-obvious knowledge that cost the most time to discover.
@@ -94,6 +95,8 @@ xboxArudino/
     ├── gimx-session/
     │   ├── gimx_session.py        <- START HERE: session + Guide auth
     │   └── _selftest.py           <- offline check
+    ├── capture/
+    │   └── _probe_capture.py      <- verifies the capture card sees the console
     ├── console-connector/
     │   └── console_connector.py   <- connection diagnostic tool
     ├── flash-leonardo/
