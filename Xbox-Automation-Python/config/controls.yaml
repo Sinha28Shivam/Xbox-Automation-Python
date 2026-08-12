@@ -71,6 +71,43 @@ connection:
     force_normal_priority: true   # never let it starve the OS
 
 # ---------------------------------------------------------------------------
+# CAPTURE (video input for the perception / verification layer)
+#
+# HARDWARE-VERIFIED: a 1920x1080 frame of the real Xbox screen was captured
+# and visually confirmed by the user.
+#
+#   * The card is a STANDARD UVC device - no vendor SDK needed.
+#   * RECentral 4 is NOT required and must be CLOSED while automating:
+#     only one application can open a capture device at a time. RECentral
+#     holding it produced "Could not run graph (device already in use)".
+#   * OpenCV index 1 is the card. Index 0 is the laptop webcam - a real trap,
+#     since it also "works" and returns plausible frames.
+#   * Prefer matching by NAME (ffmpeg) over index; indices can shift.
+# ---------------------------------------------------------------------------
+capture:
+  device_name: "AVerMedia ExtremeCap UVC"   # ffmpeg dshow name (stable)
+  usb_id: "VID_07CA&PID_0110"
+  opencv_index: 1                 # VERIFIED. 0 = built-in webcam, not the card
+  width: 1920
+  height: 1080
+  fps: 30                         # card supports up to 60
+  fourcc: "MJPG"
+  backend: "opencv"               # 'opencv' (fast) or 'ffmpeg' (robust)
+
+  # Measured on this machine, 2026-08-12:
+  #   OpenCV : ~726 ms first frame (device open), then ~1 ms per frame
+  #   ffmpeg : ~0.7 s per grab (new process each time)
+  # => keep ONE OpenCV handle open for the agent loop; use ffmpeg for one-offs.
+  warmup_frames: 3                # first frames can be blank while it syncs
+
+  # Blank-frame detection. A flat image means no signal / HDCP / wrong input.
+  # Real console content measured std ~49 with 255 tones; a blank frame was
+  # std 0.0 with 1 tone, so this threshold has a wide margin.
+  blank_std_threshold: 1.0
+
+  conflicting_apps: ["RECentral 4", "OBS", "Teams", "Camera", "Zoom"]
+
+# ---------------------------------------------------------------------------
 # BUTTONS  (digital: 1 = press, 0 = release)
 #   name -> gimx control name + friendly aliases
 # ---------------------------------------------------------------------------

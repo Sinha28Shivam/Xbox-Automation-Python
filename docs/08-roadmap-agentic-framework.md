@@ -45,12 +45,20 @@ Right now we only have ACT. The capture card supplies OBSERVE.
 | LLM reasoning | ✅ `ANTHROPIC_API_KEY` set; `anthropic`, `openai`, `langchain` installed |
 | Vision / OCR | ✅ `opencv`, `paddleocr`, `pytesseract`, `pillow`, `numpy` installed |
 | Video capture | ✅ `ffmpeg` 9.0 installed and DirectShow enumeration works |
-| **Capture hardware** | ⏳ **Being supplied** |
+| **Capture hardware** | ✅ **AVerMedia ExtremeCap UVC — VERIFIED WORKING** |
 | Test harness | ✅ `pytest`, `pytest-asyncio` installed |
 
-Only the hardware is missing. When plugged in, the card will appear in ffmpeg's
-device list (currently showing just "HP HD Camera"), and the capture module can
-find it by name.
+**Every prerequisite is now met.** The capture card was tested end to end: a
+1920x1080 frame of the real Xbox dashboard was captured programmatically and
+visually confirmed. Full details in [10 — Capture Card](10-capture-card-docs.md).
+
+Key findings from that test:
+* The card is standard **UVC** — no vendor SDK, and **ReCentral 4 is not needed**
+  (in fact it must be closed, as it holds the device exclusively).
+* **OpenCV index 1** is the card; index 0 is the laptop webcam, which returns
+  plausible-looking frames and could silently fool a naive check.
+* After the device is open, frames cost **~1 ms** — cheap enough to verify after
+  every button press.
 
 ---
 
@@ -102,7 +110,7 @@ config/         controls.yaml (exists), screens/
 sender speaking GIMX's protocol directly would fix this, with the subprocess path
 kept as a fallback.
 
-### Layer 2 — Perception ⏳ needs the card
+### Layer 2 — Perception ⏳ unblocked, ready to build
 ```python
 capture.grab_frame()            # one frame as a numpy array
 capture.wait_for_stable_screen() # wait until animation stops (frame differencing)
@@ -149,15 +157,18 @@ plus JUnit XML so CI can consume results.
 
 ## 5. Build order
 
-| Phase | Work | Needs card? |
+| Phase | Work | Blocked? |
 |---|---|---|
 | **1** | Refactor `ConsolePad` into a library package; pytest fixtures that verify the GIMX session before any test runs | No |
-| **2** | `capture.py` + `ocr.py`; auto-detect the device | Yes |
-| **3** | `verify.py` — the anti-false-pass core | Yes |
-| **4** | Agent loop with Claude vision + guardrails | Yes |
+| **2** | `capture.py` + `ocr.py`; auto-detect the device | No — card verified |
+| **3** | `verify.py` — the anti-false-pass core | No |
+| **4** | Agent loop with Claude vision + guardrails | No |
 | **5** | Reporting and CI | No |
 
-Phase 1 can start immediately.
+**Nothing is blocked.** With capture verified, all five phases can proceed.
+Phase 2 already has a working reference implementation in
+`capture/_probe_capture.py` (device selection, warmup, blank-frame detection and
+frame differencing).
 
 ---
 
@@ -201,8 +212,8 @@ alone.
 
 ## 8. Open questions
 
-1. **Capture resolution/latency** — unknown until the card is here. Affects how
-   fast the observe-act loop can run.
+1. ~~Capture resolution/latency~~ — **ANSWERED.** 1920x1080, ~1 ms per frame
+   once the device is open. Fast enough to verify after every button press.
 2. **Reference screenshots** — the library of "known screens" has to be built by
    hand once, per dashboard version.
 3. **Cost control** — every agent step is a vision API call. We'll want caching
@@ -215,7 +226,7 @@ alone.
 
 The framework is working when it can:
 
-- [ ] Capture frames reliably from the console
+- [x] Capture frames reliably from the console  *(verified: 1080p, real content)*
 - [ ] Detect that the screen changed after an action
 - [ ] Read on-screen text well enough to find menu items
 - [ ] Navigate from dashboard to a named game, unaided
