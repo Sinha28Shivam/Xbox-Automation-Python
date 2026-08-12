@@ -76,6 +76,7 @@ Read them in this order:
 | 06 | [Troubleshooting](06-troubleshooting.md) | Every problem we hit and how we fixed it |
 | 07 | [Lessons Learned](07-lessons-learned.md) | Mistakes made during development — read this |
 | 08 | [Roadmap](08-roadmap-agentic-framework.md) | The AI testing framework we're building next |
+| 09 | [GIMX Session](09-gimx-session-docs.md) | Starting the session + Guide-button auth |
 
 **If you only read two, read 04 (buttons) and 07 (lessons learned).** Those two
 contain the non-obvious knowledge that cost the most time to discover.
@@ -90,14 +91,26 @@ xboxArudino/
 └── Xbox-Automation-Python/
     ├── config/
     │   └── controls.yaml      <- GLOBAL config: buttons, timings, macros
+    ├── gimx-session/
+    │   ├── gimx_session.py        <- START HERE: session + Guide auth
+    │   └── _selftest.py           <- offline check
     ├── console-connector/
     │   └── console_connector.py   <- connection diagnostic tool
     ├── flash-leonardo/
     │   └── flash_leonardo.ps1     <- flashes firmware onto the Arduino
     ├── test-controller/
-    │   ├── test_controller.py     <- MAIN script: sends button presses
+    │   ├── test_controller.py     <- sends button presses
     │   └── _selftest.py           <- offline check, touches no hardware
     └── requirements.txt
+```
+
+**Two-terminal workflow.** Session management and input sending are separate on
+purpose — the session holds the serial port and needs a human to hold the Guide
+button, while sending presses is instant and stateless. So:
+
+```
+Terminal 1: python gimx-session/gimx_session.py start     (leave running)
+Terminal 2: python test-controller/test_controller.py press down*3 a
 ```
 
 ---
@@ -113,9 +126,10 @@ pip install pyyaml
 # 2. See every button you can press
 python Xbox-Automation-Python/test-controller/test_controller.py --list
 
-# 3. Start GIMX (see doc 05) and hold the controller's GUIDE button for 2 seconds
+# 3. TERMINAL 1 - start the session, then hold GUIDE for 2 seconds
+python Xbox-Automation-Python/gimx-session/gimx_session.py start
 
-# 4. Confirm the script can reach GIMX
+# 4. TERMINAL 2 - confirm the session is reachable
 python Xbox-Automation-Python/test-controller/test_controller.py --check
 
 # 5. Press some buttons

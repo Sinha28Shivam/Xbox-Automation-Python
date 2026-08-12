@@ -41,14 +41,17 @@ CLI:
 
 PREREQUISITES
 -------------
-A GIMX session must already be running AND authenticated (hold the controller's
-Guide button for 2 seconds). Without that, events are accepted but never reach
-the console. Check with:  python test_controller.py --check
+This script only SENDS input. Starting the GIMX session is a separate job,
+handled by  gimx-session/gimx_session.py  - run that first, in its own terminal:
 
-*** DO NOT RUN GIMX AS ADMINISTRATOR unless you must. ***
-Elevated, gimx.exe takes realtime priority and grabs input devices, which can
-freeze the whole PC. Sessions started by this script use --nograb, an idle
-timeout, and Normal priority.
+    python ../gimx-session/gimx_session.py start     # then hold GUIDE 2s
+
+Then check from here:
+
+    python test_controller.py --check
+
+Without an authenticated session, events are accepted but never reach the
+console.
 
 HONEST LIMITATION
 -----------------
@@ -415,27 +418,49 @@ class ConsolePad:
 # --------------------------------------------------------------------------
 # Session check
 # --------------------------------------------------------------------------
+# Session management lives in gimx-session/gimx_session.py. We reuse it here
+# rather than duplicating the logic, so there is one definition of "is the
+# session up?". The import is optional so this file still works standalone.
+_SESSION_DIR = Path(__file__).resolve().parent.parent / "gimx-session"
+if str(_SESSION_DIR) not in sys.path:
+    sys.path.insert(0, str(_SESSION_DIR))
+try:
+    from gimx_session import session_is_up as _session_is_up
+except ImportError:          # pragma: no cover - fallback if moved/missing
+    _session_is_up = None
+
+
 def check_session(pad: ConsolePad) -> bool:
     """Verify a GIMX server is reachable on the configured UDP address."""
     print(f"Checking for a GIMX session at {pad.addr} ...")
-    cmd = [pad.gimx_exe, "--type", pad.ctype, "--event", "up(0)",
-           "--dst", pad.addr]
-    try:
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
-    except (subprocess.TimeoutExpired, OSError) as exc:
-        print(f"  cannot run gimx.exe: {exc}")
-        return False
-    out = (res.stdout or "") + (res.stderr or "")
-    if "Remote GIMX detected" in out:
-        print("  OK - GIMX session detected and reachable.")
-        print("  (Reminder: it must also be AUTHENTICATED - hold Guide 2s -"
-              " or events go nowhere.)")
-        return True
-    print("  NO SESSION. Start GIMX and hold the Guide button for 2 seconds.")
-    for line in out.splitlines():
-        if line.strip():
-            print(f"    {line.strip()}")
-    return False
+
+    if _session_is_up is not None:
+        ok = _session_is_up(pad.cfg.path, quiet=False)
+    else:
+        # Fallback: ask GIMX directly with a harmless no-op event.
+        cmd = [pad.gimx_exe, "--type", pad.ctype, "--event", "up(0)",
+               "--dst", pad.addr]
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True,
+                                 timeout=15)
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            print(f"  cannot run gimx.exe: {exc}")
+            return False
+        out = (res.stdout or "") + (res.stderr or "")
+        ok = "Remote GIMX detected" in out
+        if not ok:
+            for line in out.splitlines():
+                if line.strip():
+                    print(f"    {line.strip()}")
+
+    if ok:
+        print("  Reminder: reachable is NOT the same as authenticated. If the")
+        print("  Guide button was never held for 2s, events report 'ok' but")
+        print("  never reach the console.")
+    else:
+        print("  Start one with:")
+        print("      python ../gimx-session/gimx_session.py start")
+    return ok
 
 
 # --------------------------------------------------------------------------

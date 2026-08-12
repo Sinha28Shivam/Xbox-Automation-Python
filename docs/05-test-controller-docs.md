@@ -9,45 +9,25 @@ works both as a command-line tool and as an importable Python library.
 
 ## 1. Setup: start a GIMX session first
 
-The script does **not** own the hardware — it talks to a running GIMX session.
-So before anything else:
+This script **only sends input**. It does not own the hardware. Starting the
+session is a separate job with its own module — see
+[09 — GIMX Session](09-gimx-session-docs.md).
 
-### Step 1 — start the GIMX server
+### Step 1 — start the session (Terminal 1, leave it running)
 
-```powershell
-& 'C:\Program Files\GIMX\gimx.exe' --type XOnePad --config XOnePadUsb.xml `
-    --src 127.0.0.1:51914 --port COM8
+```bash
+python ../gimx-session/gimx_session.py start
 ```
 
-Or use the launcher GUI as you normally would.
-
-What the arguments mean:
-
-| Argument | Purpose |
-|---|---|
-| `--type XOnePad` | Which controller to emulate |
-| `--config XOnePadUsb.xml` | **Required.** Input bindings — see the warning below |
-| `--src 127.0.0.1:51914` | Listen on UDP so our script can send events |
-| `--port COM8` | The FTDI serial port |
-
-> ### `--config` is not optional
-> During development we started a session *without* `--config`. It reported
-> `GIMX adapter detected` and looked healthy, but **no input reached the
-> console — not even from the physical controller.** Without a config file there
-> are no input bindings at all. If your real controller stops working, this is
-> the first thing to check.
-
-> ### `--port` must come last
-> GIMX's help says: *"A --bdaddr, --port or --dst argument finishes the current
-> controller options."* Putting `--port` early makes GIMX assign the remaining
-> options to a second, non-existent controller. We hit this exact bug.
+That module builds the correct command for you (including the mandatory
+`--config` and the safety flags) so you don't have to remember the details.
 
 ### Step 2 — authenticate
 
 **Hold the controller's GUIDE (Xbox) button for 2 seconds.** GIMX will prompt
 for this. Skip it and events are accepted but silently go nowhere.
 
-### Step 3 — confirm the script can reach it
+### Step 3 — confirm the script can reach it (Terminal 2)
 
 ```bash
 python test_controller.py --check
