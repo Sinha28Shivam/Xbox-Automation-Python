@@ -1,0 +1,316 @@
+# ============================================================================
+#  controls.yaml - GLOBAL controller configuration
+#  Single source of truth for every button, stick, trigger, timing and macro.
+#  Used by test-controller and (later) the agentic test framework.
+# ============================================================================
+#
+#  IMPORTANT - the `gimx` values below are NOT guesses. Every name was tested
+#  against gimx.exe and only names it ACCEPTS are used here. Notably:
+#     * "guide"  is REJECTED by GIMX -> the Xbox/Guide button is "PS"
+#     * "LB/RB/LT/RT" are REJECTED   -> use l1/r1/l2/r2
+#     * "lstick right/up" are REJECTED -> sticks are AXES: lstick x / lstick y
+#     * "menu/view/back/share/options/touchpad/sync/home/xbox/gas/brake"
+#       are all REJECTED -> Menu = "start", View = "select"
+#  GIMX internally uses PlayStation naming even for an Xbox One pad.
+#
+#  Value semantics:
+#     buttons : 1 = pressed, 0 = released
+#     triggers: 0..255 analog (l2/r2). 255 = fully pressed
+#     sticks  : -128..127 on each axis. 0 = centered
+# ============================================================================
+
+meta:
+  version: 1
+  description: "Global control map and timing profile for console automation"
+  verified_against: "GIMX 8.0 / EMUXONE firmware / XOnePad"
+
+# ---------------------------------------------------------------------------
+# CONSOLE PROFILES
+# Adding a new console = add a profile here + flash matching firmware with
+#   flash_leonardo.ps1 -Firmware <FIRMWARE>
+# ---------------------------------------------------------------------------
+consoles:
+  xbox_one:
+    gimx_type: "XOnePad"          # --type value
+    firmware: "EMUXONE"           # .hex used by flash_leonardo.ps1
+    config_file: "XOnePadUsb.xml" # GIMX launcher config (--config)
+    default: true
+
+  ps4:
+    gimx_type: "DS4"
+    firmware: "EMUPS4"
+    config_file: null             # set once a PS4 config exists
+    default: false
+
+  ps3:
+    gimx_type: "Sixaxis"
+    firmware: "EMUPS3"
+    config_file: null
+    default: false
+
+  xbox_360:
+    gimx_type: "360Pad"
+    firmware: "EMU360"
+    config_file: null
+    default: false
+
+# ---------------------------------------------------------------------------
+# CONNECTION
+# ---------------------------------------------------------------------------
+connection:
+  gimx_exe: "C:\\Program Files\\GIMX\\gimx.exe"
+  serial_port: "COM8"             # FTDI UART -> Leonardo
+  udp_address: "127.0.0.1"
+  udp_port: 51914
+  # Safety flags for any GIMX session we launch ourselves.
+  # An elevated GIMX once took REALTIME priority and grabbed input, freezing
+  # the whole PC. These prevent a repeat.
+  safety:
+    nograb: true                  # never capture mouse/keyboard
+    idle_timeout_minutes: 5       # auto-exit if idle
+    force_normal_priority: true   # never let it starve the OS
+
+# ---------------------------------------------------------------------------
+# BUTTONS  (digital: 1 = press, 0 = release)
+#   name -> gimx control name + friendly aliases
+# ---------------------------------------------------------------------------
+buttons:
+  # ---- Face buttons -------------------------------------------------------
+  a:
+    gimx: "cross"
+    aliases: ["cross", "confirm", "select_item"]
+    description: "A button - confirm/select"
+  b:
+    gimx: "circle"
+    aliases: ["circle", "cancel", "back_action"]
+    description: "B button - cancel/back"
+  x:
+    gimx: "square"
+    aliases: ["square"]
+    description: "X button"
+  y:
+    gimx: "triangle"
+    aliases: ["triangle"]
+    description: "Y button"
+
+  # ---- D-pad --------------------------------------------------------------
+  up:
+    gimx: "up"
+    aliases: ["u", "dpad_up"]
+    description: "D-pad up"
+  down:
+    gimx: "down"
+    aliases: ["d", "dpad_down"]
+    description: "D-pad down"
+  left:
+    gimx: "left"
+    aliases: ["l", "dpad_left"]
+    description: "D-pad left"
+  right:
+    gimx: "right"
+    aliases: ["r", "dpad_right"]
+    description: "D-pad right"
+
+  # ---- System buttons -----------------------------------------------------
+  menu:
+    gimx: "start"
+    aliases: ["start", "hamburger", "pause"]
+    description: "Menu button (3 lines) - GIMX calls it 'start'"
+  view:
+    gimx: "select"
+    aliases: ["select", "back", "windows"]
+    description: "View button (2 squares) - GIMX calls it 'select'"
+  guide:
+    gimx: "PS"
+    aliases: ["xbox", "home", "ps", "dashboard"]
+    description: "Xbox Guide button. GIMX name is 'PS' ('guide' is REJECTED)."
+
+  # ---- Shoulder buttons ---------------------------------------------------
+  lb:
+    gimx: "l1"
+    aliases: ["l1", "left_bumper"]
+    description: "Left bumper"
+  rb:
+    gimx: "r1"
+    aliases: ["r1", "right_bumper"]
+    description: "Right bumper"
+
+  # ---- Stick clicks -------------------------------------------------------
+  ls:
+    gimx: "l3"
+    aliases: ["l3", "left_stick_click", "lsb"]
+    description: "Left stick press (click)"
+  rs:
+    gimx: "r3"
+    aliases: ["r3", "right_stick_click", "rsb"]
+    description: "Right stick press (click)"
+
+# ---------------------------------------------------------------------------
+# TRIGGERS  (analog 0..255)
+# ---------------------------------------------------------------------------
+triggers:
+  lt:
+    gimx: "l2"
+    aliases: ["l2", "left_trigger"]
+    min: 0
+    max: 255
+    default_press: 255            # value used for a normal "press"
+    description: "Left trigger (analog)"
+  rt:
+    gimx: "r2"
+    aliases: ["r2", "right_trigger"]
+    min: 0
+    max: 255
+    default_press: 255
+    description: "Right trigger (analog)"
+
+# ---------------------------------------------------------------------------
+# STICKS (analog axes, -128..127)
+#   GIMX exposes sticks as AXES, not directions. Directional names like
+#   "lstick right" are REJECTED, so directions are expressed as axis+value.
+# ---------------------------------------------------------------------------
+sticks:
+  left_stick:
+    x_axis: "lstick x"
+    y_axis: "lstick y"
+    min: -128
+    max: 127
+    center: 0
+    deadzone: 10
+    directions:                   # convenience: name -> (axis, value)
+      left:  { axis: "lstick x", value: -128 }
+      right: { axis: "lstick x", value: 127 }
+      up:    { axis: "lstick y", value: -128 }
+      down:  { axis: "lstick y", value: 127 }
+    description: "Left analog stick - movement"
+
+  right_stick:
+    x_axis: "rstick x"
+    y_axis: "rstick y"
+    min: -128
+    max: 127
+    center: 0
+    deadzone: 10
+    directions:
+      left:  { axis: "rstick x", value: -128 }
+      right: { axis: "rstick x", value: 127 }
+      up:    { axis: "rstick y", value: -128 }
+      down:  { axis: "rstick y", value: 127 }
+    description: "Right analog stick - camera/look"
+
+# ---------------------------------------------------------------------------
+# TIMING  (all values in SECONDS)
+# Tune these centrally instead of hunting for sleeps in code.
+# ---------------------------------------------------------------------------
+timing:
+  tap_duration: 0.08              # normal quick press
+  press_duration: 0.15            # standard press
+  long_press_duration: 1.0        # "deep"/long press
+  deep_press_duration: 2.0        # e.g. guide button power menu
+  gap_between_presses: 0.25       # pause after each press
+  gap_between_sequences: 0.5      # pause between macro steps
+
+  menu_transition_wait: 1.0       # let a menu animate in
+  screen_load_wait: 3.0           # page/blade change
+  game_launch_wait: 30.0          # cold game start (varies wildly by title)
+  console_boot_wait: 60.0
+
+  session_settle: 4.0             # after starting GIMX before first event
+  udp_retry_delay: 1.5
+  udp_max_retries: 6
+
+# ---------------------------------------------------------------------------
+# SPECIAL / COMPOUND ACTIONS
+# Multi-step or timing-dependent operations.
+# ---------------------------------------------------------------------------
+special_actions:
+  screenshot:
+    description: "Xbox screenshot: tap View while guide overlay conventions vary"
+    sequence:
+      - { button: "view", duration: 0.1 }
+    verified: false               # NOT yet confirmed on hardware
+
+  record_clip:
+    description: "Record last 30s (Xbox): Guide then X"
+    sequence:
+      - { button: "guide", duration: 0.1 }
+      - { wait: 1.0 }
+      - { button: "x", duration: 0.1 }
+    verified: false
+
+  power_menu:
+    description: "Hold Guide to open power/quick menu"
+    sequence:
+      - { button: "guide", duration: 2.0 }
+    verified: false
+
+  guide_auth:
+    description: "Hold Guide 2s - GIMX session authentication"
+    sequence:
+      - { button: "guide", duration: 2.0 }
+    verified: true                # this is the known GIMX auth gesture
+
+# ---------------------------------------------------------------------------
+# MACROS - reusable navigation sequences
+#
+# Step keys:
+#   button   : name from `buttons` (or an alias)
+#   times    : repeat the button N times     (e.g. move down 3 rows)
+#   interval : extra pause BETWEEN repeats, seconds. Animated menus can drop
+#              presses that arrive too fast - raise this if steps get eaten.
+#   duration : how long the button is held for each press
+#   wait     : pause, seconds (used on its own)
+#   trigger / value, stick / direction|x|y are also supported
+#
+# Example:  - { button: down, times: 3, interval: 0.4 }
+# ---------------------------------------------------------------------------
+macros:
+  confirm:
+    description: "Confirm current selection"
+    steps:
+      - { button: "a" }
+
+  go_back:
+    description: "Back out one level"
+    steps:
+      - { button: "b" }
+
+  open_dashboard:
+    description: "Return to Xbox home dashboard"
+    steps:
+      - { button: "guide", duration: 0.1 }
+      - { wait: 1.0 }
+      - { button: "a" }
+
+  nav_test:
+    description: "Visible D-pad pattern to prove input reaches the console"
+    steps:
+      - { button: "right", times: 2, interval: 0.8 }
+      - { wait: 0.8 }
+      - { button: "left",  times: 2, interval: 0.8 }
+      - { wait: 0.8 }
+      - { button: "down" }
+      - { wait: 0.8 }
+      - { button: "up" }
+
+  repeat_demo:
+    description: "Example of repeats: down x3, right x2, then confirm"
+    steps:
+      - { button: "down",  times: 3, interval: 0.3 }
+      - { button: "right", times: 2, interval: 0.3 }
+      - { wait: 0.5 }
+      - { button: "a" }
+
+# ---------------------------------------------------------------------------
+# NOTES / KNOWN LIMITATIONS  (read before trusting a result)
+# ---------------------------------------------------------------------------
+notes:
+  - "Every `gimx:` name here was empirically validated against gimx.exe."
+  - "GIMX must already be running and AUTHENTICATED (hold Guide 2s) or events
+     are accepted but never reach the console."
+  - "Sending an event successfully does NOT prove the console reacted. Real
+     verification needs the capture card + perception layer."
+  - "special_actions with `verified: false` are best-guess sequences that have
+     NOT been confirmed on hardware yet."
+  - "Each press currently spawns a gimx.exe process (~250ms). Fine for menus,
+     too slow for frame-accurate input."
