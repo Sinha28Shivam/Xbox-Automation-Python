@@ -8,6 +8,30 @@ perception layer.
 
 ---
 
+## 0. "Do I need to run AVerMedia/ReCentral when I run the framework?"
+
+**No. The framework opens the capture card by itself, automatically.**
+
+You start nothing. `ScreenCapture()` opens the device, waits for it to sync, and
+starts handing you frames. There is exactly one rule: **ReCentral's window must
+be closed**, because only one application can hold a capture device at a time.
+
+Check everything in one command before a run:
+
+```bash
+python Xbox-Automation-Python/capture/capture.py preflight
+```
+
+```
+  [OK  ] capture card connected
+  [OK  ] device can be opened (nothing else holding it)
+  [OK  ] console video signal present
+  frame 1920x1080  std=40.81  tones=253
+READY - the framework will capture automatically.
+```
+
+---
+
 ## 1. The short answer about ReCentral 4
 
 > **You do NOT need ReCentral 4 — and it must be CLOSED while automating.**
@@ -93,6 +117,32 @@ If you add or remove any USB camera, **re-run the probe** — indices can shift.
 
 ---
 
+## 4b. ⚠️ The sync delay — the other trap
+
+**After opening the device, the first ~2 reads come back perfectly flat
+(std 0.00). Real content appears at ~1.05 s.**
+
+Measured:
+
+```
+  read  0 ( 0.78s): std=  0.00 tones=  1 BLANK
+  read  1 ( 0.91s): std=  0.00 tones=  1 BLANK
+  read  2 ( 1.05s): std= 40.81 tones=251 <-- HAS CONTENT
+```
+
+This is dangerous because a blank frame looks **exactly** like "no HDMI signal."
+It happened to us: with the Xbox switched on and working, preflight reported
+`NO HDMI SIGNAL` and listed console power and cabling as the likely causes. All
+of that was wrong — the card simply hadn't finished locking on.
+
+**The fix:** `capture.py` doesn't discard a fixed number of frames. It **polls
+until a non-blank frame arrives** (up to `sync_timeout`, default 5 s). A fixed
+count is fragile; the poll adapts.
+
+If you write your own capture code, don't grab immediately after opening.
+
+---
+
 ## 5. Which backend to use
 
 | | OpenCV | ffmpeg |
@@ -160,7 +210,8 @@ measured real content (std **~49**) — a very wide margin.
 | Symptom | Cause / fix |
 |---|---|
 | `Could not run graph … device already in use` | **Close ReCentral 4** (also OBS, Teams, Camera, Zoom) |
-| Frames are `BLANK/FLAT` (std 0) | No signal. Console off, HDMI in the wrong port, or HDCP |
+| Frames are `BLANK/FLAT` (std 0) **immediately after opening** | Not a fault — the card needs ~1 s to sync. Use `capture.py`, which polls (see §4b) |
+| Frames stay `BLANK/FLAT` for several seconds | Genuinely no signal. Console off/asleep, HDMI in the wrong port, or HDCP |
 | Wrong picture / dark room | You're on the **webcam** (index 0). Use index 1 |
 | `No JPEG data found in image` | Harmless MJPEG warning during startup; the frame still decodes |
 | Resolution is 1280x720 not 1080 | Wrong device index, or the console outputs 720p |

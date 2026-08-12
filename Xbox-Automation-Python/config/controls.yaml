@@ -98,7 +98,15 @@ capture:
   #   OpenCV : ~726 ms first frame (device open), then ~1 ms per frame
   #   ffmpeg : ~0.7 s per grab (new process each time)
   # => keep ONE OpenCV handle open for the agent loop; use ffmpeg for one-offs.
-  warmup_frames: 3                # first frames can be blank while it syncs
+  # SYNC BEHAVIOUR (measured) - important, and easy to misdiagnose.
+  # After the device is opened, the first ~2 reads come back PERFECTLY FLAT
+  # (std 0.00) while the card locks onto the HDMI signal. Real content arrives
+  # at ~1.05 s. Grabbing immediately therefore looks EXACTLY like "no HDMI
+  # signal" even though the console is on and everything is fine.
+  # capture.py polls until a non-blank frame appears rather than trusting a
+  # fixed frame count.
+  warmup_frames: 3                # reads discarded outright
+  sync_timeout: 5.0               # then poll this long for real content
 
   # Blank-frame detection. A flat image means no signal / HDCP / wrong input.
   # Real console content measured std ~49 with 255 tones; a blank frame was

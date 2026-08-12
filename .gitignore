@@ -1,0 +1,21 @@
+# Secrets - never commit API keys
+TEMP.env
+*.env
+.env
+
+# Temporary agent test artifacts
+TEMP_*
+TEMP_agent_run/
+Xbox-Automation-Python/capture/_probe_frames/
+Xbox-Automation-Python/capture/_warmup_first_good.png
+
+# Captured screenshots
+*.png
+!docs/**/*.png
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
