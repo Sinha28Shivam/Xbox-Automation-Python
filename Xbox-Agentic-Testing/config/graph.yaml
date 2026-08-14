@@ -1,0 +1,129 @@
+# ===========================================================================
+#  graph.yaml - the LangGraph topology, as data
+#
+#  builder.py reads this file and calls StateGraph.add_node / add_edge /
+#  add_conditional_edges accordingly. There is no hand-written graph anywhere
+#  in the codebase, so re-wiring the workflow - adding an agent, changing the
+#  failure path, inserting a retry loop - is a YAML edit.
+#
+#  Edge kinds
+#  ----------
+#  edges              unconditional  from -> to
+#  conditional_edges  from + router  -> {condition value: target}
+#
+#  A router is a dotted path to a function (state) -> str. The returned string
+#  is looked up in `map`. Routers live in routing.py and are pure functions of
+#  the state, which keeps them unit-testable without hardware.
+# ===========================================================================
+
+meta:
+  version: 1
+  description: "Console test workflow: health -> validate -> plan -> execute -> verify -> [rca] -> report"
+
+# static     : follow the edges below exactly
+# supervised : after each node, ask the supervisor agent where to go next
+route_mode: "${ROUTE_MODE:static}"
+
+entry_point: "health"
+
+# Nodes reference roles from agents.yaml. A disabled agent is skipped
+# automatically and its edges are healed (predecessor wires to successor),
+# so turning `recovery` on and off does not require touching this file.
+nodes:
+  - health
+  - scenario_validator
+  - planner
+  - executor
+  - verifier
+  - rca
+  - reporter
+  - recovery
+
+# Only genuinely unconditional transitions live here. Everything that could
+# proceed on missing or invalid state is a conditional edge instead - see the
+# note on `should_stop` below.
+edges:
+  - { from: "reporter", to: "__end__" }
+
+conditional_edges:
+
+  # ---- after SCENARIO VALIDATION -----------------------------------------
+  # Conditional rather than a plain edge because any agent may set
+  # `should_stop`. Without this gate an invalid scenario still reaches the
+  # planner, which fails on missing state, which sends the executor the same
+  # way - and the real cause ends up buried under three secondary errors.
+  - from: "scenario_validator"
+    router: "routing.route_after_scenario"
+    map:
+      plan: "planner"
+      stopped: "reporter"
+
+  # ---- after PLANNING ----------------------------------------------------
+  # Never hand the executor an empty or missing plan: it would drive hardware
+  # with nothing to do and produce a confusing empty run.
+  - from: "planner"
+    router: "routing.route_after_planner"
+    map:
+      execute: "executor"
+      stopped: "reporter"
+
+  # ---- after HEALTH -------------------------------------------------------
+  # A broken rig must never produce a PASS or a FAIL - both are lies. It
+  # produces BLOCKED, and we jump straight to the report (via recovery if it
+  # is enabled and the fault looks recoverable).
+  - from: "health"
+    router: "routing.route_after_health"
+    map:
+      healthy: "scenario_validator"
+      recoverable: "recovery"
+      blocked: "reporter"
+
+  # ---- after RECOVERY -----------------------------------------------------
+  - from: "recovery"
+    router: "routing.route_after_recovery"
+    map:
+      recovered: "health"          # re-probe; never trust a blind retry
+      failed: "reporter"
+
+  # ---- after EXECUTOR -----------------------------------------------------
+  # The executor never decides pass/fail. It only says "I finished" or
+  # "I could not continue". Judgement belongs to the verifier.
+  - from: "executor"
+    router: "routing.route_after_executor"
+    map:
+      verify: "verifier"
+      aborted: "rca"
+
+  # ---- after VERIFIER -----------------------------------------------------
+  # replan exists so a recoverable navigation mistake (wrong menu row) costs
+  # one more plan rather than a failed run. Bounded by runtime.max_replans.
+  - from: "verifier"
+    router: "routing.route_after_verification"
+    map:
+      passed: "reporter"
+      failed: "rca"
+      replan: "planner"
+
+  # ---- after RCA ----------------------------------------------------------
+  - from: "rca"
+    router: "routing.route_after_rca"
+    map:
+      report: "reporter"
+      retry: "planner"
+
+# ---------------------------------------------------------------------------
+# CHECKPOINTING
+# Persist state between nodes so a long run can be resumed and, more usefully,
+# inspected after the fact to see exactly what each agent saw.
+# ---------------------------------------------------------------------------
+checkpointer:
+  enabled: true
+  type: "memory"                 # memory | sqlite
+  sqlite_path: "./artifacts/checkpoints.sqlite"
+
+# ---------------------------------------------------------------------------
+# LIMITS - the graph-level backstop. If a router bug creates a cycle, this
+# stops it rather than letting it run against real hardware forever.
+# ---------------------------------------------------------------------------
+limits:
+  recursion_limit: 150

@@ -98,6 +98,80 @@ def frame_stats(frame: "np.ndarray") -> dict[str, float]:
     }
 
 
+# --------------------------------------------------------------------------
+# Device resolution
+# --------------------------------------------------------------------------
+def list_dshow_video_devices() -> list[str]:
+    """Video capture device names, in DirectShow's own order.
+
+    That order is what OpenCV indexes by, so position N in this list is
+    normally OpenCV index N.
+    """
+    try:
+        res = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-list_devices", "true",
+             "-f", "dshow", "-i", "dummy"],
+            capture_output=True, text=True, timeout=20)
+    except (subprocess.TimeoutExpired, OSError, FileNotFoundError):
+        return []
+
+    names: list[str] = []
+    for line in (res.stderr or "").splitlines():
+        if "(video)" not in line:
+            continue
+        start = line.find('"')
+        end = line.find('"', start + 1)
+        if start != -1 and end > start:
+            names.append(line[start + 1:end])
+    return names
+
+
+def find_device_index(device_name: str, fallback: int = 0,
+                      quiet: bool = True) -> tuple[int, str]:
+    """Locate a capture device BY NAME. Returns (index, how_it_was_found).
+
+    WHY THIS EXISTS
+    ---------------
+    OpenCV indices are positional and they MOVE. Plug in a USB camera, install
+    a virtual webcam, dock the laptop, and yesterday's index 1 becomes today's
+    index 0. This bit us for real: the framework was reading the laptop webcam
+    (1280x720, std 1.5) and reporting "black screen / no HDMI signal", while
+    the capture card sat happily on index 0 showing the Xbox at 1920x1080.
+
+    That failure is nasty because the webcam is a *plausible* capture device.
+    It opens, it returns frames, and in a dim room those frames are dark - so
+    every naive check agrees the console must be off.
+
+    Matching on the name that Windows reports removes the guesswork entirely.
+    """
+    if not device_name:
+        return fallback, "no device_name configured; using opencv_index"
+
+    devices = list_dshow_video_devices()
+    if not devices:
+        return fallback, "could not enumerate devices (is ffmpeg installed?)"
+
+    target = device_name.strip().lower()
+
+    for i, name in enumerate(devices):
+        if name.strip().lower() == target:
+            return i, f"exact name match: '{name}'"
+
+    # Partial match second: vendors append model or revision suffixes, and a
+    # driver update renaming "ExtremeCap UVC" to "ExtremeCap UVC 2" should not
+    # break the rig.
+    for i, name in enumerate(devices):
+        low = name.strip().lower()
+        if target in low or low in target:
+            return i, f"partial name match: '{name}'"
+
+    if not quiet:
+        print(f"  '{device_name}' not found. Devices present: "
+              f"{', '.join(devices)}")
+    return fallback, (f"'{device_name}' not found among "
+                      f"{len(devices)} devices; using opencv_index")
+
+
 def is_blank(frame: "np.ndarray", threshold: float = 1.0) -> bool:
     """A flat image means no signal - NOT a dark game scene.
 
@@ -251,7 +325,6 @@ class ScreenCapture:
     def __init__(self, config: dict[str, Any] | None = None,
                  config_path: Path | str = CONFIG_PATH):
         self.cfg = config or load_capture_config(config_path)
-        self.index = int(self.cfg["opencv_index"])
         self.width = int(self.cfg["width"])
         self.height = int(self.cfg["height"])
         self.blank_threshold = float(self.cfg["blank_std_threshold"])
@@ -259,6 +332,17 @@ class ScreenCapture:
         self.sync_timeout = float(self.cfg.get("sync_timeout", 5.0))
         self.synced = False
         self.cap: "cv2.VideoCapture | None" = None
+
+        # Resolve the device BY NAME, falling back to the configured index.
+        # Indices are positional and move when USB devices come and go; the
+        # name is stable. Set `auto_detect_device: false` in controls.yaml to
+        # force the literal index.
+        configured = int(self.cfg["opencv_index"])
+        if self.cfg.get("auto_detect_device", True):
+            self.index, self.index_source = find_device_index(
+                str(self.cfg.get("device_name", "")), configured)
+        else:
+            self.index, self.index_source = configured, "auto-detect disabled"
 
     def open(self) -> None:
         """Open the card and wait until it is actually delivering pixels.
@@ -277,8 +361,13 @@ class ScreenCapture:
             return
         cap = cv2.VideoCapture(self.index, cv2.CAP_DSHOW)
         if not cap.isOpened():
+            devices = list_dshow_video_devices()
             raise RuntimeError(
-                f"could not open capture device index {self.index}")
+                f"could not open capture device index {self.index} "
+                f"({self.index_source}). Video devices present: "
+                f"{', '.join(devices) if devices else 'none found'}. "
+                f"If one is listed, another application is probably holding "
+                f"it - close RECentral 4.")
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
         self.cap = cap

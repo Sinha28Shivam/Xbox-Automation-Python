@@ -80,14 +80,35 @@ connection:
 #   * RECentral 4 is NOT required and must be CLOSED while automating:
 #     only one application can open a capture device at a time. RECentral
 #     holding it produced "Could not run graph (device already in use)".
-#   * OpenCV index 1 is the card. Index 0 is the laptop webcam - a real trap,
-#     since it also "works" and returns plausible frames.
-#   * Prefer matching by NAME (ffmpeg) over index; indices can shift.
+#   * Indices SHIFT. They are positional, and plugging in a USB camera or
+#     docking the laptop reorders them.
+#
+#     CONFIRMED 2026-08-14: the indices swapped. The card moved to 0 and the
+#     HP HD Camera took 1. The framework dutifully read the webcam - 1280x720,
+#     std 1.5 - and reported "black screen / no HDMI signal" while the Xbox was
+#     sitting on index 0 at 1920x1080, std 35.8.
+#
+#     That is a nasty failure: a webcam in a dim room is a *plausible* capture
+#     device. It opens, it returns frames, and those frames are dark, so every
+#     naive check agrees the console must be off.
+#
+#     Fix: capture.py now resolves the device BY NAME via ffmpeg and only falls
+#     back to opencv_index if the name cannot be found. Run
+#     `python Xbox-Agentic-Testing/_diagnose_capture.py` to see every device
+#     with a saved frame from each.
 # ---------------------------------------------------------------------------
 capture:
   device_name: "AVerMedia ExtremeCap UVC"   # ffmpeg dshow name (stable)
   usb_id: "VID_07CA&PID_0110"
-  opencv_index: 1                 # VERIFIED. 0 = built-in webcam, not the card
+
+  # Match device_name against the ffmpeg device list at open() time. Keep this
+  # true: the name is stable, the index is not. Set false only to force the
+  # literal opencv_index below (useful when two identical cards are attached).
+  auto_detect_device: true
+
+  # Fallback only, used when the name cannot be matched. Was 1; the card is
+  # currently enumerating at 0. Do not rely on this value - it moves.
+  opencv_index: 0
   width: 1920
   height: 1080
   fps: 30                         # card supports up to 60
