@@ -1,0 +1,197 @@
+# ===========================================================================
+#  agents.yaml - the agent roster
+#
+#  Each entry declares ONE agent. Nothing here is hardcoded in Python: the
+#  registry builds every agent from this file at startup.
+#
+#  Keys
+#  ----
+#  role          stable id used by graph.yaml and by state["agent_outputs"]
+#  impl          dotted path to the callable/class implementing the node.
+#                Swap this to replace an agent's behaviour entirely.
+#  prompt        filename inside paths.prompts_dir (Jinja2, gets the state)
+#  provider      optional per-agent LLM override (else settings.llm.provider)
+#  model         optional per-agent model override
+#  tools         tool names (or "tag:<tag>") this agent may call. The tool
+#                registry resolves these at bind time; an agent can never call
+#                a tool it was not granted here.
+#  output_schema pydantic model (dotted path) the agent must return. Structured
+#                output is what lets downstream agents consume results safely.
+#  enabled       set false to drop an agent from the run without editing code
+#  optional      if true, a crash in this agent degrades the run instead of
+#                failing it
+# ===========================================================================
+
+meta:
+  version: 1
+
+defaults:
+  provider: null            # null = inherit settings.yaml
+  model: null
+  max_retries: 2
+  timeout_seconds: 120
+  enabled: true
+  optional: false
+
+agents:
+
+  # -------------------------------------------------------------------------
+  # 1. HEALTH - "is the rig even usable right now?"
+  #
+  # Runs FIRST and can abort everything. This exists because of the project's
+  # single most expensive lesson (docs 07): the old scripts happily reported
+  # six successes in a row while the console was doing nothing. If GIMX is not
+  # authenticated or the capture card is blank, the only honest outcome is
+  # BLOCKED - never PASS.
+  # -------------------------------------------------------------------------
+  health:
+    impl: "agents.health_agent.HealthAgent"
+    prompt: "health.j2"
+    tools:
+      - "tag:hardware"
+      - "tag:diagnostic"
+    output_schema: "schemas.HealthReport"
+    description: >
+      Probes GIMX (process, UDP reachability, adapter firmware, serial port)
+      and the capture card (device present, openable, non-blank signal), then
+      judges whether the rig can run the requested scenario at all.
+
+  # -------------------------------------------------------------------------
+  # 2. SCENARIO VALIDATOR - "is this test even well-formed and runnable?"
+  #
+  # Turns free-text or YAML scenarios into a normalised, machine-checkable
+  # object. Rejects scenarios with no observable success criterion, because a
+  # test whose pass condition cannot be seen on screen can never truly fail.
+  # -------------------------------------------------------------------------
+  scenario_validator:
+    impl: "agents.scenario_agent.ScenarioValidatorAgent"
+    prompt: "scenario_validator.j2"
+    tools:
+      - "tag:introspection"
+    output_schema: "schemas.ValidatedScenario"
+    description: >
+      Parses the scenario, resolves every referenced control against
+      controls.yaml, checks preconditions and rewrites vague success criteria
+      into visually verifiable ones.
+
+  # -------------------------------------------------------------------------
+  # 3. PLANNER - scenario -> ordered, verifiable steps
+  #
+  # Kept separate from the executor on purpose: planning is a reasoning job,
+  # execution is a hardware job. Splitting them means a replan after a failure
+  # does not re-run side effects.
+  # -------------------------------------------------------------------------
+  planner:
+    impl: "agents.planner_agent.PlannerAgent"
+    prompt: "planner.j2"
+    tools:
+      - "tag:introspection"
+    output_schema: "schemas.TestPlan"
+    description: >
+      Produces a step list where every step carries its own expected
+      observable outcome, so the verifier has something concrete to check.
+
+  # -------------------------------------------------------------------------
+  # 4. EXECUTOR - the only agent allowed to touch hardware
+  #
+  # ReAct loop: observe frame -> choose action -> act -> re-observe.
+  # -------------------------------------------------------------------------
+  executor:
+    impl: "agents.executor_agent.ExecutorAgent"
+    prompt: "executor.j2"
+    tools:
+      - "tag:input"
+      - "tag:vision"
+      - "tag:timing"
+    output_schema: "schemas.ExecutionResult"
+    description: >
+      Drives the console through the plan, capturing a before/after frame for
+      every action so that later agents reason over evidence, not assumptions.
+
+  # -------------------------------------------------------------------------
+  # 5. VERIFIER - the anti-false-pass gate
+  #
+  # Deliberately a DIFFERENT agent from the executor. An agent grading its own
+  # homework is how false passes happen; this one is adversarial by design and
+  # only sees the evidence, not the executor's opinion of it.
+  # -------------------------------------------------------------------------
+  verifier:
+    impl: "agents.verifier_agent.VerifierAgent"
+    prompt: "verifier.j2"
+    tools:
+      - "tag:vision"
+      - "tag:analysis"
+    output_schema: "schemas.VerificationResult"
+    description: >
+      Compares observed evidence against each step's expected outcome.
+      "The event was accepted" is explicitly NOT evidence; only pixel change,
+      OCR text or screen match counts.
+
+  # -------------------------------------------------------------------------
+  # 6. RCA - why did it fail?
+  #
+  # Only runs on failure. Distinguishes the four failure classes that actually
+  # matter here: rig fault, automation fault, product defect, flaky/environment.
+  # -------------------------------------------------------------------------
+  rca:
+    impl: "agents.rca_agent.RCAAgent"
+    prompt: "rca.j2"
+    tools:
+      - "tag:diagnostic"
+      - "tag:analysis"
+      - "tag:vision"
+    output_schema: "schemas.RootCauseAnalysis"
+    description: >
+      Correlates the health snapshot, action log, frame deltas and GIMX output
+      into a ranked set of hypotheses, each with the evidence supporting it and
+      a concrete next check to confirm or eliminate it.
+
+  # -------------------------------------------------------------------------
+  # 7. REPORTER - the human-facing artefact
+  # -------------------------------------------------------------------------
+  reporter:
+    impl: "agents.reporter_agent.ReporterAgent"
+    prompt: "reporter.j2"
+    tools:
+      - "tag:report"
+    output_schema: "schemas.TestReport"
+    description: >
+      Writes JSON / Markdown / JUnit reports with embedded screenshot evidence
+      and an explicit statement of what was NOT proven.
+
+  # -------------------------------------------------------------------------
+  # 8. SUPERVISOR - dynamic routing
+  #
+  # Optional. With route_mode "static" in graph.yaml the edges below are used
+  # as written; with "supervised" this agent picks the next node each turn,
+  # which is what makes the workflow adaptive rather than a fixed pipeline.
+  # -------------------------------------------------------------------------
+  supervisor:
+    impl: "agents.supervisor_agent.SupervisorAgent"
+    prompt: "supervisor.j2"
+    tools: []
+    output_schema: "schemas.RoutingDecision"
+    optional: true
+    description: >
+      Chooses the next agent from the live state. Bounded by runtime.max_steps
+      so it cannot loop forever.
+
+  # -------------------------------------------------------------------------
+  # 9. RECOVERY - try to un-stick the rig before declaring failure
+  #
+  # Disabled by default: it restarts GIMX and re-authenticates, which needs a
+  # human to hold the Guide button. Enable for attended runs.
+  # -------------------------------------------------------------------------
+  recovery:
+    impl: "agents.recovery_agent.RecoveryAgent"
+    prompt: "recovery.j2"
+    tools:
+      - "tag:hardware"
+      - "tag:diagnostic"
+    output_schema: "schemas.RecoveryResult"
+    enabled: false
+    optional: true
+    description: >
+      Attempts bounded remediation (restart the GIMX session, reopen the
+      capture device, re-seat the console connection) and reports honestly
+      whether the rig came back.

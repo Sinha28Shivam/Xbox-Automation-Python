@@ -1,0 +1,48 @@
+# ===========================================================================
+#  Scenario: dashboard navigation
+#
+#  The simplest genuinely useful test: does input reach the console at all?
+#
+#  Run it first on any new rig. It is the one test that distinguishes "the
+#  automation works" from "the automation reports that it works" - which, as
+#  docs/07-lessons-learned records, are not the same thing at all.
+#
+#  Run with:
+#      python console.py run --file scenarios/dashboard-navigation.yaml
+# ===========================================================================
+
+id: dashboard-navigation
+title: "Dashboard navigation responds to D-pad input"
+description: >
+  Press D-pad directions on the Xbox dashboard and confirm the picture changes
+  each time. This proves the whole chain end to end: agent -> GIMX -> serial ->
+  Leonardo -> console -> HDMI -> capture card -> our frames.
+
+console: null              # null = the profile marked default in controls.yaml
+
+preconditions:
+  - "The console is powered on and showing the dashboard (not in a game)"
+  - "A GIMX session is running AND was authenticated by holding Guide for 2s"
+  - "The capture card is connected and RECentral is closed"
+
+success_criteria:
+  # Deliberately modest. This scenario proves input ARRIVES; it does not try
+  # to prove where the highlight went. A criterion you can check reliably beats
+  # an ambitious one that produces flaky results.
+  - description: >
+      The screen visibly changes after each D-pad press, showing the console
+      received and acted on the input.
+    check_type: screen_change
+    parameters:
+      button: right
+      min_delta: 0.5
+    required: true
+
+  - description: >
+      No error dialog or 'Something went wrong' message appears at any point.
+    check_type: no_error_dialog
+    required: true
+
+tags: ["smoke", "navigation", "input"]
+timeout_seconds: 120
+max_steps: 12
