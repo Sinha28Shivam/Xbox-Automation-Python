@@ -94,7 +94,7 @@ connection:
 #
 #     Fix: capture.py now resolves the device BY NAME via ffmpeg and only falls
 #     back to opencv_index if the name cannot be found. Run
-#     `python Xbox-Agentic-Testing/_diagnose_capture.py` to see every device
+#     `python temp_code_test/agentic/diagnose_capture.py` to see every device
 #     with a saved frame from each.
 # ---------------------------------------------------------------------------
 capture:

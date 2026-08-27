@@ -1,6 +1,6 @@
 # 10 — Capture Card (AVerMedia) & ReCentral 4
 
-**Probe script:** `Xbox-Automation-Python/capture/_probe_capture.py`
+**Probe script:** `temp_code_test/hardware/capture_probe.py`
 
 **Status: VERIFIED WORKING.** A 1920x1080 frame of the real Xbox screen was
 captured programmatically and visually confirmed. This unblocks the whole
@@ -165,12 +165,12 @@ Note the first frames after opening can be blank while the card syncs, hence
 ## 6. Running the probe
 
 ```bash
-python Xbox-Automation-Python/capture/_probe_capture.py
-python Xbox-Automation-Python/capture/_probe_capture.py --index 1
-python Xbox-Automation-Python/capture/_probe_capture.py --backend ffmpeg
+python temp_code_test/hardware/capture_probe.py
+python temp_code_test/hardware/capture_probe.py --index 1
+python temp_code_test/hardware/capture_probe.py --backend ffmpeg
 ```
 
-It saves frames to `capture/_probe_frames/` so you can look at them.
+It saves frames to `temp_code_test/artifacts/probe_frames/` so you can look at them.
 
 **Why the probe checks pixels, not files.** A black frame is still a valid file.
 Writing 1.4 MB proves nothing about whether there's a picture in it. So the probe

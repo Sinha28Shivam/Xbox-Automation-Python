@@ -240,27 +240,27 @@ Everything below runs offline — no console, no capture card, no API key:
 
 ```bash
 # documentation links resolve
-python docs/_verify_docs.py
+python temp_code_test/docs/verify_docs.py
 
 # hardware layer configuration
-python Xbox-Automation-Python/gimx-session/_selftest.py
-python Xbox-Automation-Python/test-controller/_selftest.py
+python temp_code_test/hardware/gimx_session_selftest.py
+python temp_code_test/hardware/test_controller_selftest.py
 
 # agentic layer: wiring, schemas, graph, routing
-python Xbox-Agentic-Testing/_smoke_test.py
+python temp_code_test/agentic/smoke_test.py
 
 # regression tests for bugs found against real hardware
-python Xbox-Agentic-Testing/_test_fixes.py
+python temp_code_test/agentic/test_fixes.py
 ```
 
 With the rig connected:
 
 ```bash
 python Xbox-Agentic-Testing/console.py health        # full rig check
-python Xbox-Agentic-Testing/_diagnose_capture.py     # probe every video device
+python temp_code_test/agentic/diagnose_capture.py    # probe every video device
 python Xbox-Agentic-Testing/_check_ocr.py            # is OCR usable?
-python Xbox-Agentic-Testing/_inspect_run.py          # summarise the last run
-python Xbox-Agentic-Testing/_verify_report.py        # do report images resolve?
+python temp_code_test/agentic/inspect_run.py         # summarise the last run
+python temp_code_test/agentic/verify_report.py       # do report images resolve?
 ```
 
 ---
@@ -273,8 +273,8 @@ Worth reading before trusting a result:
   the Guide button. Only an observed screen change settles it.
 - **OpenCV device indices shift.** The capture card moved from index 1 to 0
   when USB devices changed, and the framework silently read the laptop webcam
-  instead. Devices are now resolved **by name**; run `_diagnose_capture.py` if
-  frames look black.
+  instead. Devices are now resolved **by name**; run
+  `temp_code_test/agentic/diagnose_capture.py` if frames look black.
 - **OCR on game UIs is unreliable.** Stylised fonts over animated backgrounds.
   A missed string is weak evidence of absence, and the tools say so.
 - **HDCP content captures black.** Streaming apps cannot be verified at all.

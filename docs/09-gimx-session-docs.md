@@ -118,7 +118,7 @@ module warns you if a profile has no config file.
 finishes the current controller options."* Put it earlier and everything after it
 is silently assigned to a second, non-existent controller.
 
-`_selftest.py` asserts both of these, so a future edit can't quietly break them.
+`temp_code_test/hardware/gimx_session_selftest.py` asserts both of these, so a future edit can't quietly break them.
 
 ---
 
@@ -222,7 +222,7 @@ Ctrl+C to stop
 ## 10. Offline verification
 
 ```bash
-python Xbox-Automation-Python/gimx-session/_selftest.py
+python temp_code_test/hardware/gimx_session_selftest.py
 ```
 
 Prints the resolved settings and the exact command, and asserts the safety flags

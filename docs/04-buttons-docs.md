@@ -292,7 +292,7 @@ from GIMX's documented types but unproven here.
 Check the config parses and names resolve without any hardware:
 
 ```bash
-python Xbox-Automation-Python/test-controller/_selftest.py
+python temp_code_test/hardware/test_controller_selftest.py
 ```
 
 Expected: `ALL CHECKS PASSED`.
