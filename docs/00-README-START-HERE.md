@@ -94,16 +94,16 @@ xboxArudino/
     │   └── controls.yaml      <- GLOBAL config: buttons, timings, macros
     ├── gimx-session/
     │   ├── gimx_session.py        <- START HERE: session + Guide auth
-    │   └── _selftest.py           <- offline check
+    │   └── (helpers moved to temp_code_test/hardware/) <- offline check
     ├── capture/
-    │   └── _probe_capture.py      <- verifies the capture card sees the console
+    │   └── (helpers moved to temp_code_test/hardware/) <- verifies the capture card sees the console
     ├── console-connector/
     │   └── console_connector.py   <- connection diagnostic tool
     ├── flash-leonardo/
     │   └── flash_leonardo.ps1     <- flashes firmware onto the Arduino
     ├── test-controller/
     │   ├── test_controller.py     <- sends button presses
-    │   └── _selftest.py           <- offline check, touches no hardware
+    │   └── (helpers moved to temp_code_test/hardware/) <- offline check, touches no hardware
     └── requirements.txt
 ```
 

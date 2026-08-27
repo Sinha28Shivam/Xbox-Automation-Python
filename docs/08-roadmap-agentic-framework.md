@@ -167,7 +167,7 @@ plus JUnit XML so CI can consume results.
 
 **Nothing is blocked.** With capture verified, all five phases can proceed.
 Phase 2 already has a working reference implementation in
-`capture/_probe_capture.py` (device selection, warmup, blank-frame detection and
+`temp_code_test/hardware/capture_probe.py` (device selection, warmup, blank-frame detection and
 frame differencing).
 
 ---

@@ -254,7 +254,7 @@ python test_controller.py --dry-run press down*3 right*2 a
 And `_selftest.py` verifies the config and name resolution offline:
 
 ```bash
-python _selftest.py     # expects: ALL CHECKS PASSED
+python ../../temp_code_test/hardware/test_controller_selftest.py     # expects: ALL CHECKS PASSED
 ```
 
 ---

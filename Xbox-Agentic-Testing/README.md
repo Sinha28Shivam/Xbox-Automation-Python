@@ -120,7 +120,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 Verify the wiring — no hardware or API key needed:
 
 ```bash
-python _smoke_test.py
+python ../temp_code_test/agentic/smoke_test.py
 ```
 
 ---
@@ -264,7 +264,7 @@ Run the diagnostic. It probes every video device and saves a frame from each,
 so you can look rather than guess:
 
 ```bash
-python _diagnose_capture.py
+python ../temp_code_test/agentic/diagnose_capture.py
 ```
 
 Reading the numbers (measured on this rig):
@@ -323,12 +323,12 @@ Verified on this rig: tesseract reads the Xbox game-details page cleanly
 ## Development
 
 ```bash
-python _smoke_test.py       # 11 wiring checks, no hardware needed
-python _test_fixes.py       # 6 regression tests for bugs found in live runs
+python ../temp_code_test/agentic/smoke_test.py       # 11 wiring checks, no hardware needed
+python ../temp_code_test/agentic/test_fixes.py       # 6 regression tests for bugs found in live runs
 python _check_ocr.py        # is OCR usable? read a real frame with each engine
-python _diagnose_capture.py # probe every video device, save a frame from each
-python _inspect_run.py      # summarise the latest run: plan, steps, verdict
-python _verify_report.py    # confirm the report's screenshots actually resolve
+python ../temp_code_test/agentic/diagnose_capture.py # probe every video device, save a frame from each
+python ../temp_code_test/agentic/inspect_run.py      # summarise the latest run: plan, steps, verdict
+python ../temp_code_test/agentic/verify_report.py    # confirm the report's screenshots actually resolve
 ```
 
 `_test_fixes.py` guards three bugs that only appeared against real hardware:
