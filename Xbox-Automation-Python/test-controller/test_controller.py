@@ -14,7 +14,7 @@ Usable both as a CLI and as an importable library:
     pad.press_times("down", 3)                  # move down 3 rows
     pad.press_times("right", 5, interval=0.4)   # slower, for animated menus
     pad.hold("guide", 2.0)
-    pad.stick("left_stick", "right", duration=1.0)
+    pad.stick("left_stick", "right", duration=1.0, strength=0.25)
     pad.trigger("rt", 255, duration=0.5)
     pad.run_macro("nav_test")
 
@@ -33,7 +33,7 @@ CLI:
     python test_controller.py press a
     python test_controller.py press down*3 right a
     python test_controller.py hold guide 2.0
-    python test_controller.py stick left_stick right --duration 1.0
+    python test_controller.py stick left_stick right --duration 1.0 --strength 0.25
     python test_controller.py trigger rt 255
     python test_controller.py macro nav_test
     python test_controller.py --interactive
@@ -326,7 +326,7 @@ class ConsolePad:
               x: int | None = None, y: int | None = None,
               duration: float | None = None,
               strength: float | None = None) -> bool:
-        """Move a stick either by named direction or explicit x/y (-128..127)."""
+        """Move a stick either by named direction or explicit x/y."""
         spec = self.cfg.sticks.get(stick_name)
         if spec is None:
             known = ", ".join(self.cfg.sticks)
@@ -409,7 +409,8 @@ class ConsolePad:
             elif "stick" in step:
                 if not self.stick(step["stick"], step.get("direction"),
                                   step.get("x"), step.get("y"),
-                                  step.get("duration")):
+                                  step.get("duration"),
+                                  step.get("strength")):
                     return False
             else:
                 print(f"  ! unrecognized step: {step}")
