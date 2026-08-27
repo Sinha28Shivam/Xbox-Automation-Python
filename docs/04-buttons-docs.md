@@ -92,21 +92,22 @@ python test_controller.py --list
 ## 4. Sticks are AXES, not directions
 
 This trips everyone up. `lstick right` **is rejected**. A stick is two analog
-axes, each ranging **-128 to +127**, where 0 is centred.
+axes. On this `XOnePad` setup they range **-32768 to +32767**, where 0 is
+centred.
 
 ```yaml
 left_stick:
   x_axis: "lstick x"
   y_axis: "lstick y"
-  min: -128
-  max: 127
+  min: -32768
+  max: 32767
   center: 0
   deadzone: 10
   directions:
-    left:  { axis: "lstick x", value: -128 }
-    right: { axis: "lstick x", value: 127 }
-    up:    { axis: "lstick y", value: -128 }
-    down:  { axis: "lstick y", value: 127 }
+    left:  { axis: "lstick x", value: -32768 }
+    right: { axis: "lstick x", value: 32767 }
+    up:    { axis: "lstick y", value: -32768 }
+    down:  { axis: "lstick y", value: 32767 }
 ```
 
 The `directions` block is our convenience layer so you can still write:
@@ -115,7 +116,7 @@ The `directions` block is our convenience layer so you can still write:
 python test_controller.py stick left_stick right
 ```
 
-...and the code translates it to `lstick x(127)`, then returns the axis to 0
+...and the code translates it to `lstick x(32767)`, then returns the axis to 0
 afterwards. Note **up is negative** on the Y axis — screen coordinates, not maths
 coordinates.
 
@@ -124,6 +125,15 @@ Explicit control is also available:
 ```bash
 python test_controller.py stick left_stick --x 64 --y -32
 ```
+
+For gentler movement, scale a named direction instead of using the full throw:
+
+```bash
+python test_controller.py stick left_stick right --duration 1.0 --strength 0.2
+```
+
+`--strength` ranges from `0.0` to `1.0` and is also supported in YAML macros
+for named stick directions.
 
 ---
 
@@ -224,7 +234,13 @@ python test_controller.py macro repeat_demo
 ```
 
 Step keys: `button`, `times`, `interval`, `duration`, `wait`, `trigger`+`value`,
-`stick`+`direction`/`x`/`y`.
+`stick`+`direction`/`x`/`y`, and `strength` for named stick directions.
+
+Example:
+
+```yaml
+- { stick: left_stick, direction: left, duration: 0.5, strength: 0.2 }
+```
 
 ---
 

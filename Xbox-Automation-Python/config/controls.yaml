@@ -327,8 +327,10 @@ special_actions:
 #   duration : how long the button is held for each press
 #   wait     : pause, seconds (used on its own)
 #   trigger / value, stick / direction|x|y are also supported
+#   strength : 0.0..1.0 stick deflection for named stick directions
 #
 # Example:  - { button: down, times: 3, interval: 0.4 }
+# Example:  - { stick: left_stick, direction: left, duration: 0.5, strength: 0.2 }
 # ---------------------------------------------------------------------------
 macros:
   confirm:
