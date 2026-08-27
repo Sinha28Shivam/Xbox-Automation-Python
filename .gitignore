@@ -68,3 +68,4 @@ desktop.ini
 # PaddleOCR downloads ~200MB of models on first use.
 .paddleocr/
 paddleocr_models/
+.env
