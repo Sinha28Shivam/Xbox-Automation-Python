@@ -324,7 +324,8 @@ class ConsolePad:
     # -- sticks ------------------------------------------------------------
     def stick(self, stick_name: str, direction: str | None = None,
               x: int | None = None, y: int | None = None,
-              duration: float | None = None) -> bool:
+              duration: float | None = None,
+              strength: float | None = None) -> bool:
         """Move a stick either by named direction or explicit x/y (-128..127)."""
         spec = self.cfg.sticks.get(stick_name)
         if spec is None:
@@ -334,6 +335,28 @@ class ConsolePad:
         if duration is None:
             duration = self.cfg.timing_value("press_duration", 0.15)
 
+        low = int(spec.get("min", -128))
+        high = int(spec.get("max", 127))
+        center = int(spec.get("center", 0))
+
+        if strength is None:
+            strength = 1.0
+        try:
+            strength = float(strength)
+        except (TypeError, ValueError):
+            print(f"  ! invalid strength '{strength}'")
+            return False
+        strength = max(0.0, min(1.0, strength))
+
+        def scaled(value: int) -> int:
+            # Preserve direction while letting callers request a gentle nudge
+            # instead of a full throw.
+            if value == center or strength >= 1.0:
+                return int(value)
+            span = high if value > center else abs(low)
+            magnitude = max(1, int(round(span * strength)))
+            return magnitude if value > center else -magnitude
+
         moves: list[tuple[str, int]] = []
         if direction:
             dirs = spec.get("directions", {})
@@ -341,24 +364,24 @@ class ConsolePad:
                 print(f"  ! Unknown direction '{direction}'. "
                       f"Known: {', '.join(dirs)}")
                 return False
-            moves.append((dirs[direction]["axis"], int(dirs[direction]["value"])))
+            moves.append((dirs[direction]["axis"],
+                          scaled(int(dirs[direction]["value"]))))
         else:
-            lo, hi = spec.get("min", -128), spec.get("max", 127)
             if x is not None:
-                moves.append((spec["x_axis"], max(lo, min(hi, int(x)))))
+                moves.append((spec["x_axis"], max(low, min(high, int(x)))))
             if y is not None:
-                moves.append((spec["y_axis"], max(lo, min(hi, int(y)))))
+                moves.append((spec["y_axis"], max(low, min(high, int(y)))))
         if not moves:
             print("  ! stick() needs a direction or x/y")
             return False
 
-        label = direction or f"x={x},y={y}"
+        label = (f"{direction} @{strength:.2f}"
+                 if direction else f"x={x},y={y}")
         print(f"  -> {stick_name} {label} for {duration:.2f}s", end="", flush=True)
         for axis, val in moves:
             if not self._send_event(axis, val, f"{stick_name}:{label}"):
                 return False
         time.sleep(duration)
-        center = spec.get("center", 0)
         ok = True
         for axis, _ in moves:
             ok = self._send_event(axis, center, f"{stick_name}:center") and ok
@@ -587,6 +610,8 @@ def main() -> int:
     p_stick.add_argument("--x", type=int, default=None)
     p_stick.add_argument("--y", type=int, default=None)
     p_stick.add_argument("--duration", type=float, default=None)
+    p_stick.add_argument("--strength", type=float, default=None,
+                         help="0.0..1.0 stick deflection for named directions")
 
     p_trig = sub.add_parser("trigger", help="pull an analog trigger")
     p_trig.add_argument("name")
@@ -651,7 +676,7 @@ def main() -> int:
             pad.hold(args.name, args.duration)
         elif args.command == "stick":
             pad.stick(args.stick_name, args.direction, args.x, args.y,
-                      args.duration)
+                      args.duration, args.strength)
         elif args.command == "trigger":
             pad.trigger(args.name, args.value, args.duration)
         elif args.command == "macro":
