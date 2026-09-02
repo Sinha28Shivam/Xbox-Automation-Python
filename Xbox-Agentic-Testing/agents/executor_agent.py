@@ -19,11 +19,12 @@ at all - the separation is structural, not a matter of instruction.
 
 EARLY ABORT
 -----------
-If several consecutive steps produce zero screen change, execution stops. That
-pattern almost always means input is not reaching the console (an
-unauthenticated GIMX session being the classic cause), and hammering forty more
-buttons at a console that is not listening wastes minutes and muddies the RCA
-timeline. Stopping early with a clear signal is more useful than finishing.
+If several consecutive INPUT steps produce zero meaningful evidence of change,
+execution stops. That pattern almost always means input is not reaching the
+console (an unauthenticated GIMX session being the classic cause), and
+hammering forty more buttons at a console that is not listening wastes minutes
+and muddies the RCA timeline. Observational steps like capture/wait must not be
+counted toward that streak.
 """
 
 from __future__ import annotations
@@ -90,20 +91,22 @@ class ExecutorAgent(BaseAgent):
                     f"Step {step.index} ({step.action}) reported an error but "
                     f"the run continued: {result.error}")
 
-            # Track consecutive no-change steps. A single one is normal (a
-            # deliberate wait, a press on an already-selected item); three in a
-            # row means nothing is getting through.
-            if result.screen_delta is not None:
-                threshold = self.context.settings.get(
-                    "verification.screen_change_threshold", 0.5)
-                unchanged_streak = (0 if result.screen_delta >= threshold
-                                    else unchanged_streak + 1)
+            # Only actionable input steps count toward the "dead input" abort.
+            # Observational steps can naturally show no change and should reset
+            # the streak rather than strengthening the dead-rig diagnosis.
+            if self._counts_toward_dead_input(step):
+                if self._shows_positive_progress(step, result):
+                    unchanged_streak = 0
+                else:
+                    unchanged_streak += 1
+            else:
+                unchanged_streak = 0
 
             if unchanged_streak >= 3 and not dry_run:
                 aborted = True
                 abort_reason = (
-                    f"The screen did not change across {unchanged_streak} "
-                    f"consecutive actions. Input is almost certainly not "
+                    f"{unchanged_streak} consecutive input actions produced no "
+                    f"meaningful visual progress. Input is likely not "
                     f"reaching the console - the usual cause is a GIMX session "
                     f"that was never authenticated with the Guide button. "
                     f"Stopping rather than sending more input into a void.")
@@ -272,7 +275,8 @@ class ExecutorAgent(BaseAgent):
         comparison = self.call_tool(
             "verify_screen_changed",
             before_path=result.frame_before,
-            after_path=after_path)
+            after_path=after_path,
+            threshold=self._screen_change_threshold(step))
 
         if not comparison.get("ok"):
             result.observation = f"Comparison failed: {comparison.get('error')}"
@@ -281,9 +285,17 @@ class ExecutorAgent(BaseAgent):
         delta = float(comparison.get("delta", 0.0))
         changed = bool(comparison.get("changed"))
         result.screen_delta = delta
-        result.observation = (
-            f"Screen {'changed' if changed else 'did NOT change'} "
-            f"(delta {delta:.3f}). Expected: {step.expected_observation}")
+        if (not changed) and self._is_low_motion_focus_step(step):
+            result.observation = (
+                f"Low-motion focus transition was not proven by whole-screen "
+                f"diff (delta {delta:.3f}). Expected: {step.expected_observation}")
+            result.error = (
+                result.error or
+                "Focus movement could not be proven on a low-motion screen.")
+        else:
+            result.observation = (
+                f"Screen {'changed' if changed else 'did NOT change'} "
+                f"(delta {delta:.3f}). Expected: {step.expected_observation}")
 
         # Only recorded as SCREEN_DIFF proof when the screen genuinely moved.
         # A no-change result is logged as a frame statistic instead, so it can
@@ -295,6 +307,71 @@ class ExecutorAgent(BaseAgent):
             frame_path=after_path,
             source_tool="verify_screen_changed",
         ))
+
+    @staticmethod
+    def _counts_toward_dead_input(step: PlannedStep) -> bool:
+        return step.action in {
+            "press_button",
+            "hold_button",
+            "run_sequence",
+            "type_text",
+            "move_stick",
+            "pull_trigger",
+        }
+
+    def _shows_positive_progress(self, step: PlannedStep, result: StepResult) -> bool:
+        threshold = self._screen_change_threshold(step)
+        if result.screen_delta is not None and result.screen_delta >= threshold:
+            return True
+        if step.action == "type_text" and result.dispatched and not result.error:
+            return True
+        if self._is_low_motion_focus_step(step):
+            haystack = " ".join(filter(None, [
+                result.observation or "",
+                result.ocr_text or "",
+                step.expected_observation or "",
+            ])).lower()
+            progress_markers = (
+                "top results",
+                "installed",
+                "games",
+                "people",
+                "apps",
+                "settings",
+                "minecraft",
+                "result tile",
+            )
+            if any(marker in haystack for marker in progress_markers):
+                return True
+        return False
+
+    @staticmethod
+    def _is_low_motion_focus_step(step: PlannedStep) -> bool:
+        if step.action != "press_button":
+            return False
+        button = str(step.arguments.get("button", "")).lower()
+        if button not in {"up", "down", "left", "right"}:
+            return False
+        text = " ".join([
+            str(step.intent or ""),
+            str(step.expected_observation or ""),
+        ]).lower()
+        markers = (
+            "focus moves",
+            "highlight",
+            "result tile",
+            "results list",
+            "search field",
+            "first result",
+        )
+        return any(marker in text for marker in markers)
+
+    def _screen_change_threshold(self, step: PlannedStep) -> float:
+        default = float(
+            self.context.settings.get("verification.screen_change_threshold", 0.5))
+        if self._is_low_motion_focus_step(step):
+            return min(default, 0.1)
+        return default
 
     # -- helpers -----------------------------------------------------------
     def _capture(self, label: str, step: int, dry_run: bool) -> str | None:
