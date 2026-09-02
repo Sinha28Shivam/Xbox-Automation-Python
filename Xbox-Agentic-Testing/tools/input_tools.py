@@ -199,124 +199,88 @@ class TextEntryEngine:
                 keyboard_variant=self.layout.name,
             )
 
-        retries_used = 0
         confirmed = ""
         observed = ""
+        deferred_mismatch = False
 
-        while retries_used <= self.max_retries:
-            deferred_mismatch = False
-            for index, ch in enumerate(expected[len(confirmed):], start=len(confirmed)):
-                dispatch = self._enter_char(ch)
-                if not dispatch:
-                    return fail(
-                        "A controller event was not accepted while typing.",
-                        requested_text=requested,
-                        characters_completed=index,
-                        retries_used=retries_used,
-                        keyboard_variant=self.layout.name,
-                    )
-
-                if ((index + 1) % self.verify_chunk_size == 0
-                        or index == len(expected) - 1):
-                    verification = self._verify(expected[:index + 1])
-                    if not verification.get("ok"):
-                        return fail(
-                            verification.get("error", "Text verification failed."),
-                            requested_text=requested,
-                            characters_completed=len(confirmed),
-                            typed_text=observed,
-                            retries_used=retries_used,
-                            keyboard_variant=self.layout.name,
-                        )
-
-                    observed = str(verification.get("typed_text", ""))
-                    if observed == expected[:index + 1]:
-                        confirmed = observed
-                        continue
-
-                    # Mid-word OCR on the Xbox search box is noisy on this rig:
-                    # the typed navigation can still be correct while partial
-                    # verification lags, clips the caret, or misreads a trailing
-                    # glyph. Do not attempt destructive recovery until the full
-                    # requested string has been entered.
-                    if index != len(expected) - 1:
-                        deferred_mismatch = True
-                        continue
-
-                    recovered = self._recover(expected[:index + 1], observed)
-                    retries_used += 1
-                    if not recovered.get("ok"):
-                        return fail(
-                            recovered.get("error", "Text entry diverged and recovery failed."),
-                            requested_text=requested,
-                            typed_text=observed,
-                            characters_completed=len(confirmed),
-                            retries_used=retries_used,
-                            keyboard_variant=self.layout.name,
-                            expected_text=expected[:index + 1],
-                            observed_text=observed,
-                        )
-
-                    confirmed = str(recovered.get("confirmed_text", ""))
-                    observed = confirmed
-                    break
-            else:
-                final_check = self._verify(expected)
-                if not final_check.get("ok"):
-                    return fail(
-                        final_check.get("error", "Final text verification failed."),
-                        requested_text=requested,
-                        characters_completed=len(confirmed),
-                        retries_used=retries_used,
-                        keyboard_variant=self.layout.name,
-                    )
-                observed = str(final_check.get("typed_text", ""))
-                if observed != expected:
-                    recovered = self._recover(expected, observed)
-                    retries_used += 1
-                    if not recovered.get("ok"):
-                        return fail(
-                            recovered.get(
-                                "error",
-                                "Typed text does not match the requested text after final verification.",
-                            ),
-                            requested_text=requested,
-                            expected_text=expected,
-                            observed_text=observed,
-                            characters_completed=_common_prefix(expected, observed),
-                            retries_used=retries_used,
-                            keyboard_variant=self.layout.name,
-                        )
-                    observed = str(recovered.get("confirmed_text", ""))
-                    if observed != expected:
-                        return fail(
-                            "Typed text does not match the requested text after final verification.",
-                            requested_text=requested,
-                            expected_text=expected,
-                            observed_text=observed,
-                            characters_completed=_common_prefix(expected, observed),
-                            retries_used=retries_used,
-                            keyboard_variant=self.layout.name,
-                        )
-                return ok(
+        for index, ch in enumerate(expected):
+            dispatch = self._enter_char(ch)
+            if not dispatch:
+                return fail(
+                    "A controller event was not accepted while typing.",
                     requested_text=requested,
-                    typed_text=observed,
-                    characters_completed=len(expected),
-                    retries_used=retries_used,
-                    verified=True,
+                    characters_completed=index,
+                    retries_used=0,
                     keyboard_variant=self.layout.name,
-                    dispatched=True,
-                    deferred_partial_mismatch=deferred_mismatch,
-                    caveat=_ACK_CAVEAT,
                 )
 
-        return fail(
-            "Text entry exhausted its retry budget.",
+            if ((index + 1) % self.verify_chunk_size == 0
+                    or index == len(expected) - 1):
+                verification = self._verify(expected[:index + 1])
+                if not verification.get("ok"):
+                    return fail(
+                        verification.get("error", "Text verification failed."),
+                        requested_text=requested,
+                        characters_completed=len(confirmed),
+                        typed_text=observed,
+                        expected_text=expected[:index + 1],
+                        frame_path=verification.get("frame_path"),
+                        crop_path=verification.get("crop_path"),
+                        retries_used=0,
+                        keyboard_variant=self.layout.name,
+                    )
+
+                observed = str(verification.get("typed_text", ""))
+                if observed == expected[:index + 1]:
+                    confirmed = observed
+                    continue
+
+                # Mid-word OCR is still noisy on this rig. Record the mismatch,
+                # but do not attempt any corrective input. Keep typing and let
+                # the final verification decide the verdict.
+                if index != len(expected) - 1:
+                    deferred_mismatch = True
+                    continue
+
+        final_check = self._verify(expected)
+        if not final_check.get("ok"):
+            return fail(
+                final_check.get("error", "Final text verification failed."),
+                requested_text=requested,
+                expected_text=expected,
+                characters_completed=len(confirmed),
+                typed_text=observed,
+                frame_path=final_check.get("frame_path"),
+                crop_path=final_check.get("crop_path"),
+                retries_used=0,
+                keyboard_variant=self.layout.name,
+            )
+
+        observed = str(final_check.get("typed_text", ""))
+        if observed != expected:
+            return fail(
+                "Typed text verification mismatch after typing; no recovery was attempted.",
+                requested_text=requested,
+                expected_text=expected,
+                observed_text=observed,
+                characters_completed=_common_prefix(expected, observed),
+                frame_path=final_check.get("frame_path"),
+                crop_path=final_check.get("crop_path"),
+                retries_used=0,
+                keyboard_variant=self.layout.name,
+                deferred_partial_mismatch=deferred_mismatch,
+            )
+
+        return ok(
             requested_text=requested,
             typed_text=observed,
-            characters_completed=len(confirmed),
-            retries_used=retries_used,
+            characters_completed=len(expected),
+            retries_used=0,
+            verified=True,
             keyboard_variant=self.layout.name,
+            dispatched=True,
+            deferred_partial_mismatch=deferred_mismatch,
+            caveat=_ACK_CAVEAT,
         )
 
     def _enter_char(self, ch: str) -> bool:
@@ -454,41 +418,6 @@ class TextEntryEngine:
             expected_text=expected_text,
             engine=region.get("engine"),
         )
-
-    def _recover(self, expected_text: str, observed_text: str) -> dict[str, Any]:
-        common = _common_prefix(expected_text, observed_text)
-        to_delete = max(0, len(observed_text) - common)
-        backspace = self.layout.special("backspace")
-        if not backspace:
-            return fail(
-                "The keyboard layout has no backspace key, so divergence cannot be corrected.")
-
-        for _ in range(to_delete):
-            if not self._navigate_to(backspace) or not self.pad.press("a"):
-                return fail("Failed to dispatch backspace during text recovery.")
-            time.sleep(self.recovery_pause)
-
-        self.current_key = backspace
-        confirmed = expected_text[:common]
-
-        for ch in expected_text[common:]:
-            if not self._enter_char(ch):
-                return fail("Failed to re-enter text during recovery.")
-
-        verification = self._verify(expected_text)
-        if not verification.get("ok"):
-            return verification
-
-        observed = str(verification.get("typed_text", ""))
-        if observed != expected_text:
-            return fail(
-                "Recovery finished, but the search box still does not match.",
-                expected_text=expected_text,
-                observed_text=observed,
-            )
-
-        return ok(confirmed_text=observed)
-
 
 # ===========================================================================
 # Buttons
