@@ -197,7 +197,7 @@ class ValidatedScenario(BaseModel):
     issues: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     normalised_from: str = Field(
-        default="", description="yaml | natural_language")
+        default="", description="yaml | natural_language | requirement_yaml")
     unresolved_controls: list[str] = Field(
         default_factory=list,
         description="Names not found in controls.yaml - a scenario defect")
@@ -212,6 +212,29 @@ class ValidatedScenario(BaseModel):
                 "No success criteria: this test could never fail, so it "
                 "cannot pass either.")
         return self
+
+
+# ===========================================================================
+# 2b. Requirement input
+# ===========================================================================
+class RequirementItem(BaseModel):
+    """Minimal YAML requirement input for agentic normalization."""
+
+    id: str
+    title: str
+    goal: str
+    expected_outcome: str
+    preconditions: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    console: str | None = None
+    priority: str | int | None = None
+
+    @field_validator("id", "title", "goal", "expected_outcome")
+    @classmethod
+    def _required_text(cls, v: str) -> str:
+        if not str(v).strip():
+            raise ValueError("This field is required and cannot be empty")
+        return str(v).strip()
 
 
 # ===========================================================================
@@ -400,6 +423,9 @@ class TestReport(BaseModel):
     run_id: str
     scenario_id: str
     scenario_title: str = ""
+    requirement_id: str | None = None
+    requirement_title: str = ""
+    requirement_goal: str = ""
     verdict: Verdict
     summary: str = ""
     started_at: str = ""

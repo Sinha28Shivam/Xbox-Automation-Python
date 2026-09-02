@@ -32,6 +32,7 @@ from typing import Annotated, Any, TypedDict
 from schemas import (
     ExecutionResult,
     HealthReport,
+    RequirementItem,
     RootCauseAnalysis,
     TestPlan,
     TestReport,
@@ -63,9 +64,10 @@ class AgenticState(TypedDict, total=False):
     run_id: str
     started_at: str
     scenario_input: str          # raw text or path, exactly as the user gave it
-    scenario_source: str         # "file" | "text"
+    scenario_source: str         # "file" | "text" | "requirement_file"
 
     # -- agent results (one key per pipeline stage) ------------------------
+    requirement: RequirementItem | None
     health: HealthReport | None
     scenario: ValidatedScenario | None
     plan: TestPlan | None
@@ -110,6 +112,7 @@ def initial_state(run_id: str, scenario_input: str, scenario_source: str,
         started_at=started_at,
         scenario_input=scenario_input,
         scenario_source=scenario_source,
+        requirement=None,
         health=None,
         scenario=None,
         plan=None,
@@ -153,6 +156,7 @@ def state_digest(state: AgenticState) -> dict[str, Any]:
     mostly noise, so agents receive this digest instead.
     """
     health = state.get("health")
+    requirement = state.get("requirement")
     scenario = state.get("scenario")
     plan = state.get("plan")
     execution = state.get("execution")
@@ -168,6 +172,12 @@ def state_digest(state: AgenticState) -> dict[str, Any]:
             "gimx_reachable": health.gimx_reachable,
             "capture_has_signal": health.capture_has_signal,
             "blocking_issues": health.blocking_issues,
+        },
+        "requirement": None if requirement is None else {
+            "id": requirement.id,
+            "title": requirement.title,
+            "goal": requirement.goal,
+            "expected_outcome": requirement.expected_outcome,
         },
         "scenario": None if scenario is None else {
             "id": scenario.id,

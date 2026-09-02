@@ -100,6 +100,13 @@ def _markdown(ctx: ToolContext, r: dict[str, Any]) -> str:
         str(r.get("summary", "")).strip() or "_No summary provided._",
         "",
     ]
+    if r.get("requirement_id"):
+        out.insert(4, f"**Requirement:** `{r.get('requirement_id')}` - "
+                      f"{r.get('requirement_title', '')}")
+
+    if r.get("requirement_goal"):
+        out += ["## Original requirement", "",
+                str(r.get("requirement_goal", "")).strip(), ""]
 
     # Caveats come high up, not buried at the bottom. A reader who stops after
     # the summary should still see the limits of the result.

@@ -8,6 +8,23 @@ scenario - or to reject it with a clear reason.
 {% if seed_title %}
 Suggested title: {{ seed_title }}
 {% endif %}
+{% if requirement %}
+
+# Requirement grounding
+
+This input came from a minimal requirement YAML file. Treat these fields as
+ground truth metadata and preserve their intent while making the scenario
+observable and executable.
+
+- requirement.id: {{ requirement.id }}
+- requirement.title: {{ requirement.title }}
+- requirement.goal: {{ requirement_goal }}
+- requirement.expected_outcome: {{ requirement_expected_outcome }}
+- requirement.console: {{ requirement.console }}
+- requirement.preconditions: {{ requirement.preconditions | tojson }}
+- requirement.tags: {{ requirement.tags | tojson }}
+- requirement.priority: {{ requirement.priority }}
+{% endif %}
 
 # What this rig can actually do
 
