@@ -130,7 +130,7 @@ verification:
   blank_std_threshold: 1.0
   ocr:
     enabled: "${OCR_ENABLED:true}"
-    engines: ["pytesseract", "paddleocr"]   # tried in order, first that imports
+    engines: ["paddleocr", "pytesseract"]   # tried in order, first that imports
     min_confidence: 0.4
 
 # ---------------------------------------------------------------------------

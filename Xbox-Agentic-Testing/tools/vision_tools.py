@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import base64
 import time
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +57,128 @@ def _invoke(tool: Any, **kwargs: Any) -> dict[str, Any]:
     """
     func = getattr(tool, "func", tool)
     return func(**kwargs)
+
+
+def _text_entry_layouts(ctx: ToolContext) -> dict[str, Any]:
+    controls = getattr(ctx.hardware.controls, "data", {}) or {}
+    section = controls.get("text_entry", {}) or {}
+    return dict(section.get("keyboard_layouts", {}) or {})
+
+
+def _resolve_region(ctx: ToolContext, preset: str = "",
+                    keyboard_variant: str | None = None,
+                    region: dict[str, float] | None = None) -> tuple[dict[str, float] | None, str]:
+    if region:
+        return dict(region), "explicit"
+
+    layouts = _text_entry_layouts(ctx)
+    if preset != "search_box":
+        return None, ""
+
+    variant = keyboard_variant
+    if not variant:
+        defaults = ((getattr(ctx.hardware.controls, "data", {}) or {})
+                    .get("text_entry", {}) or {}).get("defaults", {}) or {}
+        variant = str(defaults.get("keyboard_variant", "")).strip()
+
+    if not variant or variant not in layouts:
+        return None, ""
+
+    layout = layouts.get(variant, {}) or {}
+    found = layout.get("search_box_region")
+    return (dict(found), f"{variant}:search_box") if isinstance(found, dict) else (None, "")
+
+
+def _crop_frame(path: str, region: dict[str, float]) -> tuple[Any | None, str]:
+    try:
+        import cv2
+    except ImportError as exc:
+        raise RuntimeError(f"OpenCV unavailable: {exc}") from exc
+
+    frame = cv2.imread(str(path))
+    if frame is None:
+        return None, f"Could not read frame: {path}"
+
+    h, w = frame.shape[:2]
+    x = float(region.get("x", 0.0))
+    y = float(region.get("y", 0.0))
+    rw = float(region.get("width", region.get("w", 1.0)))
+    rh = float(region.get("height", region.get("h", 1.0)))
+
+    if 0.0 <= x <= 1.0 and 0.0 <= y <= 1.0 and 0.0 < rw <= 1.0 and 0.0 < rh <= 1.0:
+        left = max(0, min(w - 1, int(round(x * w))))
+        top = max(0, min(h - 1, int(round(y * h))))
+        right = max(left + 1, min(w, int(round((x + rw) * w))))
+        bottom = max(top + 1, min(h, int(round((y + rh) * h))))
+    else:
+        left = max(0, int(round(x)))
+        top = max(0, int(round(y)))
+        right = min(w, left + max(1, int(round(rw))))
+        bottom = min(h, top + max(1, int(round(rh))))
+
+    if left >= right or top >= bottom:
+        return None, f"Region is outside the frame bounds: {region}"
+
+    return frame[top:bottom, left:right], ""
+
+
+def read_text_region_impl(ctx: ToolContext, frame_path: str | None = None,
+                          region: dict[str, float] | None = None,
+                          preset: str = "",
+                          keyboard_variant: str | None = None) -> dict[str, Any]:
+    if not ctx.settings.get("verification.ocr.enabled", True):
+        return fail("OCR is disabled in settings (verification.ocr.enabled)")
+
+    path = frame_path or ctx.scratch.get("last_frame_path")
+    if not path:
+        result = _invoke(_capture_frame(ctx))
+        if not result.get("ok"):
+            return result
+        path = result["frame_path"]
+
+    resolved, source = _resolve_region(
+        ctx, preset=preset, keyboard_variant=keyboard_variant, region=region)
+    if not resolved:
+        return fail(
+            "No text region could be resolved. Pass an explicit region or a "
+            "supported preset/keyboard_variant.",
+            preset=preset,
+            keyboard_variant=keyboard_variant,
+        )
+
+    cropped, error = _crop_frame(str(path), resolved)
+    if cropped is None:
+        return fail(error, frame_path=str(path), region=resolved)
+
+    try:
+        import cv2
+    except ImportError as exc:
+        return fail(f"OpenCV unavailable: {exc}")
+
+    crop_path = ctx.artifacts.save_frame(cropped, f"crop-{preset or 'region'}")
+    text, engine, ocr_error = _ocr(ctx, str(crop_path))
+    if text is None:
+        return fail(
+            f"No OCR engine available ({ocr_error}).",
+            frame_path=str(path),
+            crop_path=str(crop_path),
+            region=resolved,
+            region_source=source,
+        )
+
+    return ok(
+        text=text,
+        engine=engine,
+        frame_path=str(path),
+        crop_path=str(crop_path),
+        region=resolved,
+        region_source=source,
+        line_count=len([l for l in text.splitlines() if l.strip()]),
+        caveat=(
+            "Region OCR is stronger than whole-screen OCR for search fields, "
+            "but stylised UI text and low contrast can still cause misses."
+        ),
+    )
 
 
 # ===========================================================================
@@ -343,6 +466,58 @@ def _check_for_text(ctx: ToolContext) -> Any:
         "unreadable screen is NOT evidence that the text is absent.")
 
 
+def _read_text_region(ctx: ToolContext) -> Any:
+    def run(frame_path: str | None = None,
+            region: dict[str, float] | None = None,
+            preset: str = "",
+            keyboard_variant: str | None = None) -> dict[str, Any]:
+        return read_text_region_impl(
+            ctx,
+            frame_path=frame_path,
+            region=region,
+            preset=preset,
+            keyboard_variant=keyboard_variant,
+        )
+
+    return make_tool(
+        run, "read_text_region",
+        "OCR a focused part of the screen. Use preset='search_box' with a "
+        "supported keyboard_variant for Xbox search-field verification.")
+
+
+def warm_ocr_impl(ctx: ToolContext) -> dict[str, Any]:
+    """Preload the configured OCR engines before time-sensitive input begins."""
+    if not ctx.settings.get("verification.ocr.enabled", True):
+        return fail("OCR is disabled in settings (verification.ocr.enabled)")
+
+    if ctx.scratch.get("ocr_warmed"):
+        return ok(warmed=True, already_warmed=True, engines=ctx.scratch.get("ocr_ready_engines", []))
+
+    engines = ctx.settings.list_of("verification.ocr.engines") or ["pytesseract"]
+    ready: list[str] = []
+    errors: list[str] = []
+
+    for engine in engines:
+        name = str(engine).strip()
+        try:
+            _warm_engine(ctx, name)
+            ready.append(name)
+        except ImportError as exc:
+            errors.append(f"{name}: not installed ({exc})")
+        except Exception as exc:
+            errors.append(f"{name}: {str(exc).splitlines()[0][:120]}")
+
+    if not ready:
+        return fail(
+            f"No OCR engine could be preloaded ({'; '.join(errors)})",
+            engines=engines,
+        )
+
+    ctx.scratch["ocr_warmed"] = True
+    ctx.scratch["ocr_ready_engines"] = ready
+    return ok(warmed=True, already_warmed=False, engines=ready, errors=errors)
+
+
 def _ocr(ctx: ToolContext, path: str) -> tuple[str | None, str, str]:
     """Try each configured OCR engine in order. Returns (text, engine, error).
 
@@ -389,30 +564,68 @@ def _run_engine(ctx: ToolContext, name: str, path: str) -> str | None:
         return pytesseract.image_to_string(Image.open(path))
 
     if name == "paddleocr":
-        engine = ctx.scratch.get("paddle")
-        if engine is None:
-            from paddleocr import PaddleOCR
-            # PaddleOCR's constructor keywords have churned across versions -
-            # `show_log` was removed, `use_angle_cls` renamed. Try the modern
-            # signature, then older ones, then bare. Pinning one spelling
-            # means the tool breaks on the next release.
-            for kwargs in ({"lang": "en", "use_textline_orientation": True},
-                           {"lang": "en", "use_angle_cls": True},
-                           {"lang": "en"},
-                           {}):
-                try:
-                    engine = PaddleOCR(**kwargs)
-                    break
-                except (TypeError, ValueError):
-                    continue
-            if engine is None:
-                raise RuntimeError("PaddleOCR could not be constructed")
-            ctx.scratch["paddle"] = engine     # model load is slow; reuse it
-
+        engine = _get_paddle_engine(ctx)
         raw = engine.predict(path) if hasattr(engine, "predict") else engine.ocr(path)
         return "\n".join(_paddle_lines(raw))
 
     return None
+
+
+def _warm_engine(ctx: ToolContext, name: str) -> None:
+    """Load one OCR engine and validate that it can be called later."""
+    if name == "pytesseract":
+        import pytesseract
+        pytesseract.get_tesseract_version()
+        return
+
+    if name == "paddleocr":
+        _get_paddle_engine(ctx)
+        # Force the first real predict during warm-up so typing does not pause
+        # mid-word while PaddleOCR lazily spins up sub-models.
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+        try:
+            from PIL import Image, ImageDraw
+            image = Image.new("RGB", (320, 80), "white")
+            draw = ImageDraw.Draw(image)
+            draw.text((16, 20), "warmup", fill="black")
+            image.save(tmp_path)
+            _run_engine(ctx, name, str(tmp_path))
+        finally:
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except Exception:
+                pass
+        return
+
+    raise ValueError(f"Unknown OCR engine '{name}'")
+
+
+def _get_paddle_engine(ctx: ToolContext) -> Any:
+    engine = ctx.scratch.get("paddle")
+    if engine is not None:
+        return engine
+
+    from paddleocr import PaddleOCR
+    # PaddleOCR's constructor keywords have churned across versions -
+    # `show_log` was removed, `use_angle_cls` renamed. Try the modern
+    # signature, then older ones, then bare. Pinning one spelling
+    # means the tool breaks on the next release.
+    for kwargs in ({"lang": "en", "use_textline_orientation": True},
+                   {"lang": "en", "use_angle_cls": True},
+                   {"lang": "en"},
+                   {}):
+        try:
+            engine = PaddleOCR(**kwargs)
+            break
+        except (TypeError, ValueError):
+            continue
+
+    if engine is None:
+        raise RuntimeError("PaddleOCR could not be constructed")
+
+    ctx.scratch["paddle"] = engine           # model load is slow; reuse it
+    return engine
 
 
 def _paddle_lines(raw: Any) -> list[str]:
@@ -510,6 +723,8 @@ def provide() -> list[ToolSpec]:
                  ["vision", "analysis"], _find_text_on_screen),
         ToolSpec("check_for_text", "Check several strings at once (error checks).",
                  ["vision", "analysis"], _check_for_text),
+        ToolSpec("read_text_region", "OCR a focused screen region.",
+                 ["vision", "analysis"], _read_text_region),
         ToolSpec("encode_frame_for_vision", "Base64-encode a frame for an LLM.",
                  ["vision"], _encode_frame_for_vision),
         ToolSpec("list_captured_frames", "List this run's frames in order.",

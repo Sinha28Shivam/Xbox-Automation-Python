@@ -63,10 +63,16 @@ where the screen did not change are where the plan lost contact with reality.
    `interval` of at least 0.3-0.4s. Animated menus drop presses that arrive too
    fast, which looks exactly like a console fault.
 
-6. **Keep it under {{ max_steps }} steps.** Longer plans are more brittle and
+6. **Use `type_text` for text entry.** If the goal involves search, typing a
+   title, entering a name/code/query, or filling a visible search box, plan a
+   `type_text` step instead of expanding the keyboard into dozens of raw
+   directional presses. Its expected observation should mention the visible
+   typed text or the result it enables.
+
+7. **Keep it under {{ max_steps }} steps.** Longer plans are more brittle and
    harder to diagnose.
 
-7. **State your assumptions.** Put anything you are taking for granted into
+8. **State your assumptions.** Put anything you are taking for granted into
    `assumptions` - "the console starts on the dashboard", "the game is already
    installed". If the run fails, the RCA agent will check these first, and an
    unstated assumption is a wasted investigation.

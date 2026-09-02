@@ -286,6 +286,86 @@ timing:
   udp_max_retries: 6
 
 # ---------------------------------------------------------------------------
+# TEXT ENTRY
+# Search-box typing uses a hybrid model:
+#   * static keyboard geometry for deterministic navigation
+#   * OCR on the search field as the guardrail
+# These defaults target reliable Xbox search typing first. If your on-screen
+# keyboard differs, adjust the layout rows / regions here rather than changing
+# code.
+# ---------------------------------------------------------------------------
+text_entry:
+  defaults:
+    keyboard_variant: "xbox_global_search_en"
+    verify_chunk_size: 2
+    max_retries: 2
+    reanchor_each_char: false
+    move_interval: 0.3
+    key_pause: 0.2
+    recovery_pause: 0.35
+
+  keyboard_layouts:
+    xbox_global_search_en:
+      description: "English keyboard for the main Xbox global search flow"
+      initial_focus: "y"
+      symbol_toggle_control: "lt"
+      search_box_region:
+        x: 0.16
+        y: 0.06
+        width: 0.68
+        height: 0.11
+      typed_text_region:
+        x: 0.16
+        y: 0.06
+        width: 0.42
+        height: 0.11
+      rows:
+        - ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
+        - ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"]
+        - ["a", "s", "d", "f", "g", "h", "j", "k", "l", "'"]
+        - ["z", "x", "c", "v", "b", "n", "m", ",", ".", "?"]
+        - ["space", "backspace", "clear", "search"]
+      symbol_rows:
+        - ["!", "@", "#", "$", "%", "&", "(", ")", "-", "_"]
+        - ["=", "+", "\\", ";", ":", "\"", "*", "/", "", ""]
+        - ["", "", "", "", "<", ">", "[", "]", "{", "}"]
+      special_keys:
+        space: "space"
+        backspace: "backspace"
+        clear: "clear"
+        search: "search"
+
+    xbox_store_search_en:
+      description: "English keyboard for Store/app search screens"
+      initial_focus: "y"
+      symbol_toggle_control: "lt"
+      search_box_region:
+        x: 0.18
+        y: 0.08
+        width: 0.64
+        height: 0.1
+      typed_text_region:
+        x: 0.18
+        y: 0.08
+        width: 0.40
+        height: 0.1
+      rows:
+        - ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
+        - ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"]
+        - ["a", "s", "d", "f", "g", "h", "j", "k", "l", "'"]
+        - ["z", "x", "c", "v", "b", "n", "m", ",", ".", "?"]
+        - ["space", "backspace", "clear", "search"]
+      symbol_rows:
+        - ["!", "@", "#", "$", "%", "&", "(", ")", "-", "_"]
+        - ["=", "+", "\\", ";", ":", "\"", "*", "/", "", ""]
+        - ["", "", "", "", "<", ">", "[", "]", "{", "}"]
+      special_keys:
+        space: "space"
+        backspace: "backspace"
+        clear: "clear"
+        search: "search"
+
+# ---------------------------------------------------------------------------
 # SPECIAL / COMPOUND ACTIONS
 # Multi-step or timing-dependent operations.
 # ---------------------------------------------------------------------------

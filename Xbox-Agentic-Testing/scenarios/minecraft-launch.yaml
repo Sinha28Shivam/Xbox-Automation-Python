@@ -1,14 +1,30 @@
 id: launch-minecraft-from-search
 title: Launch Minecraft from Xbox search
+description: Open Xbox search, type Minecraft, select the game tile, and launch it
 goal: Open search, find Minecraft, and launch it
 expected_outcome: Minecraft launches and its main screen becomes visible
 preconditions:
   - The console is on and awake
   - The GIMX session is authenticated
   - The user is signed in
+  - Minecraft is installed or cloud-launchable for this account
 tags:
   - search
   - launch
   - minecraft
 console: xbox_one
 priority: p1
+max_steps: 20
+success_criteria:
+  - description: The search field contains the word minecraft
+    check_type: text_present
+    parameters:
+      text: minecraft
+  - description: A Minecraft result tile or launch surface becomes visible
+    check_type: vision_judgement
+    parameters:
+      expected_visual: Minecraft search result or launch tile is visible
+  - description: Minecraft begins launching and its main screen becomes visible
+    check_type: vision_judgement
+    parameters:
+      expected_visual: Minecraft splash screen, loading screen, or main menu is visible

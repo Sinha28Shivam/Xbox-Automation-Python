@@ -1,0 +1,15 @@
+id: launch-minecraft-from-search
+title: Launch Minecraft from Xbox search
+goal: Open Xbox search, type Minecraft, and launch the game
+expected_outcome: The search box contains minecraft, the Minecraft result appears, and the game starts launching
+preconditions:
+  - The console is on and awake
+  - The GIMX session is authenticated
+  - The user is signed in
+  - Minecraft is installed or cloud-launchable for this account
+tags:
+  - search
+  - launch
+  - minecraft
+console: xbox_one
+priority: p1
