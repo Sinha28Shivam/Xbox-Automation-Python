@@ -162,7 +162,17 @@ def cmd_run(args: argparse.Namespace) -> int:
         overrides["save_frames"] = False
 
     with TestRunner(args.config_dir, overrides or None) as runner:
-        if args.file:
+        if args.file and args.requirement_file:
+            print("ERROR: use either --file or --requirement-file, not both")
+            return 4
+
+        if args.requirement_file:
+            path = Path(args.requirement_file)
+            if not path.is_file():
+                print(f"ERROR: requirement file not found: {path}")
+                return 4
+            report = runner.run(str(path.resolve()), "requirement_file")
+        elif args.file:
             path = Path(args.file)
             if not path.is_file():
                 print(f"ERROR: scenario file not found: {path}")
@@ -170,7 +180,7 @@ def cmd_run(args: argparse.Namespace) -> int:
             report = runner.run(str(path.resolve()), "file")
         else:
             if not args.scenario:
-                print("ERROR: provide a scenario, either as text or with --file")
+                print("ERROR: provide a scenario, or use --file / --requirement-file")
                 return 4
             report = runner.run(" ".join(args.scenario), "text")
 
@@ -291,6 +301,7 @@ examples:
   python console.py health
   python console.py run "Press A and confirm the screen changes"
   python console.py run --file scenarios/dashboard-navigation.yaml
+  python console.py run --requirement-file requirements/open-guide.yaml
   python console.py run "Open the guide" --dry-run
   python console.py interactive
 
@@ -306,6 +317,8 @@ exit codes:
     p_run = sub.add_parser("run", help="run a scenario")
     p_run.add_argument("scenario", nargs="*", help="scenario in plain English")
     p_run.add_argument("--file", "-f", help="path to a scenario YAML file")
+    p_run.add_argument("--requirement-file",
+                       help="path to a minimal requirement YAML file")
     p_run.add_argument("--dry-run", action="store_true",
                        help="plan without touching hardware")
     p_run.add_argument("--max-steps", type=int, default=None)

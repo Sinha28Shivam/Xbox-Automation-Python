@@ -25,9 +25,10 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from pydantic import ValidationError
 
 from base import BaseAgent
-from schemas import SuccessCriterion, ValidatedScenario
+from schemas import RequirementItem, SuccessCriterion, ValidatedScenario
 from state import AgenticState, note
 
 
@@ -42,11 +43,19 @@ class ScenarioValidatorAgent(BaseAgent):
             return self._invalid("No scenario was provided.", state)
 
         source = state.get("scenario_source", "text")
-        payload, origin = (self._load_file(raw) if source == "file"
-                           else ({"text": raw}, "natural_language"))
+        requirement: RequirementItem | None = None
 
-        scenario = (self._from_yaml(payload, state) if origin == "yaml"
-                    else self._from_text(raw, state))
+        try:
+            if source == "requirement_file":
+                requirement = self._load_requirement(raw)
+                scenario = self._from_requirement(requirement, state)
+            else:
+                payload, origin = (self._load_file(raw) if source == "file"
+                                   else ({"text": raw}, "natural_language"))
+                scenario = (self._from_yaml(payload, state) if origin == "yaml"
+                            else self._from_text(raw, state))
+        except (ValueError, ValidationError, yaml.YAMLError) as exc:
+            return self._invalid(str(exc), state)
 
         # Structural validity is not enough: names must exist on THIS rig.
         # Same YAML on a differently-configured console can be invalid, which
@@ -62,6 +71,9 @@ class ScenarioValidatorAgent(BaseAgent):
 
         self.context.artifacts.save_json(
             "scenario.json", scenario.model_dump(mode="json"))
+        if requirement is not None:
+            self.context.artifacts.save_json(
+                "requirement.json", requirement.model_dump(mode="json"))
 
         level = "info" if scenario.valid else "error"
         summary = (f"Scenario '{scenario.title}' validated with "
@@ -70,6 +82,7 @@ class ScenarioValidatorAgent(BaseAgent):
                    f"Scenario rejected: {'; '.join(scenario.issues)}")
 
         return {
+            "requirement": requirement,
             "scenario": scenario,
             "messages": [note(self.role, summary, level=level)],
             "should_stop": not scenario.valid,
@@ -95,6 +108,18 @@ class ScenarioValidatorAgent(BaseAgent):
             if isinstance(data, dict):
                 return data, "yaml"
         return {"text": text}, "natural_language"
+
+    def _load_requirement(self, path_str: str) -> RequirementItem:
+        path = Path(path_str)
+        if not path.is_file():
+            raise FileNotFoundError(f"Requirement file not found: {path}")
+        text = path.read_text(encoding="utf-8")
+        data = yaml.safe_load(text)
+        if not isinstance(data, dict):
+            raise ValueError(
+                "Requirement YAML must contain exactly one mapping/object, "
+                "not a list or empty document.")
+        return RequirementItem.model_validate(data)
 
     def _from_yaml(self, data: dict[str, Any],
                    state: AgenticState) -> ValidatedScenario:
@@ -149,6 +174,36 @@ class ScenarioValidatorAgent(BaseAgent):
         scenario.normalised_from = "natural_language"
         if seed_id:
             scenario.id = seed_id
+        return scenario
+
+    def _from_requirement(self, requirement: RequirementItem,
+                          state: AgenticState) -> ValidatedScenario:
+        """Normalize one minimal requirement YAML item into a runnable scenario."""
+        requirement_yaml = yaml.safe_dump(
+            requirement.model_dump(mode="json"),
+            sort_keys=False, allow_unicode=True)
+        prompt = self.render_prompt(
+            state,
+            scenario_text=requirement_yaml,
+            seed_id=requirement.id,
+            seed_title=requirement.title,
+            requirement=requirement.model_dump(mode="json"),
+            requirement_goal=requirement.goal,
+            requirement_expected_outcome=requirement.expected_outcome,
+        )
+        scenario = self.invoke_structured(ValidatedScenario, prompt)
+        scenario.id = requirement.id
+        scenario.title = requirement.title
+        scenario.goal = requirement.goal
+        scenario.console = requirement.console
+        scenario.preconditions = list(requirement.preconditions) + [
+            p for p in scenario.preconditions
+            if p not in requirement.preconditions
+        ]
+        scenario.tags = list(requirement.tags) + [
+            t for t in scenario.tags if t not in requirement.tags
+        ]
+        scenario.normalised_from = "requirement_yaml"
         return scenario
 
     # -- validation --------------------------------------------------------

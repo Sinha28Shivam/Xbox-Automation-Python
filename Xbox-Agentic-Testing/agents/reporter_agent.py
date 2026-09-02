@@ -37,6 +37,7 @@ class ReporterAgent(BaseAgent):
     uses_llm = False
 
     def run(self, state: AgenticState) -> dict[str, Any]:
+        requirement = state.get("requirement")
         scenario = state.get("scenario")
         health = state.get("health")
         execution = state.get("execution")
@@ -50,6 +51,9 @@ class ReporterAgent(BaseAgent):
             run_id=str(state.get("run_id", "")),
             scenario_id=scenario.id if scenario else "unknown",
             scenario_title=scenario.title if scenario else "Unknown scenario",
+            requirement_id=(requirement.id if requirement else None),
+            requirement_title=(requirement.title if requirement else ""),
+            requirement_goal=(requirement.goal if requirement else ""),
             verdict=verdict,
             summary=self._summary(verdict, state),
             started_at=started_at,
