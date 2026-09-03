@@ -69,10 +69,18 @@ where the screen did not change are where the plan lost contact with reality.
    directional presses. Its expected observation should mention the visible
    typed text or the result it enables.
 
-7. **Keep it under {{ max_steps }} steps.** Longer plans are more brittle and
+7. **For Xbox search flows, separate typing focus from result navigation.**
+   If `type_text` leaves the search UI showing "Top Results", "Installed",
+   "Games", or similar result sections, do not assume `down` from the active
+   search field will reliably enter the results list. Prefer:
+   `type_text` -> `press_button(button="b")` -> `wait_for_stable_screen` ->
+   directional navigation into results. Verify that the result surface remains
+   visible and that the target result is shown before pressing `a` to open it.
+
+8. **Keep it under {{ max_steps }} steps.** Longer plans are more brittle and
    harder to diagnose.
 
-8. **State your assumptions.** Put anything you are taking for granted into
+9. **State your assumptions.** Put anything you are taking for granted into
    `assumptions` - "the console starts on the dashboard", "the game is already
    installed". If the run fails, the RCA agent will check these first, and an
    unstated assumption is a wasted investigation.
