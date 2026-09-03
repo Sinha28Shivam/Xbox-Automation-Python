@@ -98,3 +98,8 @@ and put it in `not_proven` rather than declaring a product bug.
 
 Return a VerificationResult. Every criterion gets a CriterionResult with the
 evidence you relied on. Be the person who catches the false pass.
+
+Important formatting rule:
+- `criteria` must be a JSON array, not a quoted string containing JSON
+- `evidence` must be a JSON array, not a quoted string containing JSON
+- each criterion's `evidence` must also be a JSON array

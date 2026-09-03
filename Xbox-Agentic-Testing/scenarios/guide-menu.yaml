@@ -1,59 +1,50 @@
-# ===========================================================================
-#  Scenario: the Guide overlay opens
-#
-#  A step up from dashboard navigation: this one checks a SPECIFIC screen
-#  appears, not just that something changed. It exercises OCR and the vision
-#  path rather than frame differencing alone.
-#
-#  Note the button naming. GIMX rejects "guide" - the Xbox button is "PS"
-#  internally - but that mapping lives in controls.yaml, so this scenario
-#  refers to it by the friendly name and the framework resolves it.
-#
-#  Run with:
-#      python console.py run --file scenarios/guide-menu.yaml
-# ===========================================================================
-
 id: guide-menu-opens
-title: "The Guide button opens the guide overlay"
+title: The Guide button opens the guide overlay
 description: >
-  Press the Xbox Guide button and confirm the guide overlay appears over the
-  current screen.
+  Press the Xbox Guide button and verify that the guide overlay appears with
+  recognizable guide menu elements.
 
-console: null
+console: xbox_one
 
 preconditions:
-  - "The console is on and awake"
-  - "The GIMX session is authenticated"
+  - The console is on and awake
+  - The GIMX session is authenticated
+  - The console is on the home dashboard or inside a game
 
 success_criteria:
   - description: >
       The screen changes substantially after the Guide button is pressed,
-      consistent with an overlay appearing.
+      consistent with the guide overlay opening.
     check_type: screen_change
     parameters:
       button: guide
-      min_delta: 2.0        # an overlay changes far more than a highlight move
+      min_delta: 2.0
     required: true
 
   - description: >
-      The guide overlay is visible - recognisable by its vertical tab strip
-      and profile/home entries over a dimmed background.
+      The Xbox guide overlay is visible with guide menu elements such as
+      Home, Share last capture, My games & apps, or the power-options hint.
     check_type: vision_judgement
     parameters:
-      expected_screen: "Xbox guide overlay"
+      expected_screen: Xbox guide overlay
     required: true
 
-  # Optional because OCR on console UIs is genuinely unreliable: stylised
-  # fonts over animated, semi-transparent backgrounds. A miss here should
-  # weaken confidence, not fail the run.
   - description: >
-      Guide menu text such as 'Home', 'Profile' or 'Parties' can be read
-      on screen.
+      Guide menu text such as 'Home' or 'My games & apps' is visible.
     check_type: text_present
     parameters:
-      text: "Home"
+      text: My games & apps
     required: false
 
-tags: ["smoke", "guide", "overlay"]
+  - description: >
+      No error dialog or 'Something went wrong' message is visible on the guide.
+    check_type: no_error_dialog
+    required: true
+
+tags:
+  - smoke
+  - guide
+  - overlay
+
 timeout_seconds: 90
-max_steps: 8
+max_steps: 10

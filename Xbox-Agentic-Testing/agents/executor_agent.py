@@ -29,6 +29,7 @@ counted toward that streak.
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any
 
@@ -67,6 +68,7 @@ class ExecutorAgent(BaseAgent):
         abort_reason: str | None = None
         unchanged_streak = 0
         started = time.time()
+        focus_unproven = False
 
         for step in plan.steps[:max_steps]:
             if time.time() > run_deadline:
@@ -74,8 +76,30 @@ class ExecutorAgent(BaseAgent):
                     f"Run timeout exceeded after {len(results)} steps.")
                 break
 
+            if focus_unproven and self._is_confirm_after_focus_move(step):
+                blocked = StepResult(
+                    index=step.index,
+                    action=step.action,
+                    arguments=dict(step.arguments),
+                    dispatched=False,
+                    error=("Selection blocked: the previous focus-navigation step "
+                           "did not prove which tile/menu item was selected."),
+                    observation=("Refused to press confirm because focus on the "
+                                 "intended target was not visually proven."),
+                )
+                results.append(blocked)
+                aborted = True
+                abort_reason = blocked.error
+                notes.append(abort_reason)
+                break
+
             result = self._execute_step(step, dry_run)
             results.append(result)
+            focus_unproven = (
+                self._is_focus_navigation_step(step)
+                and bool(result.error)
+                and "focus" in (result.error or "").lower()
+            ) or self._is_unproven_focus_check(step, result)
 
             # Only a HARD failure aborts. A step that merely observed nothing
             # useful is recorded and the run continues - previously a single
@@ -285,13 +309,37 @@ class ExecutorAgent(BaseAgent):
         delta = float(comparison.get("delta", 0.0))
         changed = bool(comparison.get("changed"))
         result.screen_delta = delta
-        if (not changed) and self._is_low_motion_focus_step(step):
-            result.observation = (
-                f"Low-motion focus transition was not proven by whole-screen "
-                f"diff (delta {delta:.3f}). Expected: {step.expected_observation}")
-            result.error = (
-                result.error or
-                "Focus movement could not be proven on a low-motion screen.")
+        if self._is_focus_navigation_step(step):
+            focus_check = self._verify_focus_target(step, after_path)
+            if focus_check is not None:
+                result.evidence.append(focus_check["evidence"])
+                if focus_check["matched"]:
+                    result.observation = (
+                        f"Focus highlight matched target '{focus_check['target']}'. "
+                        f"Expected: {step.expected_observation}")
+                    result.error = None
+                else:
+                    result.observation = (
+                        f"Focus movement not proven. Expected target "
+                        f"'{focus_check['target']}', observed "
+                        f"'{focus_check['observed']}'.")
+                    result.error = (
+                        result.error or
+                        "Focus movement could not be proven on the intended target.")
+            elif (not changed):
+                result.observation = (
+                    f"Low-motion focus transition was not proven by whole-screen "
+                    f"diff (delta {delta:.3f}). Expected: {step.expected_observation}")
+                result.error = (
+                    result.error or
+                    "Focus movement could not be proven on a low-motion screen.")
+            else:
+                result.observation = (
+                    f"Screen changed (delta {delta:.3f}), but no target label was "
+                    f"available to prove focus. Expected: {step.expected_observation}")
+                result.error = (
+                    result.error or
+                    "Focus movement changed the screen but did not prove the selected target.")
         else:
             result.observation = (
                 f"Screen {'changed' if changed else 'did NOT change'} "
@@ -321,6 +369,8 @@ class ExecutorAgent(BaseAgent):
 
     def _shows_positive_progress(self, step: PlannedStep, result: StepResult) -> bool:
         threshold = self._screen_change_threshold(step)
+        if self._is_focus_navigation_step(step) and not result.error:
+            return True
         if result.screen_delta is not None and result.screen_delta >= threshold:
             return True
         if step.action == "type_text" and result.dispatched and not result.error:
@@ -365,6 +415,89 @@ class ExecutorAgent(BaseAgent):
             "first result",
         )
         return any(marker in text for marker in markers)
+
+    def _is_focus_navigation_step(self, step: PlannedStep) -> bool:
+        if not self._is_low_motion_focus_step(step):
+            return False
+        return bool(self._extract_expected_focus_label(step))
+
+    @staticmethod
+    def _is_confirm_after_focus_move(step: PlannedStep) -> bool:
+        return (
+            step.action == "press_button"
+            and str(step.arguments.get("button", "")).lower() in {"a", "cross"}
+        )
+
+    @staticmethod
+    def _is_unproven_focus_check(step: PlannedStep, result: StepResult) -> bool:
+        """Did an explicit `detect_focus_highlight` step fail to prove focus?
+
+        The directional-press guard above only watches press_button steps
+        whose own wording mentions a highlight/target. Plans frequently split
+        this into its own step instead - press, then a separate
+        `detect_focus_highlight` call to check what landed. That step's
+        failure (wrong label, or no highlight at all) is exactly as
+        disqualifying as a failed press-and-check, and must block the next
+        confirm the same way. Without this, a proven mismatch (e.g. the
+        highlight reading "Descenders" when "My games & apps" was expected)
+        was being logged as evidence but not acted on, letting the executor
+        go on to press A on the wrong tile.
+        """
+        return step.action == "detect_focus_highlight" and bool(result.error)
+
+    def _verify_focus_target(self, step: PlannedStep,
+                             after_path: str) -> dict[str, Any] | None:
+        target = self._extract_expected_focus_label(step)
+        if not target:
+            return None
+        detection = self.call_tool(
+            "detect_focus_highlight",
+            frame_path=after_path,
+            expected_label=target,
+        )
+        observed = (
+            detection.get("selected_label")
+            or detection.get("observed_text")
+            or ""
+        )
+        detail = _jsonable(detection)
+        detail["expected_label"] = target
+        evidence = Evidence(
+            kind=EvidenceKind.VISION_MODEL if detection.get("ok") else EvidenceKind.FRAME_STATS,
+            summary=(
+                f"Focus highlight {'matched' if detection.get('ok') else 'did not match'} "
+                f"target '{target}'."
+            ),
+            detail=detail,
+            frame_path=after_path,
+            confidence=0.85 if detection.get("ok") else 0.6,
+            source_tool="detect_focus_highlight",
+        )
+        return {
+            "matched": bool(detection.get("ok") and detection.get("matched")),
+            "target": target,
+            "observed": observed[:200],
+            "evidence": evidence,
+        }
+
+    @staticmethod
+    def _extract_expected_focus_label(step: PlannedStep) -> str:
+        text = " ".join([
+            str(step.intent or ""),
+            str(step.expected_observation or ""),
+        ])
+        quoted = re.findall(r"['\"]([^'\"]{2,80})['\"]", text)
+        if quoted:
+            return quoted[-1].strip()
+
+        match = re.search(
+            r"(?:highlight(?:ed)?|focus(?:ed)?|target)\s+(?:is|on|to)?\s*([A-Za-z0-9 &/+-]{3,60})",
+            text,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            return match.group(1).strip(" .")
+        return ""
 
     def _screen_change_threshold(self, step: PlannedStep) -> float:
         default = float(

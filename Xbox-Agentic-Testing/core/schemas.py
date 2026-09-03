@@ -417,17 +417,33 @@ class RootCauseAnalysis(BaseModel):
 
 
 # ===========================================================================
-# 7. Report
+# 7. Executive summary
+# ===========================================================================
+class ExecutiveSummary(BaseModel):
+    """Human-facing narrative summary. Must not override the verdict."""
+
+    what_was_requested: str = ""
+    what_was_attempted: str = ""
+    verdict_statement: str = ""
+    strongest_evidence: str = ""
+    rca_summary: str = ""
+    recommended_next_action: str = ""
+
+
+# ===========================================================================
+# 8. Report
 # ===========================================================================
 class TestReport(BaseModel):
     run_id: str
     scenario_id: str
     scenario_title: str = ""
+    console_profile: str = ""
     requirement_id: str | None = None
     requirement_title: str = ""
     requirement_goal: str = ""
     verdict: Verdict
     summary: str = ""
+    executive_summary: ExecutiveSummary | None = None
     started_at: str = ""
     finished_at: str = Field(default_factory=_utc_now)
     duration_seconds: float = 0.0
@@ -448,7 +464,7 @@ class TestReport(BaseModel):
 
 
 # ===========================================================================
-# 8. Control-flow schemas
+# 9. Control-flow schemas
 # ===========================================================================
 class RoutingDecision(BaseModel):
     """Supervisor output when route_mode is 'supervised'."""

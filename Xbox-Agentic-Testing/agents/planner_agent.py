@@ -51,10 +51,14 @@ class PlannerAgent(BaseAgent):
         verification = state.get("verification")
         replan_count = int(state.get("replan_count", 0))
         is_replan = previous is not None and verification is not None
+        executor_selectors = list(
+            self.context.spec_for("executor").get("tools") or [])
+        executor_tools = self.context.tools.describe(executor_selectors)
 
         prompt = self.render_prompt(
             state,
             scenario=scenario.model_dump(mode="json"),
+            tools=executor_tools,
             is_replan=is_replan,
             replan_count=replan_count,
             previous_plan=previous.model_dump(mode="json") if previous else None,
@@ -73,6 +77,7 @@ class PlannerAgent(BaseAgent):
         plan.revision = replan_count + 1
         if is_replan and verification is not None:
             plan.replan_reason = verification.replan_hint or verification.summary
+        plan = self._sanitise_plan(plan)
 
         if not plan.steps:
             raise ValueError(
@@ -101,3 +106,34 @@ class PlannerAgent(BaseAgent):
                 "assumptions": plan.assumptions,
             }},
         }
+
+    def _sanitise_plan(self, plan: TestPlan) -> TestPlan:
+        """Reject impossible actions before the executor touches hardware."""
+        available = {
+            tool["name"] for tool in self.context.tools.describe(
+                list(self.context.spec_for("executor").get("tools") or [])
+            )
+        }
+        for step in plan.steps:
+            if step.action == "verify_no_error_dialog":
+                if "check_for_text" not in available:
+                    raise ValueError(
+                        "Planner emitted verify_no_error_dialog, but this rig "
+                        "does not expose check_for_text for the safer rewrite.")
+                step.action = "check_for_text"
+                step.arguments = {
+                    "text_patterns": [
+                        "something went wrong",
+                        "error",
+                        "try again",
+                        "not available",
+                        "can't launch",
+                    ],
+                    "match_type": "any",
+                }
+
+            if step.action not in available:
+                raise ValueError(
+                    f"Planner emitted unsupported action '{step.action}'. "
+                    f"Available tools: {', '.join(sorted(available))}")
+        return plan

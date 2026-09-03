@@ -169,6 +169,9 @@ class ScenarioValidatorAgent(BaseAgent):
             scenario_text=text,
             seed_id=seed_id,
             seed_title=seed_title,
+            requirement=None,
+            requirement_goal="",
+            requirement_expected_outcome="",
         )
         scenario = self.invoke_structured(ValidatedScenario, prompt)
         scenario.normalised_from = "natural_language"

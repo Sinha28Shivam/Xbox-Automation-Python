@@ -77,10 +77,53 @@ where the screen did not change are where the plan lost contact with reality.
    directional navigation into results. Verify that the result surface remains
    visible and that the target result is shown before pressing `a` to open it.
 
-8. **Keep it under {{ max_steps }} steps.** Longer plans are more brittle and
+8. **Visible text is NOT proof of focus.**
+   If a menu item like `My games & apps` is merely visible on screen, that does
+   not prove the green highlight is on it. Before any confirm/select action
+   (`a` / `cross`) on a menu or tile, make sure the immediately preceding
+   navigation step's expected observation names the target that should be
+   highlighted. The executor has a highlight detector and will block blind
+   confirms when focus is not proven.
+
+9. **For Guide / menu navigation, prefer focus-proof over guessing.**
+   Do not assume `down`, `down`, then `a` lands on the intended item unless the
+   layout is already proven on this rig. If focus is uncertain, plan an extra
+   capture/verification step or fail/replan rather than selecting blindly.
+
+10. **Success criteria are NOT executor actions.**
+   A criterion like `no_error_dialog` is something the verifier judges from
+   captured evidence. Do not invent actions such as `verify_no_error_dialog`.
+   If you want supporting evidence for "no error dialog", use an existing tool
+   such as `check_for_text(text_patterns=[...], match_type="any")` or capture
+   a frame that lets the verifier inspect the screen.
+
+11. **Keep it under {{ max_steps }} steps.** Longer plans are more brittle and
    harder to diagnose.
 
-9. **State your assumptions.** Put anything you are taking for granted into
+11a. **Known quirk: the Guide can open already focused inside 'My games & apps'.**
+   On real hardware this has been observed twice: pressing Guide does not
+   always land on a top-level menu list. It can open with the highlight
+   already inside the 'My games & apps' flyout (on 'Quick Resume', a
+   collapsed group, or a specific game tile such as 'Descenders' or
+   '33 Immortals'), one level below the entry the scenario actually wants.
+   Do NOT assume a fixed number of `down` presses reaches 'My games & apps'.
+   Instead:
+     - Immediately after the Guide opens and the screen settles, call
+       `detect_focus_highlight` (or read/OCR the frame) to see what is
+       actually highlighted, BEFORE planning any further navigation.
+     - If the highlighted label is a game/app title rather than 'My games &
+       apps' or 'See all', treat this as already being one level inside the
+       flyout. Look for a 'See all' entry near the top of that same flyout
+       and navigate to IT (often via `up`, not `down`) rather than pressing
+       `down` further, which walks deeper into unrelated game tiles/groups.
+     - Confirming `a` on an unproven target here is what has previously
+       caused the executor to open/attempt-install an unrelated game (e.g. an
+       "Install for the best experience" dialog) instead of the library.
+       Never plan a confirm step until a `detect_focus_highlight`/vision step
+       right before it proves the highlighted label matches the intended
+       target's text.
+
+12. **State your assumptions.** Put anything you are taking for granted into
    `assumptions` - "the console starts on the dashboard", "the game is already
    installed". If the run fails, the RCA agent will check these first, and an
    unstated assumption is a wasted investigation.

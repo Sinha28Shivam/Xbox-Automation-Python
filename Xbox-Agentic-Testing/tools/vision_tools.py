@@ -24,6 +24,7 @@ tool results small and gives humans the same images to inspect afterwards.
 from __future__ import annotations
 
 import base64
+import re
 import time
 import tempfile
 from pathlib import Path
@@ -485,6 +486,120 @@ def _read_text_region(ctx: ToolContext) -> Any:
         "supported keyboard_variant for Xbox search-field verification.")
 
 
+def _detect_focus_highlight(ctx: ToolContext) -> Any:
+    """Find a green-highlighted menu item/tile and OCR the nearby label."""
+    def run(frame_path: str | None = None,
+            expected_label: str = "",
+            region: dict[str, float] | None = None) -> dict[str, Any]:
+        path = frame_path or ctx.scratch.get("last_frame_path")
+        if not path:
+            result = _invoke(_capture_frame(ctx))
+            if not result.get("ok"):
+                return result
+            path = result["frame_path"]
+
+        try:
+            import cv2
+            import numpy as np
+        except ImportError as exc:
+            return fail(f"OpenCV unavailable: {exc}")
+
+        frame = cv2.imread(str(path))
+        if frame is None:
+            return fail(f"Could not read frame: {path}")
+
+        h, w = frame.shape[:2]
+        if region:
+            cropped, error = _crop_frame(str(path), region)
+            if cropped is None:
+                return fail(error, frame_path=str(path), region=region)
+            frame = cropped
+            h, w = frame.shape[:2]
+
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        lower = np.array([35, 60, 60], dtype=np.uint8)
+        upper = np.array([95, 255, 255], dtype=np.uint8)
+        mask = cv2.inRange(hsv, lower, upper)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+        mask = cv2.dilate(mask, np.ones((3, 3), np.uint8), iterations=1)
+
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        detections: list[dict[str, Any]] = []
+        label_norm = _norm_label(expected_label)
+
+        for idx, contour in enumerate(contours):
+            x, y, bw, bh = cv2.boundingRect(contour)
+            area = bw * bh
+            if area < 500 or bw < 20 or bh < 12:
+                continue
+
+            pad_x = max(12, int(bw * 0.45))
+            pad_y = max(8, int(bh * 0.65))
+            left = max(0, x - pad_x)
+            top = max(0, y - pad_y)
+            right = min(w, x + bw + pad_x * 3)
+            bottom = min(h, y + bh + pad_y)
+            crop = frame[top:bottom, left:right]
+            crop_path = ctx.artifacts.save_frame(crop, f"focus-crop-{idx}")
+            text, engine, _ = _ocr(ctx, str(crop_path)) if crop_path else ("", "", "")
+            text = text or ""
+            text_norm = _norm_label(text)
+            match = bool(label_norm and label_norm in text_norm)
+            detections.append({
+                "bbox": {"x": int(x), "y": int(y), "width": int(bw), "height": int(bh)},
+                "area": int(area),
+                "crop_path": str(crop_path) if crop_path else None,
+                "text": text[:500],
+                "engine": engine,
+                "matches_expected": match,
+                "green_pixels": int(cv2.countNonZero(mask[y:y + bh, x:x + bw])),
+            })
+
+        if not detections:
+            return fail(
+                "No green-highlight region was detected.",
+                frame_path=str(path),
+                expected_label=expected_label,
+            )
+
+        detections.sort(
+            key=lambda d: (
+                1 if d["matches_expected"] else 0,
+                d["green_pixels"],
+                d["area"],
+            ),
+            reverse=True,
+        )
+        best = detections[0]
+
+        if expected_label and not best["matches_expected"]:
+            return fail(
+                "A green-highlight region was found, but it did not OCR-match the expected label.",
+                frame_path=str(path),
+                expected_label=expected_label,
+                observed_text=best["text"],
+                highlight_bbox=best["bbox"],
+                crop_path=best["crop_path"],
+                detections=detections[:5],
+            )
+
+        return ok(
+            frame_path=str(path),
+            expected_label=expected_label,
+            selected_label=best["text"],
+            highlight_bbox=best["bbox"],
+            crop_path=best["crop_path"],
+            detections=detections[:5],
+            matched=bool(best["matches_expected"] or not expected_label),
+            engine=best["engine"],
+        )
+
+    return make_tool(
+        run, "detect_focus_highlight",
+        "Detect a green-highlighted tile/menu item and OCR the nearby label. "
+        "Use this before pressing A on menus where visible text alone does not prove focus.")
+
+
 def warm_ocr_impl(ctx: ToolContext) -> dict[str, Any]:
     """Preload the configured OCR engines before time-sensitive input begins."""
     if not ctx.settings.get("verification.ocr.enabled", True):
@@ -611,7 +726,21 @@ def _get_paddle_engine(ctx: ToolContext) -> Any:
     # `show_log` was removed, `use_angle_cls` renamed. Try the modern
     # signature, then older ones, then bare. Pinning one spelling
     # means the tool breaks on the next release.
-    for kwargs in ({"lang": "en", "use_textline_orientation": True},
+    #
+    # `enable_mkldnn=False` works around a known PaddlePaddle/PaddleX CPU
+    # bug where MKL-DNN's oneDNN backend cannot convert certain PIR
+    # attributes for these OCR models, failing every call with
+    # "NotImplementedError: (Unimplemented) ConvertPirAttribute2Runtime-
+    # Attribute not support [...]" (see PaddlePaddle/PaddleX #4970, #5131).
+    # It costs some CPU inference speed, not correctness, so it is included
+    # in every candidate signature rather than only as a last resort.
+    for kwargs in ({"lang": "en", "use_textline_orientation": True,
+                    "enable_mkldnn": False},
+                   {"lang": "en", "use_angle_cls": True,
+                    "enable_mkldnn": False},
+                   {"lang": "en", "enable_mkldnn": False},
+                   {"enable_mkldnn": False},
+                   {"lang": "en", "use_textline_orientation": True},
                    {"lang": "en", "use_angle_cls": True},
                    {"lang": "en"},
                    {}):
@@ -650,6 +779,10 @@ def _paddle_lines(raw: Any) -> list[str]:
             except (IndexError, TypeError):
                 continue
     return [l for l in lines if l.strip()]
+
+
+def _norm_label(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", str(text).lower())
 
 
 # ===========================================================================
@@ -725,6 +858,9 @@ def provide() -> list[ToolSpec]:
                  ["vision", "analysis"], _check_for_text),
         ToolSpec("read_text_region", "OCR a focused screen region.",
                  ["vision", "analysis"], _read_text_region),
+        ToolSpec("detect_focus_highlight",
+                 "Find the green-highlighted item and OCR its label.",
+                 ["vision", "analysis"], _detect_focus_highlight),
         ToolSpec("encode_frame_for_vision", "Base64-encode a frame for an LLM.",
                  ["vision"], _encode_frame_for_vision),
         ToolSpec("list_captured_frames", "List this run's frames in order.",

@@ -23,6 +23,7 @@ cannot.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from base import BaseAgent
@@ -68,7 +69,8 @@ class VerifierAgent(BaseAgent):
         )
 
         # Layer 2.
-        result = self.invoke_structured(VerificationResult, prompt, images)
+        raw_result = self.invoke_structured(VerificationResult, prompt, images)
+        result = _normalise_verification_result(raw_result)
         result.scenario_id = scenario.id
 
         # Attach the mechanical evidence regardless of what the model returned,
@@ -219,3 +221,43 @@ def _merge_evidence(from_model: list[Evidence],
     seen = {(e.kind, e.summary) for e in measured}
     extra = [e for e in from_model if (e.kind, e.summary) not in seen]
     return measured + extra
+
+
+def _normalise_verification_result(raw: VerificationResult) -> VerificationResult:
+    """Coerce common structured-output near-misses before validation.
+
+    Some providers occasionally return JSON arrays as quoted strings for
+    `criteria` / `evidence`. That is a framework-formatting defect, not a test
+    verdict, so we normalise it here instead of letting the whole verifier die.
+    """
+    data = raw.model_dump(mode="python")
+    data["criteria"] = _coerce_json_list(data.get("criteria"), "criteria")
+    data["evidence"] = _coerce_json_list(data.get("evidence"), "evidence")
+
+    for item in data["criteria"]:
+        if isinstance(item, dict):
+            item["evidence"] = _coerce_json_list(item.get("evidence"), "criterion evidence")
+
+    return VerificationResult.model_validate(data)
+
+
+def _coerce_json_list(value: Any, field_name: str) -> list[Any]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"Verifier returned invalid {field_name}: expected a list or "
+                f"JSON array string, got {text[:120]!r}") from exc
+        if isinstance(parsed, list):
+            return parsed
+    raise ValueError(
+        f"Verifier returned invalid {field_name}: expected list, got "
+        f"{type(value).__name__}.")

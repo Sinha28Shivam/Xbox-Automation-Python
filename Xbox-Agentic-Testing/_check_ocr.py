@@ -137,13 +137,43 @@ def _read_with_paddle(frame: Path) -> None:
     try:
         from paddleocr import PaddleOCR
         print("  paddleocr: loading model (slow on first run) ...")
-        engine = PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
-        raw = engine.ocr(str(frame), cls=True)
-        lines = [
-            entry[1][0]
-            for page in (raw or []) if page
-            for entry in page if entry and len(entry) > 1
-        ]
+        # PaddleOCR's constructor keywords have churned across versions -
+        # `show_log` was removed, `use_angle_cls` renamed. Mirror the same
+        # fallback chain vision_tools.py uses so this diagnostic reflects
+        # what the real tool actually does, not a stale call signature.
+        engine = None
+        for kwargs in ({"lang": "en", "use_textline_orientation": True,
+                        "enable_mkldnn": False},
+                       {"lang": "en", "use_angle_cls": True,
+                        "enable_mkldnn": False},
+                       {"lang": "en", "enable_mkldnn": False},
+                       {"enable_mkldnn": False},
+                       {"lang": "en", "use_textline_orientation": True},
+                       {"lang": "en", "use_angle_cls": True},
+                       {"lang": "en"},
+                       {}):
+            try:
+                engine = PaddleOCR(**kwargs)
+                break
+            except (TypeError, ValueError):
+                continue
+        if engine is None:
+            raise RuntimeError("PaddleOCR could not be constructed")
+
+        raw = engine.predict(str(frame)) if hasattr(engine, "predict") \
+            else engine.ocr(str(frame))
+        lines: list[str] = []
+        for page in (raw or []):
+            if page is None:
+                continue
+            if isinstance(page, dict):
+                lines.extend(str(t) for t in (page.get("rec_texts") or []))
+                continue
+            for entry in page:
+                try:
+                    lines.append(entry[1][0])
+                except Exception:
+                    continue
         _show("paddleocr", "\n".join(lines))
     except Exception as exc:
         print(f"  paddleocr failed: {str(exc).splitlines()[0][:90]}")

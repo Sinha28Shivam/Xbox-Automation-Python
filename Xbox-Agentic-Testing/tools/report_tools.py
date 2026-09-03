@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 from typing import Any
+from html import escape as html_escape
 from xml.sax.saxutils import escape, quoteattr
 
 from registry import ToolContext, ToolSpec, fail, make_tool, ok
@@ -50,6 +51,21 @@ def _write_markdown_report(ctx: ToolContext) -> Any:
         run, "write_markdown_report",
         "Write the human-facing Markdown report with screenshots linked "
         "inline and an explicit list of what was not proven.")
+
+
+def _write_html_report(ctx: ToolContext) -> Any:
+    def run(report: dict[str, Any],
+            filename: str = "report.html") -> dict[str, Any]:
+        path = ctx.artifacts.save_text(
+            filename, _html(ctx, report), subdir="reports")
+        if path is None:
+            return fail("Artifact saving is disabled")
+        return ok(path=path, format="html")
+
+    return make_tool(
+        run, "write_html_report",
+        "Write a styled HTML executive report with screenshots, summary, "
+        "requirement context, RCA, and step evidence.")
 
 
 def _write_junit_report(ctx: ToolContext) -> Any:
@@ -104,9 +120,32 @@ def _markdown(ctx: ToolContext, r: dict[str, Any]) -> str:
         out.insert(4, f"**Requirement:** `{r.get('requirement_id')}` - "
                       f"{r.get('requirement_title', '')}")
 
-    if r.get("requirement_goal"):
-        out += ["## Original requirement", "",
-                str(r.get("requirement_goal", "")).strip(), ""]
+    executive = r.get("executive_summary") or {}
+    if executive:
+        out += ["## Executive Summary", ""]
+        if r.get("requirement_goal"):
+            out += [f"**Requested:** {str(executive.get('what_was_requested') or r.get('requirement_goal', '')).strip()}"]
+        elif executive.get("what_was_requested"):
+            out += [f"**Requested:** {str(executive.get('what_was_requested', '')).strip()}"]
+        if executive.get("what_was_attempted"):
+            out += [f"**Attempted:** {str(executive.get('what_was_attempted', '')).strip()}"]
+        if executive.get("verdict_statement"):
+            out += [f"**Verdict:** {str(executive.get('verdict_statement', '')).strip()}"]
+        if executive.get("strongest_evidence"):
+            out += [f"**Strongest evidence:** {str(executive.get('strongest_evidence', '')).strip()}"]
+        if executive.get("rca_summary"):
+            out += [f"**RCA summary:** {str(executive.get('rca_summary', '')).strip()}"]
+        if executive.get("recommended_next_action"):
+            out += [f"**Recommended next action:** {str(executive.get('recommended_next_action', '')).strip()}"]
+        out += [""]
+
+    if r.get("requirement_goal") or r.get("requirement_title"):
+        out += ["## Requirement Context", ""]
+        if r.get("requirement_title"):
+            out += [f"**Title:** {str(r.get('requirement_title', '')).strip()}"]
+        if r.get("requirement_goal"):
+            out += [f"**Goal:** {str(r.get('requirement_goal', '')).strip()}"]
+        out += [""]
 
     # Caveats come high up, not buried at the bottom. A reader who stops after
     # the summary should still see the limits of the result.
@@ -234,6 +273,405 @@ def _markdown(ctx: ToolContext, r: dict[str, Any]) -> str:
 
 
 # ===========================================================================
+# HTML
+# ===========================================================================
+def _html(ctx: ToolContext, r: dict[str, Any]) -> str:
+    verdict = str(r.get("verdict", "unknown")).upper()
+    verdict_class = {
+        "PASS": "pass",
+        "FAIL": "fail",
+        "BLOCKED": "blocked",
+        "INCONCLUSIVE": "inconclusive",
+        "ERROR": "error",
+        "SKIPPED": "skipped",
+    }.get(verdict, "unknown")
+
+    executive = r.get("executive_summary") or {}
+    health = r.get("health") or {}
+    verification = r.get("verification") or {}
+    execution = r.get("execution") or {}
+    rca = r.get("rca") or {}
+    steps = execution.get("steps") or []
+
+    def p(text: Any) -> str:
+        return html_escape(str(text or ""))
+
+    def rel(path: Any) -> str:
+        return ctx.artifacts.link_from_reports(str(path)) if path else ""
+
+    sections: list[str] = []
+
+    sections.append(f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{p(r.get('scenario_title') or r.get('scenario_id') or 'Test Report')}</title>
+  <style>
+    :root {{
+      --bg: #0b1020;
+      --panel: #121932;
+      --panel-2: #182245;
+      --text: #ecf2ff;
+      --muted: #9eb0d1;
+      --line: #2a3969;
+      --accent: #74e0b8;
+      --accent-2: #7cb7ff;
+      --danger: #ff7f8f;
+      --warn: #ffd36a;
+      --blocked: #c8a2ff;
+      --shadow: 0 20px 60px rgba(0,0,0,.28);
+      --radius: 18px;
+      --mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      --sans: "Segoe UI", "Inter", system-ui, sans-serif;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      font-family: var(--sans);
+      background:
+        radial-gradient(circle at top left, rgba(116,224,184,.14), transparent 32%),
+        radial-gradient(circle at top right, rgba(124,183,255,.12), transparent 28%),
+        linear-gradient(180deg, #08101d 0%, var(--bg) 100%);
+      color: var(--text);
+    }}
+    .page {{ max-width: 1280px; margin: 0 auto; padding: 28px; }}
+    .hero {{
+      background: linear-gradient(135deg, rgba(18,25,50,.96), rgba(12,18,36,.96));
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }}
+    .eyebrow {{
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }}
+    h1, h2, h3 {{ margin: 0 0 10px; }}
+    h1 {{ font-size: 34px; line-height: 1.1; }}
+    h2 {{ font-size: 22px; margin-bottom: 14px; }}
+    h3 {{ font-size: 16px; margin-bottom: 10px; }}
+    p, li {{ color: var(--text); line-height: 1.55; }}
+    .muted {{ color: var(--muted); }}
+    .grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }}
+    .card {{
+      background: rgba(18,25,50,.92);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }}
+    .metric {{
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }}
+    .metric-value {{ font-size: 20px; font-weight: 700; }}
+    .pill {{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }}
+    .pill.pass {{ background: rgba(116,224,184,.14); color: var(--accent); }}
+    .pill.fail, .pill.error {{ background: rgba(255,127,143,.14); color: var(--danger); }}
+    .pill.blocked {{ background: rgba(200,162,255,.15); color: var(--blocked); }}
+    .pill.inconclusive, .pill.skipped {{ background: rgba(255,211,106,.14); color: var(--warn); }}
+    .section {{ margin-bottom: 22px; }}
+    .cols {{
+      display: grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap: 18px;
+    }}
+    @media (max-width: 960px) {{ .cols {{ grid-template-columns: 1fr; }} }}
+    .list {{ margin: 0; padding-left: 18px; }}
+    .kv {{
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 8px 12px;
+      font-size: 14px;
+    }}
+    .kv div:nth-child(odd) {{ color: var(--muted); }}
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(14,21,41,.78);
+    }}
+    th, td {{
+      text-align: left;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(42,57,105,.55);
+      vertical-align: top;
+      font-size: 14px;
+    }}
+    th {{ color: var(--muted); font-weight: 600; background: rgba(24,34,69,.72); }}
+    tr:last-child td {{ border-bottom: none; }}
+    code {{
+      font-family: var(--mono);
+      background: rgba(255,255,255,.06);
+      padding: 2px 6px;
+      border-radius: 8px;
+    }}
+    .step {{
+      background: rgba(18,25,50,.92);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 18px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }}
+    .step-head {{
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 14px;
+    }}
+    .delta {{
+      color: var(--accent-2);
+      font-weight: 700;
+      white-space: nowrap;
+    }}
+    .frames {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }}
+    figure {{
+      margin: 0;
+      background: rgba(10,15,31,.88);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+    }}
+    figure img {{
+      width: 100%;
+      height: auto;
+      display: block;
+      background: #050913;
+    }}
+    figcaption {{
+      padding: 10px 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }}
+    details {{
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+      background: rgba(9,14,28,.74);
+    }}
+    summary {{ cursor: pointer; color: var(--accent-2); }}
+    pre {{
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: var(--mono);
+      color: #d7e4ff;
+      margin: 10px 0 0;
+      font-size: 13px;
+    }}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="eyebrow">Executive AI Report</div>
+      <h1>{p(r.get('scenario_title') or r.get('scenario_id') or 'Test Report')}</h1>
+      <p class="muted">{p(r.get('summary', ''))}</p>
+      <div class="grid">
+        <div class="card"><div class="metric">Verdict</div><div class="metric-value"><span class="pill {verdict_class}">{p(verdict)}</span></div></div>
+        <div class="card"><div class="metric">Run ID</div><div class="metric-value"><code>{p(r.get('run_id', ''))}</code></div></div>
+        <div class="card"><div class="metric">Duration</div><div class="metric-value">{p(f"{float(r.get('duration_seconds', 0.0)):.1f}s")}</div></div>
+        <div class="card"><div class="metric">Console</div><div class="metric-value">{p(r.get('console_profile', '') or 'default')}</div></div>
+      </div>
+    </section>
+""")
+
+    if executive:
+        sections.append(f"""
+    <section class="section card">
+      <h2>Executive Summary</h2>
+      <div class="kv">
+        <div>Requested</div><div>{p(executive.get('what_was_requested', ''))}</div>
+        <div>Attempted</div><div>{p(executive.get('what_was_attempted', ''))}</div>
+        <div>Verdict</div><div>{p(executive.get('verdict_statement', ''))}</div>
+        <div>Strongest evidence</div><div>{p(executive.get('strongest_evidence', ''))}</div>
+        <div>RCA summary</div><div>{p(executive.get('rca_summary', ''))}</div>
+        <div>Recommended next action</div><div>{p(executive.get('recommended_next_action', ''))}</div>
+      </div>
+    </section>
+""")
+
+    sections.append('<div class="cols">')
+
+    sections.append('<div>')
+    if r.get("requirement_id") or r.get("requirement_goal") or r.get("requirement_title"):
+        sections.append(f"""
+    <section class="section card">
+      <h2>Requirement Context</h2>
+      <div class="kv">
+        <div>Requirement ID</div><div>{p(r.get('requirement_id', '') or '-')}</div>
+        <div>Requirement Title</div><div>{p(r.get('requirement_title', '') or '-')}</div>
+        <div>Requirement Goal</div><div>{p(r.get('requirement_goal', '') or '-')}</div>
+      </div>
+    </section>
+""")
+
+    caveats = r.get("caveats") or []
+    if caveats:
+        items = "".join(f"<li>{p(c)}</li>" for c in caveats)
+        sections.append(f"""
+    <section class="section card">
+      <h2>What This Result Does Not Prove</h2>
+      <ul class="list">{items}</ul>
+    </section>
+""")
+
+    if verification:
+        criteria = verification.get("criteria") or []
+        crit_rows = "".join(
+            f"<tr><td>{'PASS' if c.get('met') else 'FAIL'}</td><td>{p(c.get('criterion', ''))}</td><td>{p(c.get('reasoning', ''))}</td></tr>"
+            for c in criteria
+        )
+        not_proven = verification.get("not_proven") or []
+        not_proven_html = (
+            "<ul class=\"list\">" +
+            "".join(f"<li>{p(item)}</li>" for item in not_proven) +
+            "</ul>"
+        ) if not_proven else "<p class=\"muted\">None recorded.</p>"
+        sections.append(f"""
+    <section class="section card">
+      <h2>Verification</h2>
+      <table>
+        <thead><tr><th>Status</th><th>Criterion</th><th>Reasoning</th></tr></thead>
+        <tbody>{crit_rows or '<tr><td colspan="3">No verification criteria recorded.</td></tr>'}</tbody>
+      </table>
+      <h3 style="margin-top:16px;">Not proven</h3>
+      {not_proven_html}
+    </section>
+""")
+
+    if rca:
+        recs = rca.get("recommendations") or []
+        rec_html = "<ol class=\"list\">" + "".join(f"<li>{p(x)}</li>" for x in recs) + "</ol>" if recs else "<p class=\"muted\">No recommendations recorded.</p>"
+        sections.append(f"""
+    <section class="section card">
+      <h2>Root Cause Analysis</h2>
+      <div class="kv">
+        <div>Primary cause</div><div>{p(rca.get('primary_cause', ''))}</div>
+        <div>Failure class</div><div>{p(rca.get('failure_class', ''))}</div>
+        <div>Severity</div><div>{p(rca.get('severity', ''))}</div>
+        <div>Confidence</div><div>{p(rca.get('confidence', ''))}</div>
+      </div>
+      <h3 style="margin-top:16px;">Recommended actions</h3>
+      {rec_html}
+    </section>
+""")
+    sections.append('</div>')
+
+    sections.append('<div>')
+    if health:
+        health_rows = "".join(
+            f"<tr><td>{p(c.get('name', ''))}</td><td>{'OK' if c.get('ok') else 'FAIL'}</td><td>{p(c.get('detail', ''))}</td></tr>"
+            for c in (health.get("components") or [])
+        )
+        sections.append(f"""
+    <section class="section card">
+      <h2>Rig & Console Information</h2>
+      <div class="kv">
+        <div>Console profile</div><div>{p(r.get('console_profile', '') or 'default')}</div>
+        <div>Run finished</div><div>{p(r.get('finished_at', ''))}</div>
+      </div>
+      <h3 style="margin-top:16px;">Rig health</h3>
+      <table>
+        <thead><tr><th>Component</th><th>Status</th><th>Detail</th></tr></thead>
+        <tbody>{health_rows or '<tr><td colspan="3">No health data recorded.</td></tr>'}</tbody>
+      </table>
+    </section>
+""")
+
+    metrics = r.get("metrics") or {}
+    metric_html = "".join(
+        f"<tr><td>{p(k)}</td><td>{p(v)}</td></tr>"
+        for k, v in metrics.items()
+    )
+    sections.append(f"""
+    <section class="section card">
+      <h2>Run Metrics</h2>
+      <table>
+        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+        <tbody>{metric_html or '<tr><td colspan="2">No metrics recorded.</td></tr>'}</tbody>
+      </table>
+    </section>
+""")
+    sections.append('</div>')
+    sections.append('</div>')
+
+    if steps:
+        sections.append("""
+    <section class="section">
+      <h2>Step Timeline & Evidence</h2>
+""")
+        for s in steps:
+            frames = []
+            if s.get("frame_before"):
+                frames.append(
+                    f"<figure><img src=\"{p(rel(s.get('frame_before')))}\" alt=\"Before step {p(s.get('index', ''))}\"><figcaption>Before</figcaption></figure>")
+            if s.get("frame_after"):
+                frames.append(
+                    f"<figure><img src=\"{p(rel(s.get('frame_after')))}\" alt=\"After step {p(s.get('index', ''))}\"><figcaption>After</figcaption></figure>")
+            ocr = ""
+            if s.get("ocr_text"):
+                ocr = f"<details><summary>OCR text</summary><pre>{p(s.get('ocr_text', ''))}</pre></details>"
+            sections.append(f"""
+      <article class="step">
+        <div class="step-head">
+          <div>
+            <h3>Step {p(s.get('index', ''))} — <code>{p(s.get('action', ''))}</code></h3>
+            <p class="muted">{p(s.get('observation', ''))}</p>
+          </div>
+          <div class="delta">delta {p('n/a' if s.get('screen_delta') is None else f"{float(s.get('screen_delta', 0.0)):.3f}")}</div>
+        </div>
+        <div class="kv">
+          <div>Dispatched</div><div>{'yes' if s.get('dispatched') else 'no'}</div>
+          <div>Error</div><div>{p(s.get('error', '') or '-')}</div>
+        </div>
+        <div class="frames">{''.join(frames) or '<p class="muted">No frames saved for this step.</p>'}</div>
+        {ocr}
+      </article>
+""")
+        sections.append("    </section>")
+
+    sections.append("""
+  </div>
+</body>
+</html>
+""")
+    return "".join(sections)
+
+
+# ===========================================================================
 # JUnit
 # ===========================================================================
 def _junit(r: dict[str, Any]) -> str:
@@ -285,6 +723,8 @@ def provide() -> list[ToolSpec]:
                  ["report"], _write_json_report),
         ToolSpec("write_markdown_report", "Write the human Markdown report.",
                  ["report"], _write_markdown_report),
+        ToolSpec("write_html_report", "Write the styled HTML executive report.",
+                 ["report"], _write_html_report),
         ToolSpec("write_junit_report", "Write JUnit XML for CI.",
                  ["report"], _write_junit_report),
         ToolSpec("list_artifacts", "List all files produced this run.",

@@ -26,7 +26,7 @@ import time
 from typing import Any
 
 from base import BaseAgent
-from schemas import TestReport, Verdict
+from schemas import ExecutiveSummary, TestReport, Verdict
 from state import AgenticState, note
 
 
@@ -34,7 +34,6 @@ class ReporterAgent(BaseAgent):
     """Writes the final report in every configured format."""
 
     role = "reporter"
-    uses_llm = False
 
     def run(self, state: AgenticState) -> dict[str, Any]:
         requirement = state.get("requirement")
@@ -46,16 +45,19 @@ class ReporterAgent(BaseAgent):
 
         verdict = self._resolve_verdict(state)
         started_at = str(state.get("started_at", ""))
+        executive_summary = self._executive_summary(state, verdict)
 
         report = TestReport(
             run_id=str(state.get("run_id", "")),
             scenario_id=scenario.id if scenario else "unknown",
             scenario_title=scenario.title if scenario else "Unknown scenario",
+            console_profile=(str(scenario.console or "") if scenario else ""),
             requirement_id=(requirement.id if requirement else None),
             requirement_title=(requirement.title if requirement else ""),
             requirement_goal=(requirement.goal if requirement else ""),
             verdict=verdict,
             summary=self._summary(verdict, state),
+            executive_summary=executive_summary,
             started_at=started_at,
             duration_seconds=self._duration(started_at),
             health=health,
@@ -94,6 +96,66 @@ class ReporterAgent(BaseAgent):
                 "files": written,
             }},
         }
+
+    def _executive_summary(self, state: AgenticState,
+                           verdict: Verdict) -> ExecutiveSummary:
+        """Generate an LLM-written narrative without changing any verdict data."""
+        scenario = state.get("scenario")
+        requirement = state.get("requirement")
+        verification = state.get("verification")
+        rca = state.get("rca")
+        execution = state.get("execution")
+        health = state.get("health")
+
+        fallback = ExecutiveSummary(
+            what_was_requested=(
+                requirement.goal if requirement else
+                (scenario.goal if scenario else "Unknown request")
+            ),
+            what_was_attempted=(
+                f"Executed {len(execution.steps) if execution else 0} planned steps "
+                f"through the current pipeline."
+            ),
+            verdict_statement=(
+                verification.summary if verification else
+                f"Run ended with verdict {verdict.value}."
+            ),
+            strongest_evidence=(
+                rca.primary_cause if rca else
+                (verification.summary if verification else "No summary available.")
+            ),
+            rca_summary=(
+                rca.primary_cause if rca else
+                ("Rig was blocked before product behaviour could be judged."
+                 if health and not health.healthy else "No RCA was produced.")
+            ),
+            recommended_next_action=(
+                rca.recommendations[0] if rca and rca.recommendations else
+                ("Fix the blocking rig issue and re-run."
+                 if health and not health.healthy else
+                 "Review the captured evidence and re-run if needed.")
+            ),
+        )
+
+        try:
+            prompt = self.render_prompt(
+                state,
+                verdict=verdict.value,
+                scenario=(scenario.model_dump(mode="json") if scenario else None),
+                requirement=(requirement.model_dump(mode="json")
+                             if requirement else None),
+                health=(health.model_dump(mode="json") if health else None),
+                execution=(execution.model_dump(mode="json") if execution else None),
+                verification=(verification.model_dump(mode="json")
+                              if verification else None),
+                rca=(rca.model_dump(mode="json") if rca else None),
+            )
+            return self.invoke_structured(ExecutiveSummary, prompt)
+        except Exception as exc:
+            self.context.artifacts.append_log(
+                "reporter.log",
+                f"Executive summary fallback used: {exc}")
+            return fallback
 
     # -- verdict -----------------------------------------------------------
     @staticmethod
@@ -226,6 +288,7 @@ class ReporterAgent(BaseAgent):
         writers = {
             "json": ("write_json_report", "report.json"),
             "markdown": ("write_markdown_report", "report.md"),
+            "html": ("write_html_report", "report.html"),
             "junit": ("write_junit_report", "junit.xml"),
         }
         written: dict[str, str] = {}

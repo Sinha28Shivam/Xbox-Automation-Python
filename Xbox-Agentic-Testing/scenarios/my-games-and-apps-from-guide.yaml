@@ -1,0 +1,50 @@
+id: my-games-and-apps-from-guide
+title: Open My games & apps from the Guide
+description: >
+  Open the Xbox Guide, navigate to the My games & apps entry, prove the guide
+  focus is on that entry, open it, and verify the library interface appears.
+
+console: xbox_one
+
+preconditions:
+  - The console is on and awake
+  - The GIMX session is authenticated
+  - The console is on the home dashboard
+  - User is signed in
+
+success_criteria:
+  - description: >
+      The Xbox guide overlay is visible after pressing the Guide button.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: Xbox guide overlay
+      button: guide
+    required: true
+
+  - description: >
+      The 'My games & apps' entry is visible in the guide menu.
+    check_type: text_present
+    parameters:
+      text: My games & apps
+    required: true
+
+  - description: >
+      After selecting My games & apps, the full-screen library interface is
+      visible with game tiles and left-side navigation.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: My games & apps library interface
+    required: true
+
+  - description: >
+      No error dialog or 'Something went wrong' message appears during the flow.
+    check_type: no_error_dialog
+    required: true
+
+tags:
+  - navigation
+  - guide
+  - library
+
+timeout_seconds: 120
+max_steps: 20

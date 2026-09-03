@@ -137,7 +137,7 @@ verification:
 # REPORTING
 # ---------------------------------------------------------------------------
 reporting:
-  formats: ["json", "markdown", "junit"]
+  formats: ["json", "markdown", "html", "junit"]
   include_frames: true
   include_action_log: true
   include_transcript: true
