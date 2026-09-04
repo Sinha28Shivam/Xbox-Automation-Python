@@ -151,6 +151,26 @@ class Evidence(BaseModel):
         """True if this observation may support a PASS."""
         return self.kind in PROOF_KINDS
 
+    @field_validator("detail", mode="before")
+    @classmethod
+    def _coerce_detail_to_dict(cls, v: Any) -> dict[str, Any]:
+        if v is None:
+            return {}
+        if isinstance(v, dict):
+            return v
+        if isinstance(v, str):
+            v_str = v.strip()
+            if v_str.startswith("{") and v_str.endswith("}"):
+                try:
+                    import json
+                    parsed = json.loads(v_str)
+                    if isinstance(parsed, dict):
+                        return parsed
+                except Exception:
+                    pass
+            return {"info": v_str}
+        return {"value": v}
+
 
 # ===========================================================================
 # 1. Health

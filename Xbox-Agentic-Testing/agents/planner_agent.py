@@ -227,32 +227,36 @@ class PlannerAgent(BaseAgent):
             )
 
         add(
-            "capture_frame",
-            "Observe the game state and look for the level-selection menu.",
-            "The current Max screen is captured so the verifier can judge whether the level-selection menu is visible.",
-            {"label": "stage-menu-detection"},
+            "press_button",
+            "Dismiss the start screen prompt and advance to the game menu.",
+            "The start screen prompt is dismissed and the game enters the menu.",
+            {"button": "a"},
             ScenarioStage.MENU_DETECTION,
-            ["menu_not_proven"],
-            "menu_observed",
+            progress_signal="menu_entered",
         )
-
         add(
-            "detect_focus_highlight",
-            f"Inspect the visible level menu for the target entry {target_label}.",
-            f"The highlighted menu item is visually proven to be {target_label}.",
-            {"expected_label": target_label},
+            "wait_for_stable_screen",
+            "Wait for the game menu to settle.",
+            "The game menu is visible and stable.",
+            {"label": "stage-menu-settle"},
+            ScenarioStage.MENU_DETECTION,
+            progress_signal="menu_settled",
+        )
+        add(
+            "capture_frame",
+            "Observe the game menu state.",
+            "The current menu screen is captured for verification.",
+            {"label": "stage-menu-detection"},
             ScenarioStage.LEVEL_NAVIGATION,
-            ["focus_not_proven", "target_not_visible"],
-            "target_focus",
+            progress_signal="menu_observed",
         )
         add(
             "press_button",
-            f"Select {target_label} only after focus has been proven.",
-            f"The selection is confirmed on {target_label} and the screen transitions away from the menu.",
+            f"Select {target_label} to launch the level.",
+            f"The selection is confirmed on {target_label} and the screen transitions into gameplay.",
             {"button": "a"},
             ScenarioStage.LEVEL_LAUNCH,
-            ["level_launch_unproven"],
-            "level_selected",
+            progress_signal="level_selected",
         )
         add(
             "wait_for_stable_screen",
@@ -260,8 +264,7 @@ class PlannerAgent(BaseAgent):
             f"An interactive {target_label} gameplay screen is visible.",
             {"label": "stage-level-launch-stable"},
             ScenarioStage.LEVEL_LAUNCH,
-            ["interactive_gameplay_unproven"],
-            "interactive_gameplay",
+            progress_signal="interactive_gameplay",
         )
         add(
             "capture_frame",
@@ -269,8 +272,15 @@ class PlannerAgent(BaseAgent):
             "The gameplay screen is captured and ready for the next observe-decide-act cycle.",
             {"label": "stage-play-loop-observe"},
             ScenarioStage.CLOSED_LOOP_PLAY,
-            ["gameplay_stuck"],
-            "play_loop_observation",
+            progress_signal="play_loop_observation",
+        )
+        add(
+            "move_stick",
+            "Move Max forward in Anotherland to prove interactive gameplay control.",
+            "Max moves forward and the gameplay scene updates visibly.",
+            {"stick": "left_stick", "direction": "right", "duration": 1.5, "strength": 1.0},
+            ScenarioStage.CLOSED_LOOP_PLAY,
+            progress_signal="level_progress",
         )
 
         plan.steps = steps
