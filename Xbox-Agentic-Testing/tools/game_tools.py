@@ -20,6 +20,15 @@ def _normalise(value: str) -> str:
     return " ".join(value.split())
 
 
+GAME_SIGNATURES: dict[str, list[str]] = {
+    "max": [
+        "curse of brotherhood", "brotherhood", "anotherland", "select level",
+        "mustacho", "prologue", "black rock canyon", "sea of sand",
+    ],
+    "forza": ["horizon", "forza"],
+}
+
+
 def _title_matches(requested: str, observed: str) -> bool:
     want = _normalise(requested)
     text = _normalise(observed)
@@ -27,6 +36,9 @@ def _title_matches(requested: str, observed: str) -> bool:
         return False
     if want in text or text in want:
         return True
+    for k, sigs in GAME_SIGNATURES.items():
+        if k in want and any(sig in text for sig in sigs):
+            return True
     wanted_words = [w for w in want.split() if len(w) > 2]
     if not wanted_words:
         return False
@@ -123,7 +135,15 @@ def _launch_game(ctx: ToolContext) -> Any:
             return discovered
 
         if discovered.get("already_running"):
-            # Game is already active. Press A once in case it is on a 'Press A to start' title screen.
+            obs_text = str(discovered.get("observed_text", "")).lower()
+            if "select level" in obs_text or "anotherland" in obs_text:
+                return ok(game_name=game_name, tile_index=0,
+                          already_running=True, dispatched=False,
+                          discovery=discovered, launch_frame=discovered.get("frame_path"),
+                          launch_screen_text=discovered.get("observed_text", ""), selection_verified=True,
+                          caveat="Game is already at level selection screen. Ready for level navigation/launch.")
+
+            # Game is already active. Press A once in case it is on a 'Press A to start' title screen or dashboard quick resume.
             pressed = _pad(ctx).press("a")
             time.sleep(max(0.5, min(float(launch_wait), 10.0)))
             after = _observe(ctx, "game-start-after")

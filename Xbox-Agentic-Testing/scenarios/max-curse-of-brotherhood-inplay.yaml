@@ -33,6 +33,17 @@ tags:
   - max
   - gameplay
 
+game_controls:
+  left_stick: "Move Max"
+  a: "Jump / interact / confirm"
+  x: "To destroy the drawing"
+  y: "Contextual action"
+  lt: "holds to Opens magic Marker and holds to use it"
+  left_stick: "Move magic Marker to draw anything"
+  dpad: "Menu navigation / selection"
+  menu: "Pause"
+  
+
 timeout_seconds: 3600
 max_steps: 250
 
