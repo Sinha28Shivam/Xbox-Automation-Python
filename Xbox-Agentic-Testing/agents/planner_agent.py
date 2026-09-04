@@ -26,12 +26,14 @@ timing, a different route through the menus - rather than the same plan retried
 in the hope that the console changes its mind.
 """
 
+
 from __future__ import annotations
 
 import re
 from typing import Any
 
 from base import BaseAgent
+from route_store import invalidate_cached_route, load_cached_route
 from schemas import PlannedStep, ScenarioStage, TestPlan, ValidatedScenario
 from state import AgenticState, note
 
@@ -52,6 +54,35 @@ class PlannerAgent(BaseAgent):
         verification = state.get("verification")
         replan_count = int(state.get("replan_count", 0))
         is_replan = previous is not None and verification is not None
+
+        # Tier-1 Route Caching: check for verified route on initial run
+        if not is_replan:
+            cached_plan = load_cached_route(self.context.artifacts.run_dir, scenario.id)
+            if cached_plan is not None:
+                cached_plan.scenario_id = scenario.id
+                cached_plan.revision = 1
+                for i, step in enumerate(cached_plan.steps):
+                    step.index = i
+                self.context.artifacts.save_json(
+                    "plan-r1.json", cached_plan.model_dump(mode="json"))
+                summary = (f"Plan revision 1: {len(cached_plan.steps)} steps "
+                           "(replayed verified cached route; 0ms planning latency)")
+                return {
+                    "plan": cached_plan,
+                    "replan_count": 0,
+                    "messages": [note(self.role, summary)],
+                    "agent_outputs": {self.role: {
+                        "ok": True,
+                        "steps": len(cached_plan.steps),
+                        "revision": 1,
+                        "cached_route": True,
+                        "assumptions": cached_plan.assumptions,
+                    }},
+                }
+        else:
+            # Invalidate failed cached route during replan
+            invalidate_cached_route(self.context.artifacts.run_dir, scenario.id)
+
         executor_selectors = list(
             self.context.spec_for("executor").get("tools") or [])
         executor_tools = self.context.tools.describe(executor_selectors)

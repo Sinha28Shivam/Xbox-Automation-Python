@@ -10,7 +10,7 @@ llm:
       class: "ChatAnthropic"
       api_key_env: "ANTHROPIC_API_KEY"
       params:
-        model: "${ANTHROPIC_MODEL:claude-sonnet-4-5-20250929}"
+        model: "${ANTHROPIC_MODEL:claude-haiku-4-5-20251001}"
         temperature: 0
         max_tokens: 4096
       supports_vision: true
@@ -87,7 +87,7 @@ verification:
   blank_std_threshold: 1.0
   ocr:
     enabled: "${OCR_ENABLED:true}"
-    engines: ["pytesseract", "paddleocr"]
+    engines: ["pytesseract"]
     min_confidence: 0.4
 
 reporting:

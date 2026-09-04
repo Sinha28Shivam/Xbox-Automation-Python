@@ -790,6 +790,12 @@ def _get_paddle_engine(ctx: ToolContext) -> Any:
     if engine is not None:
         return engine
 
+    import os, logging
+    os.environ["PADDLE_PDX_DISABLE_LOG"] = "1"
+    os.environ["GLOG_minloglevel"] = "3"
+    for log_name in ("ppocr", "paddle", "paddlex", "paddle.base"):
+        logging.getLogger(log_name).setLevel(logging.ERROR)
+
     from paddleocr import PaddleOCR
     # PaddleOCR's constructor keywords have churned across versions -
     # `show_log` was removed, `use_angle_cls` renamed. Try the modern
