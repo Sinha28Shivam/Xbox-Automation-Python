@@ -243,11 +243,12 @@ class ExecutorAgent(BaseAgent):
     def _step_proved_stage_progress(step: PlannedStep, result: StepResult) -> bool:
         if step.stage is None or result.error:
             return False
-        if step.progress_signal:
-            return True
+        proof_seen = any(e.is_proof for e in result.evidence)
         if step.action == "detect_focus_highlight" and not result.error:
-            return True
-        return bool((result.screen_delta or 0.0) > 0 and result.dispatched)
+            return proof_seen
+        if step.progress_signal:
+            return bool(result.frame_after and proof_seen)
+        return bool(result.frame_after and proof_seen)
 
     @staticmethod
     def _update_stage_tracking(
@@ -271,11 +272,6 @@ class ExecutorAgent(BaseAgent):
 
         stage_result = stage_state[stage]
         if current_stage != stage:
-            transitions.append(StageTransition(
-                from_stage=current_stage,
-                to_stage=stage,
-                evidence=[path for path in [result.frame_before] if path],
-            ))
             current_stage = stage
 
         stage_result.status = result.stage_status
@@ -285,6 +281,14 @@ class ExecutorAgent(BaseAgent):
                 [*stage_result.evidence, result.frame_after]))
 
         if result.stage_status == StageStatus.PROVEN:
+            transitions.append(StageTransition(
+                from_stage=last_proven_stage,
+                to_stage=stage,
+                evidence=[
+                    path for path in [result.frame_after]
+                    if path
+                ],
+            ))
             last_proven_stage = stage
         return current_stage, last_proven_stage
 
