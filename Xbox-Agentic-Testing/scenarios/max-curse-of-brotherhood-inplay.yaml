@@ -1,0 +1,141 @@
+# ===========================================================================
+#  Scenario: Max: The Curse of Brotherhood - launch and in-game play
+#
+#  Client-demo scenario. Goes beyond "does it launch" (see the other
+#  scenarios in this folder) and into actual gameplay: movement response,
+#  the right-stick "draw an element" mechanic the game is known for, and an
+#  attempt to reach/complete a level checkpoint. Full level completion is
+#  aspirational and marked optional - a real platformer level cannot be
+#  guaranteed step-for-step by a planner that has never seen its layout, so
+#  only the observable progress signals are REQUIRED for a pass.
+#
+#  Run with:
+#      python console.py run --file scenarios/max-curse-of-brotherhood-inplay.yaml
+# ===========================================================================
+
+id: max-curse-of-brotherhood-inplay
+title: "Max: The Curse of Brotherhood - launch, play, and attempt level completion"
+description: >
+  Launch Max: The Curse of Brotherhood from the dashboard, confirm the title
+  reaches an interactive gameplay screen, prove the controller actually moves
+  Max on screen (movement + jump), prove the right-stick "draw" mechanic used
+  to summon obstacles (vine/water/fire) has a visible effect, and then keep
+  playing forward - collecting any visible checkpoint/relic feedback - with a
+  best-effort attempt to reach the level-complete screen before the step
+  budget runs out.
+
+console: xbox_one
+
+preconditions:
+  - The console is on and awake
+  - The GIMX session is authenticated
+  - The console is on the home dashboard
+  - User is signed in
+  - "Max: The Curse of Brotherhood is installed and visible on the dashboard/guide"
+  - >
+      LAUNCH GUIDANCE: Max is usually a large tile in the dashboard's top
+      row. Prefer launching with "a" directly from the dashboard; avoid
+      Guide > My games & apps grid navigation unless Max is confirmed
+      absent from the dashboard (that grid has caused wrong-tile launches
+      before). Do NOT assume the pre-highlighted tile is already Max - the
+      dashboard reorders by most-recently-played, so another game (e.g. a
+      prior test run's game) can be highlighted instead; this has actually
+      launched "Skate 3" by mistake before. Before pressing "a": call
+      detect_focus_highlight(expected_label="Max"); if unmatched, or if the
+      OCR text names another game too, press left/right and recheck until
+      the label unambiguously reads Max/Curse of Brotherhood alone, then
+      press "a".
+  - >
+      DIALOG GUIDANCE: a benign "Cloud Storage" sync dialog may appear
+      post-launch and take tens of seconds to clear; it is not a failure.
+      If still visible after wait_for_stable_screen, wait_for_stable_screen
+      again with a longer timeout rather than spending gameplay steps on it.
+
+success_criteria:
+  - description: >
+      Max: The Curse of Brotherhood is selected and launched from the
+      dashboard or guide, and a loading/splash/title screen for the game
+      becomes visible.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Max: The Curse of Brotherhood title, splash, or loading screen"
+    required: true
+
+  - description: >
+      The game reaches an interactive main-menu or in-level gameplay screen
+      (not stuck on a loading spinner or black screen).
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Max: The Curse of Brotherhood main menu or in-level gameplay view"
+    required: true
+
+  - description: >
+      Moving the left stick changes Max's visible position/animation on
+      screen, proving movement input reaches the game.
+    check_type: screen_change
+    parameters:
+      # Deliberately NOT "control"/"button": the scenario validator resolves
+      # those keys against controls.yaml BUTTONS/TRIGGERS only, and would
+      # (incorrectly) mark a stick name unresolved. "input" is descriptive
+      # text for the verifier only, not a name it tries to resolve.
+      input: left_stick
+      min_delta: 1.0
+    required: true
+
+  - description: >
+      Pressing the jump button produces a visible jump animation or position
+      change for Max.
+    check_type: vision_judgement
+    parameters:
+      expected_visual: Max is airborne or mid-jump animation after the jump button is pressed
+    required: true
+
+  - description: >
+      Using the right stick to draw an element (vine, water, or fire) near
+      Max produces a visible on-screen change, proving the signature
+      draw-to-solve mechanic responds to input.
+    check_type: screen_change
+    parameters:
+      input: right_stick
+      min_delta: 1.0
+    required: true
+
+  - description: >
+      After continued play, a visible progress signal appears - a checkpoint
+      reached, a relic/collectible pickup notification, or Max advancing past
+      an obstacle that required the draw mechanic to clear.
+    check_type: vision_judgement
+    parameters:
+      expected_visual: A checkpoint, relic pickup, or level-progress indicator is visible after clearing an obstacle
+    required: true
+
+  - description: >
+      The level-complete, chapter-complete, or level-summary screen becomes
+      visible before the step budget is exhausted.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: Level complete or chapter complete summary screen
+    required: false
+
+  - description: >
+      No error dialog or 'Something went wrong' message appears at any point
+      during launch or gameplay.
+    check_type: no_error_dialog
+    required: true
+
+tags:
+  - gameplay
+  - demo
+  - max-curse-of-brotherhood
+  - platformer
+
+# NOTE ON max_steps: the planner's LLM call is capped at
+# llm.providers.anthropic.params.max_tokens (4096 in config/settings.yaml).
+# A single plan of 100+ fully-detailed steps (each with action, arguments,
+# intent AND expected_observation) does not fit in that budget and the
+# planner call will retry/hang rather than fail cleanly. Kept modest here so
+# one planning call reliably completes; the executor can still be re-invoked
+# via a replan for further gameplay if this budget is not enough to finish
+# the level, which is expected for a real platformer level.
+timeout_seconds: 900
+max_steps: 40

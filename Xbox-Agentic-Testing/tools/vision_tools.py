@@ -487,10 +487,20 @@ def _read_text_region(ctx: ToolContext) -> Any:
 
 
 def _detect_focus_highlight(ctx: ToolContext) -> Any:
-    """Find a green-highlighted menu item/tile and OCR the nearby label."""
+    """Find a green-highlighted menu item/tile and OCR the nearby label.
+
+    RCA fix (run-20260904-132647): the previous version had no upper bound on
+    contour size/shape, so a large incidentally-green region (a promo
+    banner, a progress bar, a colour-shifted overlay tint) could win simply
+    by being big and green - one such blob covered ~75% of the frame and was
+    still ranked "best". That caused the agent to activate the Xbox
+    dashboard's "My games & apps" toolbar icon instead of the intended Guide
+    overlay menu entry, burning two extra replans before an accidental pass.
+    """
     def run(frame_path: str | None = None,
             expected_label: str = "",
-            region: dict[str, float] | None = None) -> dict[str, Any]:
+            region: dict[str, float] | None = None,
+            max_area_ratio: float = 0.35) -> dict[str, Any]:
         path = frame_path or ctx.scratch.get("last_frame_path")
         if not path:
             result = _invoke(_capture_frame(ctx))
@@ -516,15 +526,28 @@ def _detect_focus_highlight(ctx: ToolContext) -> Any:
             frame = cropped
             h, w = frame.shape[:2]
 
+        frame_area = float(w * h)
+        # RCA fix: a single highlighted tile/menu row should never fill most
+        # of the frame. Capping this well below "half the screen" stops
+        # promo banners, progress bars and colour-shifted overlay
+        # backgrounds from winning purely by being large.
+        max_area_ratio = min(max(float(max_area_ratio), 0.01), 0.9)
+        max_area = frame_area * max_area_ratio
+
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        lower = np.array([35, 60, 60], dtype=np.uint8)
-        upper = np.array([95, 255, 255], dtype=np.uint8)
+        # RCA fix: narrowed from (35-95, 60-255, 60-255). That wide range
+        # matched any greenish accent (notification dots, progress bars,
+        # promo tiles) - not just the vivid, fairly saturated green Xbox
+        # actually uses for its focus-highlight ring.
+        lower = np.array([40, 90, 90], dtype=np.uint8)
+        upper = np.array([85, 255, 255], dtype=np.uint8)
         mask = cv2.inRange(hsv, lower, upper)
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
         mask = cv2.dilate(mask, np.ones((3, 3), np.uint8), iterations=1)
 
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         detections: list[dict[str, Any]] = []
+        oversized: list[dict[str, Any]] = []
         label_norm = _norm_label(expected_label)
 
         for idx, contour in enumerate(contours):
@@ -533,11 +556,37 @@ def _detect_focus_highlight(ctx: ToolContext) -> Any:
             if area < 500 or bw < 20 or bh < 12:
                 continue
 
-            pad_x = max(12, int(bw * 0.45))
-            pad_y = max(8, int(bh * 0.65))
+            # RCA fix: reject candidates spanning an implausible fraction of
+            # the frame, or absurdly elongated slivers - neither looks like
+            # a single highlighted menu row/tile. Recorded (not silently
+            # dropped) so a failure result can explain what was rejected.
+            aspect = max(bw / bh, bh / bw)
+            if area > max_area or aspect > 15:
+                oversized.append({
+                    "bbox": {"x": int(x), "y": int(y),
+                             "width": int(bw), "height": int(bh)},
+                    "area": int(area),
+                    "area_ratio": round(area / frame_area, 3),
+                    "aspect_ratio": round(aspect, 2),
+                    "reason": ("exceeds max_area_ratio" if area > max_area
+                               else "aspect ratio too extreme"),
+                })
+                continue
+
+            # RCA fix (run-20260904-163142): padding used to be asymmetric -
+            # pad_x*3 on the right and none of that bias on the left - which
+            # reliably swept the OCR crop into the *next* tile over on a
+            # horizontal tile row (e.g. reading "Max" and "Skate 3" together
+            # as one blob, which then wrongly "matched" whichever label the
+            # caller was checking for). A real highlight ring already
+            # outlines the full tile including its caption, so the crop only
+            # needs a small, symmetric margin to catch anti-aliased border
+            # pixels - not half a neighboring tile.
+            pad_x = max(6, int(bw * 0.08))
+            pad_y = max(6, int(bh * 0.08))
             left = max(0, x - pad_x)
             top = max(0, y - pad_y)
-            right = min(w, x + bw + pad_x * 3)
+            right = min(w, x + bw + pad_x)
             bottom = min(h, y + bh + pad_y)
             crop = frame[top:bottom, left:right]
             crop_path = ctx.artifacts.save_frame(crop, f"focus-crop-{idx}")
@@ -545,14 +594,18 @@ def _detect_focus_highlight(ctx: ToolContext) -> Any:
             text = text or ""
             text_norm = _norm_label(text)
             match = bool(label_norm and label_norm in text_norm)
+            green_pixels = int(cv2.countNonZero(mask[y:y + bh, x:x + bw]))
+            fill_ratio = (green_pixels / area) if area else 0.0
             detections.append({
                 "bbox": {"x": int(x), "y": int(y), "width": int(bw), "height": int(bh)},
                 "area": int(area),
+                "area_ratio": round(area / frame_area, 3),
                 "crop_path": str(crop_path) if crop_path else None,
                 "text": text[:500],
                 "engine": engine,
                 "matches_expected": match,
-                "green_pixels": int(cv2.countNonZero(mask[y:y + bh, x:x + bw])),
+                "green_pixels": green_pixels,
+                "fill_ratio": round(fill_ratio, 3),
             })
 
         if not detections:
@@ -560,13 +613,20 @@ def _detect_focus_highlight(ctx: ToolContext) -> Any:
                 "No green-highlight region was detected.",
                 frame_path=str(path),
                 expected_label=expected_label,
+                rejected_oversized=oversized[:5],
             )
 
+        # RCA fix: prefer, in order - an OCR match on the expected label; a
+        # ring/border shape (low fill_ratio) over a solid filled blob, since
+        # real focus highlights outline a tile rather than paint it solid;
+        # then more green pixels as a tie-breaker. The old scoring picked
+        # the largest/most-solid-green blob first, which is exactly what let
+        # a near-full-screen banner win over the real highlight.
         detections.sort(
             key=lambda d: (
                 1 if d["matches_expected"] else 0,
+                1 if d["fill_ratio"] < 0.55 else 0,
                 d["green_pixels"],
-                d["area"],
             ),
             reverse=True,
         )
@@ -581,6 +641,7 @@ def _detect_focus_highlight(ctx: ToolContext) -> Any:
                 highlight_bbox=best["bbox"],
                 crop_path=best["crop_path"],
                 detections=detections[:5],
+                rejected_oversized=oversized[:5],
             )
 
         return ok(
@@ -590,6 +651,7 @@ def _detect_focus_highlight(ctx: ToolContext) -> Any:
             highlight_bbox=best["bbox"],
             crop_path=best["crop_path"],
             detections=detections[:5],
+            rejected_oversized=oversized[:5],
             matched=bool(best["matches_expected"] or not expected_label),
             engine=best["engine"],
         )
@@ -597,7 +659,10 @@ def _detect_focus_highlight(ctx: ToolContext) -> Any:
     return make_tool(
         run, "detect_focus_highlight",
         "Detect a green-highlighted tile/menu item and OCR the nearby label. "
-        "Use this before pressing A on menus where visible text alone does not prove focus.")
+        "Use this before pressing A on menus where visible text alone does not prove focus. "
+        "Rejects candidates covering more than max_area_ratio (default 0.35) of the frame "
+        "or with an extreme aspect ratio, since a real focus highlight is one tile/row, "
+        "never most of the screen.")
 
 
 def warm_ocr_impl(ctx: ToolContext) -> dict[str, Any]:
