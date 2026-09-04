@@ -1,33 +1,12 @@
-# ===========================================================================
-#  settings.yaml - runtime settings for the agentic test framework
-#
-#  NOTHING in this framework is hardcoded. Every path, provider, model,
-#  threshold and limit is read from here (or from the environment, using the
-#  ${VAR:default} syntax which is expanded at load time).
-#
-#  Precedence:   environment variable  >  value in this file  >  code default
-# ===========================================================================
-
 meta:
-  version: 1
+  version: 2
   description: "Multi-agent console testing runtime settings"
 
-# ---------------------------------------------------------------------------
-# LLM PROVIDERS
-#
-# `provider` selects which entry of `providers` is used by default. Any agent
-# in agents.yaml may override it with its own `provider:` / `model:` keys, so
-# you can run a cheap model for routing and an expensive one for vision.
-#
-# The factory imports the langchain integration package lazily and by NAME,
-# so adding a new provider is a config change, not a code change.
-# ---------------------------------------------------------------------------
 llm:
   provider: "${AGENTIC_LLM_PROVIDER:anthropic}"
-
   providers:
     anthropic:
-      module: "langchain_anthropic"          # pip install langchain-anthropic
+      module: "langchain_anthropic"
       class: "ChatAnthropic"
       api_key_env: "ANTHROPIC_API_KEY"
       params:
@@ -35,7 +14,6 @@ llm:
         temperature: 0
         max_tokens: 4096
       supports_vision: true
-
     openai:
       module: "langchain_openai"
       class: "ChatOpenAI"
@@ -44,7 +22,6 @@ llm:
         model: "${OPENAI_MODEL:gpt-4o}"
         temperature: 0
       supports_vision: true
-
     google:
       module: "langchain_google_genai"
       class: "ChatGoogleGenerativeAI"
@@ -53,40 +30,23 @@ llm:
         model: "${GOOGLE_MODEL:gemini-2.0-flash}"
         temperature: 0
       supports_vision: true
-
     ollama:
       module: "langchain_ollama"
       class: "ChatOllama"
-      api_key_env: null                      # local, no key required
+      api_key_env: null
       params:
         model: "${OLLAMA_MODEL:llama3.2}"
         temperature: 0
       supports_vision: false
 
-# ---------------------------------------------------------------------------
-# PATHS
-#
-# The hardware layer already exists in Xbox-Automation-Python. We do NOT
-# duplicate it - we import it dynamically (see adapters.py). Point these
-# somewhere else and the framework follows.
-# ---------------------------------------------------------------------------
 paths:
-  # Root of the existing hardware automation project, relative to this repo.
   automation_root: "${AUTOMATION_ROOT:../Xbox-Automation-Python}"
-  # The single source of truth for buttons/timings/capture, already written.
   controls_config: "${CONTROLS_CONFIG:../Xbox-Automation-Python/config/controls.yaml}"
   scenarios_dir: "${SCENARIOS_DIR:./scenarios}"
   prompts_dir: "${PROMPTS_DIR:./config/prompts}"
   artifacts_dir: "${ARTIFACTS_DIR:./artifacts}"
   reports_dir: "${REPORTS_DIR:./artifacts/reports}"
 
-# ---------------------------------------------------------------------------
-# ADAPTERS - how to reach the existing hardware modules.
-#
-# Each entry is imported by file path at runtime. If an import fails the
-# framework keeps running in a degraded mode and the health agent reports it,
-# rather than crashing on start.
-# ---------------------------------------------------------------------------
 adapters:
   gimx:
     file: "gimx-session/gimx_session.py"
@@ -101,55 +61,41 @@ adapters:
     module_name: "capture"
     exports: ["ScreenCapture", "preflight", "frame_stats", "is_blank", "difference"]
 
-# ---------------------------------------------------------------------------
-# RUNTIME GUARDRAILS
-#
-# Doc 07's lesson: a framework that cannot fail is worthless. These caps stop
-# an agent looping forever and force it to conclude.
-# ---------------------------------------------------------------------------
 runtime:
-  max_steps: "${MAX_STEPS:40}"              # total executor actions per run
-  max_replans: "${MAX_REPLANS:3}"           # how often the planner may retry
+  execution_mode: "${EXECUTION_MODE:scenario}" # scenario | level | campaign
+  max_steps: "${MAX_STEPS:250}"
+  max_steps_scenario: 40
+  max_steps_level: 250
+  max_steps_campaign: 1000
+  max_replans: "${MAX_REPLANS:5}"
   step_timeout_seconds: 60
-  run_timeout_seconds: "${RUN_TIMEOUT:900}"
-  recursion_limit: 150                      # LangGraph safety net
-  dry_run: "${DRY_RUN:false}"               # true = never touch hardware
-  require_visual_evidence: true             # "GIMX accepted it" is NEVER a pass
+  run_timeout_seconds: "${RUN_TIMEOUT:3600}"
+  level_timeout_seconds: 3600
+  campaign_timeout_seconds: 14400
+  recursion_limit: 500
+  dry_run: "${DRY_RUN:false}"
+  require_visual_evidence: true
   stop_on_health_failure: true
   save_frames: true
   frame_format: "png"
+  dead_input_streak: 3
 
-# ---------------------------------------------------------------------------
-# VERIFICATION THRESHOLDS
-# Measured values live in controls.yaml; these are the decision thresholds.
-# ---------------------------------------------------------------------------
 verification:
-  screen_change_threshold: 0.5      # mean abs pixel delta counted as "changed"
+  screen_change_threshold: 0.5
   stability_timeout: 10.0
   stability_settle: 0.4
   blank_std_threshold: 1.0
   ocr:
     enabled: "${OCR_ENABLED:true}"
-    # tried in order, first engine that returns non-empty text wins.
-    # pytesseract is primary: this rig has no CUDA GPU, so PaddleOCR's
-    # 5-model CPU pipeline costs ~40-60s/frame vs pytesseract's ~1-3s,
-    # which was blowing scenario timeouts (see run-20260904-122248 RCA).
-    # paddleocr stays as a fallback for stylised text pytesseract misses.
     engines: ["pytesseract", "paddleocr"]
     min_confidence: 0.4
 
-# ---------------------------------------------------------------------------
-# REPORTING
-# ---------------------------------------------------------------------------
 reporting:
   formats: ["json", "markdown", "html", "junit"]
   include_frames: true
   include_action_log: true
   include_transcript: true
 
-# ---------------------------------------------------------------------------
-# OBSERVABILITY
-# ---------------------------------------------------------------------------
 logging:
   level: "${LOG_LEVEL:INFO}"
   rich_console: true
