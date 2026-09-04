@@ -28,7 +28,13 @@ import yaml
 from pydantic import ValidationError
 
 from base import BaseAgent
-from schemas import RequirementItem, SuccessCriterion, ValidatedScenario
+from schemas import (
+    RequirementItem,
+    STAGE_ORDER,
+    StageDefinition,
+    SuccessCriterion,
+    ValidatedScenario,
+)
 from state import AgenticState, note
 
 
@@ -158,6 +164,15 @@ class ScenarioValidatorAgent(BaseAgent):
             tags=[str(t) for t in (data.get("tags") or [])],
             timeout_seconds=data.get("timeout_seconds"),
             max_steps=data.get("max_steps"),
+            stages=self._parse_stages(data),
+            progress_signals=[
+                str(item) for item in (data.get("progress_signals") or [])
+            ],
+            death_signals=[
+                str(item) for item in (data.get("death_signals") or [])
+            ],
+            stuck_policy=dict(data.get("stuck_policy") or {}),
+            recovery_policy=dict(data.get("recovery_policy") or {}),
             normalised_from="yaml",
         )
 
@@ -225,13 +240,67 @@ class ScenarioValidatorAgent(BaseAgent):
                     names.add(value)
                 elif isinstance(value, list):
                     names.update(str(v) for v in value)
+        for stage in scenario.stages:
+            names.update(stage.allowed_actions)
 
         unresolved: list[str] = []
         for name in sorted(names):
+            if name in _TOOL_ACTIONS:
+                continue
             result = self.call_tool("resolve_control", name=name)
             if not result.get("ok"):
                 unresolved.append(name)
         return unresolved
+
+    def _parse_stages(self, data: dict[str, Any]) -> list[StageDefinition]:
+        raw = data.get("stages") or []
+        if not raw:
+            return []
+        if not isinstance(raw, list):
+            raise ValueError("'stages' must be a list of stage objects.")
+
+        stages = [StageDefinition.model_validate(item or {}) for item in raw]
+        self._validate_stage_sequence(stages)
+        self._validate_stage_contract(stages)
+        return stages
+
+    @staticmethod
+    def _validate_stage_sequence(stages: list[StageDefinition]) -> None:
+        seen: set[str] = set()
+        previous = -1
+        allowed = {stage: idx for idx, stage in enumerate(STAGE_ORDER)}
+        for stage in stages:
+            name = stage.id.value
+            if name in seen:
+                raise ValueError(f"Stage '{name}' appears more than once.")
+            seen.add(name)
+            current = allowed[stage.id]
+            if current <= previous:
+                raise ValueError(
+                    "Stage order is invalid. Staged scenarios must follow "
+                    f"{', '.join(s.value for s in STAGE_ORDER)}.")
+            previous = current
+
+    @staticmethod
+    def _validate_stage_contract(stages: list[StageDefinition]) -> None:
+        for stage in stages:
+            if not stage.required_evidence:
+                raise ValueError(
+                    f"Stage '{stage.id.value}' must declare required_evidence.")
+            for item in stage.required_evidence:
+                low = item.lower()
+                if any(token in low for token in _ACTION_WORDS):
+                    raise ValueError(
+                        f"Stage '{stage.id.value}' has action-like "
+                        f"required_evidence '{item}'. Evidence must describe "
+                        f"observable proof, not input steps.")
+            for item in stage.allowed_actions:
+                low = item.lower()
+                if low.startswith("focused_") or low.endswith("_match"):
+                    raise ValueError(
+                        f"Stage '{stage.id.value}' has evidence-like "
+                        f"allowed_action '{item}'. Actions and evidence must "
+                        f"be declared separately.")
 
     def _invalid(self, reason: str, state: AgenticState) -> dict[str, Any]:
         scenario = ValidatedScenario(
@@ -251,3 +320,19 @@ class ScenarioValidatorAgent(BaseAgent):
 
 def _slug(text: str) -> str:
     return "-".join(str(text).lower().split())[:50] or "scenario"
+
+
+_ACTION_WORDS = {
+    "press", "button", "hold", "move", "stick", "trigger",
+    "launch", "type", "wait", "run_macro", "run_sequence",
+}
+
+_TOOL_ACTIONS = {
+    "capture_frame", "wait_for_stable_screen", "verify_screen_changed",
+    "compare_frames", "read_screen_text", "find_text_on_screen",
+    "check_for_text", "read_text_region", "detect_focus_highlight",
+    "encode_frame_for_vision", "list_captured_frames", "press_button",
+    "hold_button", "move_stick", "pull_trigger", "run_macro",
+    "run_special_action", "run_sequence", "type_text", "wait",
+    "get_timing", "discover_game", "launch_game",
+}

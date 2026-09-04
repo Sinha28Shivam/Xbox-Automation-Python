@@ -39,6 +39,10 @@ from schemas import (
     EvidenceKind,
     ExecutionResult,
     PlannedStep,
+    ScenarioStage,
+    StageResult,
+    StageStatus,
+    StageTransition,
     StepResult,
 )
 from state import AgenticState, note
@@ -69,6 +73,10 @@ class ExecutorAgent(BaseAgent):
         unchanged_streak = 0
         started = time.time()
         focus_unproven = False
+        stage_state: dict[ScenarioStage, StageResult] = {}
+        transitions: list[StageTransition] = []
+        current_stage: ScenarioStage | None = None
+        last_proven_stage: ScenarioStage | None = None
 
         for step in plan.steps[:max_steps]:
             if time.time() > run_deadline:
@@ -95,6 +103,8 @@ class ExecutorAgent(BaseAgent):
 
             result = self._execute_step(step, dry_run)
             results.append(result)
+            current_stage, last_proven_stage = self._update_stage_tracking(
+                step, result, stage_state, transitions, current_stage, last_proven_stage)
             focus_unproven = (
                 self._is_focus_navigation_step(step)
                 and bool(result.error)
@@ -148,6 +158,10 @@ class ExecutorAgent(BaseAgent):
             duration_seconds=round(time.time() - started, 2),
             action_log=self._action_log(),
             notes=notes,
+            current_stage=current_stage,
+            last_proven_stage=last_proven_stage,
+            stage_transitions=transitions,
+            stage_summary=list(stage_state.values()),
         )
 
         self.context.artifacts.save_json(
@@ -176,7 +190,16 @@ class ExecutorAgent(BaseAgent):
     def _execute_step(self, step: PlannedStep, dry_run: bool) -> StepResult:
         started = time.time()
         result = StepResult(index=step.index, action=step.action,
-                            arguments=dict(step.arguments))
+                            arguments=dict(step.arguments),
+                            stage=step.stage,
+                            stage_goal=step.stage_goal,
+                            progress_signal=step.progress_signal,
+                            replan_on=list(step.replan_on),
+                            stage_status=(
+                                StageStatus.IN_PROGRESS
+                                if step.stage is not None else
+                                StageStatus.NOT_STARTED
+                            ))
 
         before_path = self._capture(f"{step.index}-before-{step.action}",
                                     step.index, dry_run)
@@ -207,9 +230,63 @@ class ExecutorAgent(BaseAgent):
         if step.verify and not dry_run:
             self._observe(step, result)
             self._read_text(result)
+        if result.error:
+            result.stage_status = (
+                StageStatus.FAILED if step.stage is not None else result.stage_status)
+        elif step.stage is not None and self._step_proved_stage_progress(step, result):
+            result.stage_status = StageStatus.PROVEN
 
         result.duration_seconds = round(time.time() - started, 2)
         return result
+
+    @staticmethod
+    def _step_proved_stage_progress(step: PlannedStep, result: StepResult) -> bool:
+        if step.stage is None or result.error:
+            return False
+        if step.progress_signal:
+            return True
+        if step.action == "detect_focus_highlight" and not result.error:
+            return True
+        return bool((result.screen_delta or 0.0) > 0 and result.dispatched)
+
+    @staticmethod
+    def _update_stage_tracking(
+        step: PlannedStep,
+        result: StepResult,
+        stage_state: dict[ScenarioStage, StageResult],
+        transitions: list[StageTransition],
+        current_stage: ScenarioStage | None,
+        last_proven_stage: ScenarioStage | None,
+    ) -> tuple[ScenarioStage | None, ScenarioStage | None]:
+        stage = step.stage
+        if stage is None:
+            return current_stage, last_proven_stage
+
+        if stage not in stage_state:
+            stage_state[stage] = StageResult(
+                stage=stage,
+                status=StageStatus.NOT_STARTED,
+                summary=step.stage_goal or step.intent,
+            )
+
+        stage_result = stage_state[stage]
+        if current_stage != stage:
+            transitions.append(StageTransition(
+                from_stage=current_stage,
+                to_stage=stage,
+                evidence=[path for path in [result.frame_before] if path],
+            ))
+            current_stage = stage
+
+        stage_result.status = result.stage_status
+        stage_result.summary = result.observation or step.expected_observation
+        if result.frame_after:
+            stage_result.evidence = list(dict.fromkeys(
+                [*stage_result.evidence, result.frame_after]))
+
+        if result.stage_status == StageStatus.PROVEN:
+            last_proven_stage = stage
+        return current_stage, last_proven_stage
 
     @staticmethod
     def _is_fatal(result: StepResult) -> bool:

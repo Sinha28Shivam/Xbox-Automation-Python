@@ -339,37 +339,41 @@ def _compare_frames(ctx: ToolContext) -> Any:
 # ===========================================================================
 # OCR
 # ===========================================================================
+def read_screen_text_impl(ctx: ToolContext, frame_path: str | None = None) -> dict[str, Any]:
+    if not ctx.settings.get("verification.ocr.enabled", True):
+        return fail("OCR is disabled in settings (verification.ocr.enabled)")
+
+    path = frame_path or ctx.scratch.get("last_frame_path")
+    if not path:
+        result = _invoke(_capture_frame(ctx))
+        if not result.get("ok"):
+            return result
+        path = result["frame_path"]
+
+    text, engine, error = _ocr(ctx, str(path))
+    if text is None:
+        return fail(
+            f"No OCR engine available ({error}). Install one, e.g. "
+            f"pip install pytesseract, or set verification.ocr.enabled "
+            f"to false and rely on frame differencing.")
+
+    return ok(
+        text=text,
+        engine=engine,
+        frame_path=str(path),
+        line_count=len([l for l in text.splitlines() if l.strip()]),
+        # Documented in docs 08: game UIs use stylised fonts over animated
+        # backgrounds, so a miss is weak evidence of absence.
+        caveat=(
+            "OCR on console UIs is unreliable - stylised fonts, motion and "
+            "transparency all hurt accuracy. Absent text is NOT strong "
+            "evidence that the text is absent from the screen."),
+    )
+
+
 def _read_screen_text(ctx: ToolContext) -> Any:
     def run(frame_path: str | None = None) -> dict[str, Any]:
-        if not ctx.settings.get("verification.ocr.enabled", True):
-            return fail("OCR is disabled in settings (verification.ocr.enabled)")
-
-        path = frame_path or ctx.scratch.get("last_frame_path")
-        if not path:
-            result = _invoke(_capture_frame(ctx))
-            if not result.get("ok"):
-                return result
-            path = result["frame_path"]
-
-        text, engine, error = _ocr(ctx, str(path))
-        if text is None:
-            return fail(
-                f"No OCR engine available ({error}). Install one, e.g. "
-                f"pip install pytesseract, or set verification.ocr.enabled "
-                f"to false and rely on frame differencing.")
-
-        return ok(
-            text=text,
-            engine=engine,
-            frame_path=str(path),
-            line_count=len([l for l in text.splitlines() if l.strip()]),
-            # Documented in docs 08: game UIs use stylised fonts over animated
-            # backgrounds, so a miss is weak evidence of absence.
-            caveat=(
-                "OCR on console UIs is unreliable - stylised fonts, motion and "
-                "transparency all hurt accuracy. Absent text is NOT strong "
-                "evidence that the text is absent from the screen."),
-        )
+        return read_screen_text_impl(ctx, frame_path=frame_path)
 
     return make_tool(
         run, "read_screen_text",

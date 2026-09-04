@@ -31,6 +31,7 @@ from schemas import (
     CriterionResult,
     Evidence,
     EvidenceKind,
+    StageStatus,
     VerificationResult,
     Verdict,
 )
@@ -63,6 +64,14 @@ class VerifierAgent(BaseAgent):
             evidence=[e.model_dump(mode="json") for e in evidence],
             criteria=[c.model_dump(mode="json")
                       for c in scenario.success_criteria],
+            stage_summary=[
+                item.model_dump(mode="json")
+                for item in getattr(execution, "stage_summary", [])
+            ],
+            last_proven_stage=(
+                execution.last_proven_stage.value
+                if getattr(execution, "last_proven_stage", None) else None
+            ),
             has_images=bool(images),
             replan_count=int(state.get("replan_count", 0)),
             max_replans=self.context.settings.get("runtime.max_replans", 3),
@@ -82,6 +91,10 @@ class VerifierAgent(BaseAgent):
         # no-pass-without-proof rule to the merged evidence.
         result = VerificationResult.model_validate(
             result.model_dump(mode="python"))
+        result.stage_status = self._stage_status_map(execution)
+        result.last_proven_stage = getattr(execution, "last_proven_stage", None)
+        if result.replan_hint is None:
+            result.replan_hint = self._default_replan_hint(execution, result)
 
         result.should_replan = self._should_replan(result, state)
 
@@ -126,6 +139,30 @@ class VerifierAgent(BaseAgent):
                 not_proven=["The scenario was never exercised."],
             )
         return None
+
+    @staticmethod
+    def _stage_status_map(execution: Any) -> dict[str, StageStatus]:
+        return {
+            item.stage.value: item.status
+            for item in (getattr(execution, "stage_summary", []) or [])
+        }
+
+    @staticmethod
+    def _default_replan_hint(execution: Any,
+                             result: VerificationResult) -> str | None:
+        if result.verdict == Verdict.PASS:
+            return None
+        failed = next(
+            (item for item in (getattr(execution, "stage_summary", []) or [])
+             if item.status in {StageStatus.FAILED, StageStatus.BLOCKED}),
+            None,
+        )
+        if failed is not None:
+            return f"{failed.stage.value} failed: {failed.summary}"
+        if getattr(execution, "current_stage", None) is not None:
+            return (f"{execution.current_stage.value} was in progress but not "
+                    f"proven.")
+        return result.summary
 
     # -- evidence ----------------------------------------------------------
     @staticmethod

@@ -36,6 +36,12 @@ to INCONCLUSIVE. Do not try to argue around this.
 
 {{ criteria | tojson }}
 
+# Stage progress observed by the executor
+
+{{ stage_summary | tojson }}
+
+Last proven stage: {{ last_proven_stage | tojson }}
+
 # What the executor did
 
 {{ execution | tojson }}
@@ -70,6 +76,19 @@ Then pick a verdict:
                   failure, an ambiguous screen. **Use this freely.** An honest
                   "I cannot tell" is worth far more than a confident guess.
   `error`         the run broke down before it could be judged
+
+For staged scenarios, also decide how far the run genuinely got.
+Use the execution's stage metadata plus the evidence to populate:
+  - `stage_status`: map each stage id to `not_started`, `in_progress`,
+    `proven`, `failed`, or `blocked`
+  - `last_proven_stage`: the furthest stage that real evidence established
+  - `replan_hint`: stage-specific guidance such as `game_launch failed`,
+    `menu_detection not proven`, `level_navigation focus not proven`, or
+    `closed_loop_play stuck with no visible progress`
+
+Stages describe progress structure, not verdicts. A stage is PROVEN only when
+the evidence establishes its required observation, not because an action was
+attempted.
 
 ## Interpreting a screen that never changed
 

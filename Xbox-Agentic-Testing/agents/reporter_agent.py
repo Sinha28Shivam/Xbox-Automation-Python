@@ -69,6 +69,8 @@ class ReporterAgent(BaseAgent):
             screenshots=self.context.artifacts.list_frames(),
             caveats=self._caveats(state, verdict),
             metrics=self._metrics(state),
+            stage_summary=(execution.stage_summary if execution else []),
+            stage_transitions=(execution.stage_transitions if execution else []),
         )
 
         payload = report.model_dump(mode="json")
@@ -227,6 +229,9 @@ class ReporterAgent(BaseAgent):
 
         if verification is not None:
             caveats.extend(verification.not_proven)
+            if verification.last_proven_stage is not None:
+                caveats.append(
+                    f"Last proven stage: {verification.last_proven_stage.value}.")
 
         if execution is not None:
             unverified = [s.index for s in execution.steps

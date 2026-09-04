@@ -175,9 +175,32 @@ def _markdown(ctx: ToolContext, r: dict[str, Any]) -> str:
             out.append(f"- {mark} **{c.get('criterion', '')}** — "
                        f"{c.get('reasoning', '')}")
         out.append("")
+        if verification.get("last_proven_stage"):
+            out.append(
+                f"- **Last proven stage:** `{verification.get('last_proven_stage')}`")
         for item in verification.get("not_proven", []):
             out.append(f"- _Not proven:_ {item}")
         out.append("")
+
+    stage_summary = r.get("stage_summary") or []
+    if stage_summary:
+        out += ["## Stage Timeline", "",
+                "| Stage | Status | Summary |",
+                "|---|---|---|"]
+        for item in stage_summary:
+            summary = str(item.get("summary", "")).replace("|", "\\|")
+            out.append(
+                f"| `{item.get('stage', '')}` | `{item.get('status', '')}` | "
+                f"{summary} |")
+        out.append("")
+        transitions = r.get("stage_transitions") or []
+        if transitions:
+            out += ["### Stage transitions", ""]
+            for item in transitions:
+                out.append(
+                    f"- `{item.get('from_stage') or 'start'}` -> "
+                    f"`{item.get('to_stage')}` at {item.get('timestamp', '')}")
+            out.append("")
 
     execution = r.get("execution") or {}
     steps = execution.get("steps") or []
@@ -292,6 +315,8 @@ def _html(ctx: ToolContext, r: dict[str, Any]) -> str:
     execution = r.get("execution") or {}
     rca = r.get("rca") or {}
     steps = execution.get("steps") or []
+    stage_summary = r.get("stage_summary") or []
+    stage_transitions = r.get("stage_transitions") or []
 
     def p(text: Any) -> str:
         return html_escape(str(text or ""))
@@ -567,8 +592,35 @@ def _html(ctx: ToolContext, r: dict[str, Any]) -> str:
         <thead><tr><th>Status</th><th>Criterion</th><th>Reasoning</th></tr></thead>
         <tbody>{crit_rows or '<tr><td colspan="3">No verification criteria recorded.</td></tr>'}</tbody>
       </table>
+      <p class="muted" style="margin-top:12px;">Last proven stage: {p(verification.get('last_proven_stage', '') or '-')}</p>
       <h3 style="margin-top:16px;">Not proven</h3>
       {not_proven_html}
+    </section>
+""")
+
+    if stage_summary:
+        stage_rows = "".join(
+            f"<tr><td><code>{p(item.get('stage', ''))}</code></td><td>{p(item.get('status', ''))}</td><td>{p(item.get('summary', ''))}</td></tr>"
+            for item in stage_summary
+        )
+        transitions_html = (
+            "<ul class=\"list\">" +
+            "".join(
+                f"<li><code>{p(item.get('from_stage') or 'start')}</code> -&gt; "
+                f"<code>{p(item.get('to_stage', ''))}</code> at {p(item.get('timestamp', ''))}</li>"
+                for item in stage_transitions
+            ) +
+            "</ul>"
+        ) if stage_transitions else "<p class=\"muted\">No stage transitions recorded.</p>"
+        sections.append(f"""
+    <section class="section card">
+      <h2>Stage Timeline</h2>
+      <table>
+        <thead><tr><th>Stage</th><th>Status</th><th>Summary</th></tr></thead>
+        <tbody>{stage_rows}</tbody>
+      </table>
+      <h3 style="margin-top:16px;">Transitions</h3>
+      {transitions_html}
     </section>
 """)
 

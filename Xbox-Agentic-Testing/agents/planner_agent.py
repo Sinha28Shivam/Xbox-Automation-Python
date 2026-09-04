@@ -136,4 +136,24 @@ class PlannerAgent(BaseAgent):
                 raise ValueError(
                     f"Planner emitted unsupported action '{step.action}'. "
                     f"Available tools: {', '.join(sorted(available))}")
+        self._validate_stage_discipline(plan)
         return plan
+
+    @staticmethod
+    def _validate_stage_discipline(plan: TestPlan) -> None:
+        """Reject plans that skip proof when staged navigation needs it."""
+        last_focus_proof: dict[str, int] = {}
+        for step in plan.steps:
+            if step.stage is not None:
+                if step.action == "detect_focus_highlight":
+                    last_focus_proof[step.stage.value] = step.index
+                elif (
+                    step.action == "press_button"
+                    and str(step.arguments.get("button", "")).lower() in {"a", "cross"}
+                    and step.stage.value == "level_navigation"
+                ):
+                    prior = last_focus_proof.get(step.stage.value)
+                    if prior is None or prior != step.index - 1:
+                        raise ValueError(
+                            "Planner emitted a confirm action in level_navigation "
+                            "without an immediately preceding focus-proof step.")

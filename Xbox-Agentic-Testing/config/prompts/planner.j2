@@ -44,6 +44,27 @@ where the screen did not change are where the plan lost contact with reality.
 
 # Rules
 
+If the scenario includes `stages`, you MUST plan through them in order.
+Each step in a staged scenario must include:
+  - `stage`
+  - `stage_goal`
+  - `expected_observation`
+  - `replan_on` when the step is a meaningful branch point
+  - `progress_signal` when the step proves stage progress
+
+For staged scenarios:
+  - stages structure the plan; they are not optional commentary
+  - `required_evidence` describes proof, never input actions
+  - `allowed_actions` describes which tools/buttons may be used in that stage
+  - do not move to the next stage until the current one has a step whose
+    expected observation would prove that stage's required evidence
+  - keep `success_criteria` as the final truth, but use the stage contract to
+    shape the route and proof points
+
+For `closed_loop_play`, follow this exact pattern repeatedly:
+  observe -> decide -> one action -> observe -> verify
+Never emit multi-action gameplay bundles with no observation between them.
+
 1. **Every step needs an `expected_observation`.** Describe what should be
    visible on screen after the step. This is not optional - a step nobody can
    check is how false passes happen. Be specific: "the highlighted tile moves
@@ -133,6 +154,14 @@ where the screen did not change are where the plan lost contact with reality.
    and a visible game-start/main-menu criterion to prove the game actually
    opened.
 
+11c. **Never confirm selection in `level_navigation` without focus proof.**
+   In a staged scenario, if the current stage is `level_navigation`, a
+   `press_button(button="a")` step is invalid unless the immediately preceding
+   step proves the target item is focused (for example with
+   `detect_focus_highlight`). The planner must emit:
+     observe menu -> navigate -> prove focus -> confirm -> verify transition
+   and never jump straight from navigation intent to confirm.
+
 12. **State your assumptions.** Put anything you are taking for granted into
    `assumptions` - "the console starts on the dashboard", "the game is already
    installed". If the run fails, the RCA agent will check these first, and an
@@ -141,4 +170,6 @@ where the screen did not change are where the plan lost contact with reality.
 # Output
 
 Return a TestPlan whose steps, executed in order, would satisfy the scenario's
-success criteria - each with a concrete, observable expected outcome.
+success criteria - each with a concrete, observable expected outcome. If the
+scenario is staged, the plan must visibly progress stage by stage and keep the
+stage metadata on each step consistent with the scenario contract.
