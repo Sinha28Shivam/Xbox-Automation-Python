@@ -1,0 +1,27 @@
+meta:
+  version: 1
+  description: "Long-running Max: The Curse of Brotherhood campaign template"
+
+game:
+  name: "Max: The Curse of Brotherhood"
+  home_screen_tiles: 2
+  launch: true
+
+execution:
+  mode: campaign
+  max_steps_per_level: 250
+  max_replans_per_level: 5
+  level_timeout_seconds: 3600
+  checkpoint_on_verified_progress: true
+  recover_from_death: true
+  stop_on_unproven_progress: true
+
+# Populate level objectives as the game is exercised. Each objective should
+# describe an observable state rather than a controller acknowledgement.
+levels:
+  - id: "level-01"
+    title: "Level 01"
+    objective: "Reach the level completion/checkpoint state visible on screen."
+    success_criteria:
+      - "A new checkpoint or level-complete state is visibly reached."
+  # Add subsequent levels here as they are mapped.
