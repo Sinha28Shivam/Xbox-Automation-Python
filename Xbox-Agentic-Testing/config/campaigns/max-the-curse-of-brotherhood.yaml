@@ -1,11 +1,12 @@
 meta:
-  version: 1
-  description: "Long-running Max: The Curse of Brotherhood campaign template"
+  version: 2
+  description: "Long-running Max: The Curse of Brotherhood campaign configuration"
 
 game:
   name: "Max: The Curse of Brotherhood"
   home_screen_tiles: 2
   launch: true
+  discovery_required: true
 
 execution:
   mode: campaign
@@ -16,12 +17,22 @@ execution:
   recover_from_death: true
   stop_on_unproven_progress: true
 
-# Populate level objectives as the game is exercised. Each objective should
-# describe an observable state rather than a controller acknowledgement.
+# Existing progress must be preserved. The campaign runner should select a
+# requested chapter/level from the visible level-selection menu instead of
+# assuming a new save or a fixed cursor position.
 levels:
-  - id: "level-01"
-    title: "Level 01"
-    objective: "Reach the level completion/checkpoint state visible on screen."
+  - id: "chapter-1-anotherland"
+    chapter: 1
+    title: "Anotherland"
+    display_name: "Chapter 1: Anotherland"
+    objective: "Select Chapter 1: Anotherland from the visible level-selection menu and play forward using closed-loop visual feedback."
+    selection:
+      visual_match_required: true
+      never_assume_current_selection: true
     success_criteria:
-      - "A new checkpoint or level-complete state is visibly reached."
-  # Add subsequent levels here as they are mapped.
+      - "Chapter 1: Anotherland is visibly highlighted before selection."
+      - "Anotherland reaches an interactive gameplay state after selection."
+      - "Visible forward progress is verified."
+      - "A checkpoint, level-complete state, or other strong progress signal is captured when reached."
+
+  # Add further completed/unlocked levels here as they are mapped from real runs.
