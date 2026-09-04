@@ -402,7 +402,29 @@ class ScreenCapture:
         if self.cap is None:
             self.open()
         assert self.cap is not None
-        ok, frame = self.cap.read()
+
+        ok = False
+        frame = None
+        for _ in range(5):
+            ok, frame = self.cap.read()
+            if ok and frame is not None:
+                break
+            time.sleep(0.08)
+
+        if not ok or frame is None:
+            # Reopen capture device in case DirectShow dropped sync mid-run
+            self.close()
+            try:
+                self.open()
+                if self.cap is not None:
+                    for _ in range(5):
+                        ok, frame = self.cap.read()
+                        if ok and frame is not None:
+                            break
+                        time.sleep(0.08)
+            except Exception:
+                pass
+
         if not ok or frame is None:
             return None
         if not allow_blank and is_blank(frame, self.blank_threshold):

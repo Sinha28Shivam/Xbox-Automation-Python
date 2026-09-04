@@ -148,6 +148,7 @@ class PlannerAgent(BaseAgent):
                 list(self.context.spec_for("executor").get("tools") or [])
             )
         }
+        plan.steps = [s for s in plan.steps if s.action != "check_capture_device"]
         for step in plan.steps:
             if step.action == "verify_no_error_dialog":
                 if "check_for_text" not in available:

@@ -251,7 +251,7 @@ def provide() -> list[ToolSpec]:
         ToolSpec(
             name="check_capture_device",
             description="Preflight the capture card and HDMI signal.",
-            tags=["hardware", "diagnostic", "vision"],
+            tags=["hardware", "diagnostic"],
             factory=_check_capture_device,
         ),
         ToolSpec(
