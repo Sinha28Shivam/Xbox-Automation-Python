@@ -1,99 +1,184 @@
 # ===========================================================================
-#  Scenario: Max: The Curse of Brotherhood - launch and in-game play
-#
-#  Client-demo scenario. Goes beyond "does it launch" (see the other
-#  scenarios in this folder) and into actual gameplay: movement response,
-#  the right-stick "draw an element" mechanic the game is known for, and an
-#  attempt to reach/complete a level checkpoint. Full level completion is
-#  aspirational and marked optional - a real platformer level cannot be
-#  guaranteed step-for-step by a planner that has never seen its layout, so
-#  only the observable progress signals are REQUIRED for a pass.
-#
-#  Run with:
-#      python console.py run --file scenarios/max-curse-of-brotherhood-inplay.yaml
+# Scenario: Max: The Curse of Brotherhood - launch, select Anotherland, play
+# ===========================================================================
+# Run from Xbox-Agentic-Testing:
+#   python console.py run --file scenarios/max-curse-of-brotherhood-inplay.yaml
 # ===========================================================================
 
 id: max-curse-of-brotherhood-inplay
-title: "Max: The Curse of Brotherhood - launch, play, and attempt level completion"
+title: "Max: The Curse of Brotherhood - launch, select Chapter 1 Anotherland, and play"
 description: >
-  Launch Max: The Curse of Brotherhood from the dashboard, confirm the title
-  reaches an interactive gameplay screen, prove the controller actually moves
-  Max on screen (movement + jump), prove the right-stick "draw" mechanic used
-  to summon obstacles (vine/water/fire) has a visible effect, and then keep
-  playing forward - collecting any visible checkpoint/relic feedback - with a
-  best-effort attempt to reach the level-complete screen before the step
-  budget runs out.
+  Start from the Xbox dashboard, automatically locate Max: The Curse of
+  Brotherhood on tile 1 or tile 2 using visual evidence, launch it, wait for
+  the game to become interactive, open the game's level-selection menu, select
+  Chapter 1: Anotherland, and then play forward using closed-loop visual
+  feedback. Some Max levels are already completed, so do not assume a fresh
+  save or reset progress.
 
 console: xbox_one
 
+execution:
+  mode: scenario
+  max_steps: 250
+  max_replans: 5
+  timeout_seconds: 3600
+  require_visual_evidence: true
+  save_frames: true
+  stop_on_unproven_progress: true
+  recover_from_death: true
+
 preconditions:
-  - The console is on and awake
-  - The GIMX session is authenticated
-  - The console is on the home dashboard
-  - User is signed in
-  - "Max: The Curse of Brotherhood is installed and visible on the dashboard/guide"
-  - >
-      LAUNCH GUIDANCE: Max is usually a large tile in the dashboard's top
-      row. Prefer launching with "a" directly from the dashboard; avoid
-      Guide > My games & apps grid navigation unless Max is confirmed
-      absent from the dashboard (that grid has caused wrong-tile launches
-      before). Do NOT assume the pre-highlighted tile is already Max - the
-      dashboard reorders by most-recently-played, so another game (e.g. a
-      prior test run's game) can be highlighted instead; this has actually
-      launched "Skate 3" by mistake before. Before pressing "a": call
-      detect_focus_highlight(expected_label="Max"); if unmatched, or if the
-      OCR text names another game too, press left/right and recheck until
-      the label unambiguously reads Max/Curse of Brotherhood alone, then
-      press "a".
-  - >
-      DIALOG GUIDANCE: a benign "Cloud Storage" sync dialog may appear
-      post-launch and take tens of seconds to clear; it is not a failure.
-      If still visible after wait_for_stable_screen, wait_for_stable_screen
-      again with a longer timeout rather than spending gameplay steps on it.
+  - The console/device is powered on and awake
+  - The GIMX session is authenticated and connected
+  - The Android/cloud-gaming session is visible through the configured capture adapter
+  - The user is signed in
+  - The Xbox dashboard is visible before execution
+  - Max: The Curse of Brotherhood is available on dashboard tile 1 or tile 2
+  - Some Max levels may already be completed; do not reset progress or assume a fresh save
+
+launch:
+  game_name: "Max: The Curse of Brotherhood"
+  max_tiles: 2
+  discovery_required: true
+  launch_required: true
+  launch_verification:
+    required: true
+    expected_screens:
+      - "Max: The Curse of Brotherhood loading, splash, title, or startup screen"
+      - "Max: The Curse of Brotherhood main menu or interactive game screen"
+    benign_dialogs:
+      - "Cloud Storage sync"
+      - "loading"
+    rule: >
+      Use automatic game discovery. Inspect tile 1 first and tile 2 only if
+      tile 1 does not match. Press A only after the requested title is visually
+      matched. If neither tile matches, fail without launching another game.
+      After A, wait for a stable screen and verify that Max has actually started.
+
+level_selection:
+  required: true
+  menu_state:
+    description: >
+      Reach the Max level/chapter selection screen where previously completed
+      and available levels can be selected.
+    expected_visual: >
+      A visible Max level-selection/chapter-selection menu containing level or
+      chapter entries.
+    success_criteria:
+      - "The level/chapter selection menu is visibly open."
+      - "The menu is interactive and not a loading or error screen."
+
+  target:
+    chapter: 1
+    level_title: "Anotherland"
+    display_name: "Chapter 1: Anotherland"
+    selection_required: true
+    selection_rule: >
+      Do not assume the current highlight is Chapter 1: Anotherland. Read the
+      visible menu and determine which entry is focused. Navigate with the
+      appropriate directional input, one movement at a time, re-capturing the
+      screen after each movement. Stop only when the focused/highlighted entry
+      is visually identified as Chapter 1: Anotherland. Then select it with A.
+    verification:
+      required: true
+      expected_visual: >
+        Chapter 1: Anotherland is visibly highlighted/selected before A is
+        pressed, and after A the game transitions into that level.
+
+play:
+  required: true
+  objective: >
+    Play Chapter 1: Anotherland from the selected level using controller input
+    and visual feedback. Continue only when the resulting screen provides
+    enough evidence to understand the current state.
+  control_policy:
+    closed_loop: true
+    one_action_per_step: true
+    observe_after_transition: true
+    wait_for_stable_screen: true
+    no_fixed_button_script: true
+    no_unverified_progress: true
+  capabilities:
+    movement:
+      description: "Use the left stick to move Max and verify visible position or animation changes."
+    jump:
+      description: "Use the jump control when required and verify a visible jump/airborne state."
+    draw_mechanic:
+      description: >
+        Use the right-stick draw mechanic when the visible puzzle requires it.
+        Infer the required direction/shape from the current visual state and
+        verify the resulting world change before continuing.
+    puzzle_solving:
+      description: >
+        Prefer observable cause-and-effect: perform one action, observe the
+        result, and re-plan when the expected state is not reached.
+    checkpoint_progress:
+      description: >
+        Treat a visibly reached checkpoint or other strong level-progress
+        signal as verified progress and preserve the evidence frame when available.
+    death_recovery:
+      description: >
+        If a death/restart state is visibly detected, wait for the checkpoint
+        restart state, verify gameplay is active, and re-plan from the observed state.
+        Do not blindly repeat the previous action sequence.
 
 success_criteria:
   - description: >
-      Max: The Curse of Brotherhood is selected and launched from the
-      dashboard or guide, and a loading/splash/title screen for the game
-      becomes visible.
+      Max: The Curse of Brotherhood is selected on dashboard tile 1 or tile 2
+      and is launched only after the title is visually identified.
     check_type: vision_judgement
     parameters:
-      expected_screen: "Max: The Curse of Brotherhood title, splash, or loading screen"
+      expected_screen: "Max: The Curse of Brotherhood launch/loading/title screen"
     required: true
 
   - description: >
-      The game reaches an interactive main-menu or in-level gameplay screen
-      (not stuck on a loading spinner or black screen).
+      The game reaches an interactive main menu or gameplay state.
     check_type: vision_judgement
     parameters:
-      expected_screen: "Max: The Curse of Brotherhood main menu or in-level gameplay view"
+      expected_screen: "Max: The Curse of Brotherhood interactive menu or gameplay"
     required: true
 
   - description: >
-      Moving the left stick changes Max's visible position/animation on
-      screen, proving movement input reaches the game.
+      The level/chapter selection menu is visible.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Max chapter/level selection menu"
+    required: true
+
+  - description: >
+      Chapter 1: Anotherland is visually identified as the focused/selected level.
+    check_type: vision_judgement
+    parameters:
+      expected_visual: "Chapter 1: Anotherland is highlighted/focused"
+    required: true
+
+  - description: >
+      After selecting Chapter 1: Anotherland, an interactive level/gameplay
+      screen is reached rather than a loading, black, or error screen.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Anotherland interactive gameplay"
+    required: true
+
+  - description: >
+      Left-stick movement produces a visible change in Max's position or
+      animation, proving controller input reaches gameplay.
     check_type: screen_change
     parameters:
-      # Deliberately NOT "control"/"button": the scenario validator resolves
-      # those keys against controls.yaml BUTTONS/TRIGGERS only, and would
-      # (incorrectly) mark a stick name unresolved. "input" is descriptive
-      # text for the verifier only, not a name it tries to resolve.
       input: left_stick
       min_delta: 1.0
     required: true
 
   - description: >
-      Pressing the jump button produces a visible jump animation or position
-      change for Max.
+      A jump input produces visible airborne movement or a jump animation.
     check_type: vision_judgement
     parameters:
-      expected_visual: Max is airborne or mid-jump animation after the jump button is pressed
+      expected_visual: "Max is airborne or visibly performing a jump"
     required: true
 
   - description: >
-      Using the right stick to draw an element (vine, water, or fire) near
-      Max produces a visible on-screen change, proving the signature
-      draw-to-solve mechanic responds to input.
+      At least one visible puzzle interaction using the game's draw mechanic
+      produces a meaningful screen/world change.
     check_type: screen_change
     parameters:
       input: right_stick
@@ -101,41 +186,54 @@ success_criteria:
     required: true
 
   - description: >
-      After continued play, a visible progress signal appears - a checkpoint
-      reached, a relic/collectible pickup notification, or Max advancing past
-      an obstacle that required the draw mechanic to clear.
+      Continued play produces a verified progress signal such as reaching a
+      checkpoint, clearing a puzzle/obstacle, collecting a visible relic, or
+      advancing to a new gameplay state.
     check_type: vision_judgement
     parameters:
-      expected_visual: A checkpoint, relic pickup, or level-progress indicator is visible after clearing an obstacle
+      expected_visual: "Visible evidence of forward level progress"
     required: true
 
   - description: >
       The level-complete, chapter-complete, or level-summary screen becomes
-      visible before the step budget is exhausted.
+      visible before the execution budget expires.
     check_type: vision_judgement
     parameters:
-      expected_screen: Level complete or chapter complete summary screen
+      expected_screen: "Level complete, chapter complete, or level summary"
     required: false
 
   - description: >
-      No error dialog or 'Something went wrong' message appears at any point
-      during launch or gameplay.
+      No unrecovered error dialog, connection failure, or 'Something went
+      wrong' state remains visible during the run.
     check_type: no_error_dialog
     required: true
 
-tags:
-  - gameplay
-  - demo
-  - max-curse-of-brotherhood
-  - platformer
+failure_policy:
+  wrong_game_detected: >
+    Stop immediately if visual evidence identifies another game as the focused
+    tile at the point where launch is attempted.
+  game_not_found: >
+    Stop without pressing A if Max cannot be visually identified on tile 1 or tile 2.
+  anotherland_not_found: >
+    Do not guess a menu position. Re-observe and re-plan. If Chapter 1:
+    Anotherland cannot be visually identified within the execution budget,
+    report the run as inconclusive/fail rather than selecting an arbitrary level.
+  death: >
+    Recover only from a visibly confirmed death/restart state and re-plan from
+    the resulting checkpoint/gameplay state.
+  loading: >
+    Wait for stable screen detection; do not spend gameplay actions while a
+    known launch/loading/sync state is still changing.
 
-# NOTE ON max_steps: the planner's LLM call is capped at
-# llm.providers.anthropic.params.max_tokens (4096 in config/settings.yaml).
-# A single plan of 100+ fully-detailed steps (each with action, arguments,
-# intent AND expected_observation) does not fit in that budget and the
-# planner call will retry/hang rather than fail cleanly. Kept modest here so
-# one planning call reliably completes; the executor can still be re-invoked
-# via a replan for further gameplay if this budget is not enough to finish
-# the level, which is expected for a real platformer level.
-timeout_seconds: 900
-max_steps: 40
+artifacts:
+  capture_launch_frames: true
+  capture_tile_discovery: true
+  capture_level_menu: true
+  capture_anotherland_selection: true
+  capture_progress_frames: true
+  capture_action_log: true
+
+# These scenario limits are intentionally explicit for real-hardware testing.
+# The framework may also apply the global runtime limits from config/settings.yaml.
+timeout_seconds: 3600
+max_steps: 250
