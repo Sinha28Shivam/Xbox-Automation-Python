@@ -28,10 +28,11 @@ in the hope that the console changes its mind.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from base import BaseAgent
-from schemas import TestPlan
+from schemas import PlannedStep, ScenarioStage, TestPlan, ValidatedScenario
 from state import AgenticState, note
 
 
@@ -77,6 +78,8 @@ class PlannerAgent(BaseAgent):
         plan.revision = replan_count + 1
         if is_replan and verification is not None:
             plan.replan_reason = verification.replan_hint or verification.summary
+        if not plan.steps and scenario.stages:
+            plan = self._fallback_staged_plan(scenario, plan)
         plan = self._sanitise_plan(plan)
 
         if not plan.steps:
@@ -138,6 +141,154 @@ class PlannerAgent(BaseAgent):
                     f"Available tools: {', '.join(sorted(available))}")
         self._validate_stage_discipline(plan)
         return plan
+
+    def _fallback_staged_plan(self, scenario: ValidatedScenario,
+                              plan: TestPlan) -> TestPlan:
+        """Deterministic bootstrap when the LLM returns an empty staged plan."""
+        steps: list[PlannedStep] = []
+        game_name = self._infer_game_name(scenario)
+        target_label = self._infer_target_label(scenario)
+
+        def add(action: str, intent: str, expected: str,
+                arguments: dict[str, Any] | None = None,
+                stage: ScenarioStage | None = None,
+                replan_on: list[str] | None = None,
+                progress_signal: str = "") -> None:
+            steps.append(PlannedStep(
+                index=len(steps),
+                action=action,
+                arguments=arguments or {},
+                intent=intent,
+                expected_observation=expected,
+                stage=stage,
+                stage_goal=self._stage_goal(scenario, stage),
+                replan_on=replan_on or [],
+                progress_signal=progress_signal,
+            ))
+
+        add(
+            "capture_frame",
+            "Capture the starting dashboard state before any action.",
+            "The current starting screen is captured for later comparison.",
+            {"label": "stage-preflight-baseline"},
+            ScenarioStage.PREFLIGHT,
+            progress_signal="baseline_captured",
+        )
+
+        if game_name:
+            add(
+                "launch_game",
+                f"Identify and launch {game_name} only after its tile is visually matched.",
+                f"The focused tile is proven to be {game_name}, then the game launch is dispatched.",
+                {"game_name": game_name, "max_tiles": 2, "launch_wait": 8.0},
+                ScenarioStage.GAME_DISCOVERY,
+                ["game_not_found", "wrong_game_detected"],
+                "game_discovered",
+            )
+            add(
+                "wait_for_stable_screen",
+                f"Wait for {game_name} to settle after launch.",
+                f"A stable {game_name} startup, menu, or gameplay screen is visible.",
+                {"label": "stage-game-launch-stable"},
+                ScenarioStage.GAME_LAUNCH,
+                ["launch_unproven"],
+                "game_launch_screen",
+            )
+
+        add(
+            "capture_frame",
+            "Observe the game state and look for the level-selection menu.",
+            "The current Max screen is captured so the verifier can judge whether the level-selection menu is visible.",
+            {"label": "stage-menu-detection"},
+            ScenarioStage.MENU_DETECTION,
+            ["menu_not_proven"],
+            "menu_observed",
+        )
+
+        add(
+            "detect_focus_highlight",
+            f"Inspect the visible level menu for the target entry {target_label}.",
+            f"The highlighted menu item is visually proven to be {target_label}.",
+            {"expected_label": target_label},
+            ScenarioStage.LEVEL_NAVIGATION,
+            ["focus_not_proven", "target_not_visible"],
+            "target_focus",
+        )
+        add(
+            "press_button",
+            f"Select {target_label} only after focus has been proven.",
+            f"The selection is confirmed on {target_label} and the screen transitions away from the menu.",
+            {"button": "a"},
+            ScenarioStage.LEVEL_LAUNCH,
+            ["level_launch_unproven"],
+            "level_selected",
+        )
+        add(
+            "wait_for_stable_screen",
+            f"Wait for {target_label} gameplay to become stable.",
+            f"An interactive {target_label} gameplay screen is visible.",
+            {"label": "stage-level-launch-stable"},
+            ScenarioStage.LEVEL_LAUNCH,
+            ["interactive_gameplay_unproven"],
+            "interactive_gameplay",
+        )
+        add(
+            "capture_frame",
+            "Observe the gameplay state before taking the first closed-loop action.",
+            "The gameplay screen is captured and ready for the next observe-decide-act cycle.",
+            {"label": "stage-play-loop-observe"},
+            ScenarioStage.CLOSED_LOOP_PLAY,
+            ["gameplay_stuck"],
+            "play_loop_observation",
+        )
+
+        plan.steps = steps
+        plan.assumptions = list(dict.fromkeys([
+            *plan.assumptions,
+            "The console starts on the Xbox dashboard.",
+            "The requested game is available on tile 1 or tile 2.",
+            "The visible menu route to Anotherland can be determined from on-screen evidence.",
+        ]))
+        plan.rationale = (
+            plan.rationale or
+            "Fallback staged bootstrap plan used because the LLM planner "
+            "returned zero steps. This plan is intentionally conservative and "
+            "keeps all confirmations evidence-first."
+        )
+        return plan
+
+    @staticmethod
+    def _stage_goal(scenario: ValidatedScenario,
+                    stage: ScenarioStage | None) -> str:
+        if stage is None:
+            return ""
+        for item in scenario.stages:
+            if item.id == stage:
+                return item.objective
+        return ""
+
+    @staticmethod
+    def _infer_game_name(scenario: ValidatedScenario) -> str:
+        title = str(scenario.title or "")
+        match = re.match(r"(.+?)\s+-", title)
+        if match:
+            return match.group(1).strip()
+        goal = str(scenario.goal or "")
+        found = re.search(r"Prove that (.+?) can be discovered", goal)
+        return found.group(1).strip() if found else ""
+
+    @staticmethod
+    def _infer_target_label(scenario: ValidatedScenario) -> str:
+        for criterion in scenario.success_criteria:
+            text = " ".join([
+                str(criterion.description or ""),
+                str(criterion.parameters.get("expected_visual", "")),
+                str(criterion.parameters.get("expected_screen", "")),
+            ])
+            match = re.search(r"(Chapter\s+\d+:\s*[A-Za-z0-9]+)", text)
+            if match:
+                return match.group(1).strip()
+        return "Chapter 1: Anotherland"
 
     @staticmethod
     def _validate_stage_discipline(plan: TestPlan) -> None:

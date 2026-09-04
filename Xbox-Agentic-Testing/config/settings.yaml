@@ -67,7 +67,7 @@ runtime:
   max_steps_scenario: 40
   max_steps_level: 250
   max_steps_campaign: 1000
-  max_replans: "${MAX_REPLANS:5}"
+  max_replans: "${MAX_REPLANS:1}"
   step_timeout_seconds: 60
   run_timeout_seconds: "${RUN_TIMEOUT:3600}"
   level_timeout_seconds: 3600

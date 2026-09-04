@@ -875,13 +875,13 @@ def _encode_frame_for_vision(ctx: ToolContext) -> Any:
             scale = max_width / float(w)
             frame = cv2.resize(frame, (int(w * scale), int(h * scale)))
 
-        ok_, buf = cv2.imencode(".png", frame)
+        ok_, buf = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
         if not ok_:
-            return fail("Could not encode the frame as PNG")
+            return fail("Could not encode the frame as JPEG")
 
         return ok(
             frame_path=str(frame_path),
-            media_type="image/png",
+            media_type="image/jpeg",
             base64=base64.b64encode(buf.tobytes()).decode("ascii"),
             width=int(frame.shape[1]),
             height=int(frame.shape[0]),
