@@ -123,6 +123,16 @@ where the screen did not change are where the plan lost contact with reality.
        right before it proves the highlighted label matches the intended
        target's text.
 
+11b. **Automatic game discovery is mandatory whenever a scenario names a game.**
+   Do NOT assume the requested game is already focused and do NOT hard-code
+   `right`/`a` based on a fixed tile position. Use `launch_game(game_name=...)`.
+   That tool checks the currently focused tile first, then moves exactly one
+   tile right and checks the second tile with OCR. It presses `a` only after the
+   requested title is visually identified. If neither tile matches, it must
+   fail without launching anything. After launch, use `wait_for_stable_screen`
+   and a visible game-start/main-menu criterion to prove the game actually
+   opened.
+
 12. **State your assumptions.** Put anything you are taking for granted into
    `assumptions` - "the console starts on the dashboard", "the game is already
    installed". If the run fails, the RCA agent will check these first, and an
