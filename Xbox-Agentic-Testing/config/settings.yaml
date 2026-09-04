@@ -130,7 +130,12 @@ verification:
   blank_std_threshold: 1.0
   ocr:
     enabled: "${OCR_ENABLED:true}"
-    engines: ["paddleocr", "pytesseract"]   # tried in order, first that imports
+    # tried in order, first engine that returns non-empty text wins.
+    # pytesseract is primary: this rig has no CUDA GPU, so PaddleOCR's
+    # 5-model CPU pipeline costs ~40-60s/frame vs pytesseract's ~1-3s,
+    # which was blowing scenario timeouts (see run-20260904-122248 RCA).
+    # paddleocr stays as a fallback for stylised text pytesseract misses.
+    engines: ["pytesseract", "paddleocr"]
     min_confidence: 0.4
 
 # ---------------------------------------------------------------------------
