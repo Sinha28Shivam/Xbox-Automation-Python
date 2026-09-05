@@ -1,0 +1,433 @@
+# ===========================================================================
+# Max: The Curse of Brotherhood - full 4-scenario journey, ONE launch
+#
+#   python console.py run --file scenarios/max-full-journey.yaml
+#
+# Covers all four requested scenarios in a single continuous run so the game
+# is launched exactly once:
+#
+#   S1  dashboard -> launch -> gameplay -> move + jump
+#   S2  menu -> Last Checkpoint -> verify controls respond
+#   S3  menu -> Main Menu -> Select Level -> Chapter 1 -> Sea of Sand -> play
+#   S4  menu -> Achievements -> verify -> B back -> exit -> dashboard
+#
+# Declared as 12 FORWARD stages. No stage repeats, so the ordering guard in
+# scenario_agent._validate_stage_sequence stays fully intact.
+#
+# NOTE: max_steps / timeout_seconds are TOP LEVEL on purpose. Nested under an
+# `execution:` block they are silently ignored by _from_yaml.
+# ===========================================================================
+
+id: max-full-journey
+title: "Max: The Curse of Brotherhood - full journey"
+description: >
+  One continuous run that launches Max once and then verifies gameplay,
+  checkpoint restore, main-menu level selection of Sea of Sand, the
+  achievements screen, and a clean exit back to the dashboard.
+
+console: xbox_one
+
+goal: >
+  Prove, using only observable on-screen evidence, that Max can be launched
+  from the dashboard, played, paused to restore the last checkpoint, returned
+  to the main menu to replay Sea of Sand, inspected for achievements, and
+  exited cleanly back to the Xbox dashboard.
+
+preconditions:
+  - The console is powered on and awake.
+  - The GIMX session is authenticated and connected.
+  - The capture adapter shows the live Xbox display.
+  - The user is signed in.
+  - The Xbox dashboard is visible before execution.
+  - "Max: The Curse of Brotherhood is available on dashboard tile 1 or tile 2."
+  - A previous checkpoint exists so Last Checkpoint is selectable.
+
+tags:
+  - xbox
+  - max
+  - journey
+  - gameplay
+  - regression
+
+timeout_seconds: 3600
+max_steps: 250
+
+stages:
+  # ---------------------------------------------------- S1: launch and play
+  - id: preflight
+    objective: "Confirm the rig is usable before touching the game."
+    required_evidence:
+      - healthy_rig
+    allowed_actions:
+      - capture_frame
+    stop_conditions:
+      - rig_blocked
+    replan_conditions:
+      - none
+
+  - id: game_discovery
+    objective: "Identify Max on the focused dashboard tile."
+    required_evidence:
+      - focused_tile
+      - focused_tile_title_match
+    allowed_actions:
+      - launch_game
+      - capture_frame
+      - read_screen_text
+      - detect_focus_highlight
+    stop_conditions:
+      - wrong_game_detected
+      - game_not_found
+    replan_conditions:
+      - focused_tile_not_proven
+
+  - id: game_launch
+    objective: "Prove Max actually started."
+    required_evidence:
+      - screen_change
+      - game_screen
+    allowed_actions:
+      - launch_game
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - check_for_text
+    stop_conditions:
+      - launch_failed
+      - unrecovered_error_dialog
+    replan_conditions:
+      - launch_unproven
+
+  - id: menu_detection
+    objective: "Reach a visible Max menu or chapter-selection screen."
+    required_evidence:
+      - level_selection_menu
+    allowed_actions:
+      - press_button
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - detect_focus_highlight
+      - check_for_text
+    stop_conditions:
+      - menu_unreachable
+      - unrecovered_error_dialog
+    replan_conditions:
+      - menu_not_proven
+
+  - id: level_navigation
+    objective: "Visually prove a playable chapter is focused before selecting."
+    required_evidence:
+      - focused_menu_item
+      - target_text_match
+    allowed_actions:
+      - press_button
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - detect_focus_highlight
+    stop_conditions:
+      - target_not_visible
+    replan_conditions:
+      - focus_not_proven
+      - menu_changed_unexpectedly
+
+  - id: level_launch
+    objective: "Enter the chapter and prove interactive gameplay begins."
+    required_evidence:
+      - screen_change
+      - interactive_gameplay
+    allowed_actions:
+      - press_button
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - check_for_text
+    stop_conditions:
+      - level_launch_failed
+      - unrecovered_error_dialog
+    replan_conditions:
+      - level_launch_unproven
+
+  - id: closed_loop_play
+    objective: >
+      Prove the controller drives gameplay: Max moves forward and jumps with
+      a visible scene response.
+    required_evidence:
+      - progress_signal
+      - jump_response
+    allowed_actions:
+      - move_stick
+      - press_button
+      - pull_trigger
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - check_for_text
+    stop_conditions:
+      - unrecovered_error_dialog
+      - stuck_without_progress
+    replan_conditions:
+      - gameplay_stuck
+
+  # -------------------------------------- S2: pause -> Last Checkpoint
+  - id: pause_checkpoint
+    objective: >
+      Open the pause screen, visually prove Last Checkpoint is focused,
+      select it, and confirm gameplay resumes with a responsive controller.
+    required_evidence:
+      - pause_screen_visible
+      - focused_menu_item
+      - checkpoint_gameplay_resumed
+      - progress_signal
+    allowed_actions:
+      - press_button
+      - move_stick
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - detect_focus_highlight
+      - check_for_text
+    stop_conditions:
+      - pause_screen_unreachable
+      - unrecovered_error_dialog
+    replan_conditions:
+      - focus_not_proven
+      - checkpoint_not_proven
+
+  # ------------------------------ S3: pause -> Main Menu -> Sea of Sand
+  - id: main_menu_return
+    objective: >
+      Open the pause screen again, prove Main Menu is focused, select it, and
+      confirm the Max main menu screen is visible.
+    required_evidence:
+      - pause_screen_visible
+      - focused_menu_item
+      - main_menu_visible
+    allowed_actions:
+      - press_button
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - detect_focus_highlight
+      - check_for_text
+    stop_conditions:
+      - main_menu_unreachable
+      - unrecovered_error_dialog
+    replan_conditions:
+      - focus_not_proven
+      - main_menu_not_proven
+
+  - id: level_select_replay
+    objective: >
+      From the main menu prove Select Level is focused and open it, prove the
+      level-select screen is visible, focus Chapter 1, step down to Sea of
+      Sand, prove that label, select it, then play forward with a jump.
+    required_evidence:
+      - level_select_screen_visible
+      - focused_menu_item
+      - target_text_match
+      - interactive_gameplay
+      - progress_signal
+      - jump_response
+    allowed_actions:
+      - press_button
+      - move_stick
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - detect_focus_highlight
+      - check_for_text
+    stop_conditions:
+      - target_not_visible
+      - unrecovered_error_dialog
+    replan_conditions:
+      - focus_not_proven
+      - menu_changed_unexpectedly
+
+  # -------------------------------------- S4: achievements -> exit
+  - id: achievements_review
+    objective: >
+      Open the pause screen, prove Achievements is focused, open it, prove
+      achievement entries are readable, then return with B.
+    required_evidence:
+      - pause_screen_visible
+      - focused_menu_item
+      - achievements_screen_visible
+      - achievement_entries_readable
+      - menu_screen_restored
+    allowed_actions:
+      - press_button
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - detect_focus_highlight
+      - check_for_text
+    stop_conditions:
+      - achievements_unreachable
+      - unrecovered_error_dialog
+    replan_conditions:
+      - focus_not_proven
+      - achievements_not_proven
+
+  - id: exit_to_dashboard
+    objective: >
+      Leave Max and prove the Xbox dashboard is visible again.
+    required_evidence:
+      - screen_change
+      - dashboard_visible
+    allowed_actions:
+      - press_button
+      - hold_button
+      - run_special_action
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - check_for_text
+    stop_conditions:
+      - exit_failed
+      - unrecovered_error_dialog
+    replan_conditions:
+      - dashboard_not_proven
+
+progress_signals:
+  - screen_change
+  - player_movement
+  - jump_response
+  - room_transition
+  - checkpoint_reached
+  - level_progress
+
+death_signals:
+  - death_screen
+  - respawn_screen
+  - restart_from_checkpoint
+
+stuck_policy:
+  no_visible_change_retries: 3
+  action_change_required: true
+  require_observation_between_actions: true
+
+recovery_policy:
+  recover_from_death: true
+  preserve_checkpoint_evidence: true
+  no_blind_repeat_sequences: true
+
+# ---------------------------------------------------------------------------
+# SUCCESS CRITERIA - one per verifiable outcome across the four scenarios
+# ---------------------------------------------------------------------------
+success_criteria:
+
+  # --- S1 -----------------------------------------------------------------
+  - description: >
+      Max: The Curse of Brotherhood is visually identified on a dashboard tile
+      before launch is attempted.
+    check_type: vision_judgement
+    parameters:
+      expected_visual: "The focused dashboard tile shows Max: The Curse of Brotherhood."
+    required: true
+
+  - description: >
+      The game reaches a visible Max startup, menu, or gameplay screen.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Max: The Curse of Brotherhood startup, menu, or gameplay screen"
+    required: true
+
+  - description: >
+      Gameplay is reached and the controller visibly drives Max forward.
+    check_type: screen_change
+    parameters:
+      min_delta: 0.5
+    required: true
+
+  - description: >
+      Pressing A in gameplay produces a visible jump response.
+    check_type: vision_judgement
+    parameters:
+      expected_visual: "Max visibly jumps or the scene responds to the jump input"
+    required: true
+
+  # --- S2 -----------------------------------------------------------------
+  - description: >
+      The pause screen becomes visible after the Menu button is used in gameplay.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Max pause screen with resume / checkpoint / main menu options"
+    required: true
+
+  - description: >
+      Last Checkpoint is visibly focused before it is selected.
+    check_type: vision_judgement
+    parameters:
+      expected_visual: "Last Checkpoint is highlighted or focused on the pause screen"
+    required: true
+
+  - description: >
+      Selecting Last Checkpoint reaches interactive gameplay and the controller
+      still produces a visible response.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Interactive Max gameplay restored at the last checkpoint"
+    required: true
+
+  # --- S3 -----------------------------------------------------------------
+  - description: >
+      Main Menu is visibly focused on the pause screen and selecting it reaches
+      the Max main menu.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Max main menu screen"
+    required: true
+
+  - description: >
+      The Select Level screen becomes visible from the main menu.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Max select level / chapter listing screen"
+    required: true
+
+  - description: >
+      Sea of Sand is visibly focused before it is selected.
+    check_type: vision_judgement
+    parameters:
+      expected_visual: "Sea of Sand is highlighted or focused in the level list"
+    required: true
+
+  - description: >
+      Selecting Sea of Sand reaches interactive gameplay and Max moves forward
+      and jumps with a visible response.
+    check_type: vision_judgement
+    parameters:
+      expected_visual: "Sea of Sand gameplay with visible movement and jump response"
+    required: true
+
+  # --- S4 -----------------------------------------------------------------
+  - description: >
+      The Achievements screen becomes visible and achievement entries are
+      readable on screen.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Max achievements list with readable achievement entries"
+    required: true
+
+  - description: >
+      Backing out of the Achievements screen returns to the menu screen.
+    check_type: vision_judgement
+    parameters:
+      expected_visual: "The menu screen is visible again after leaving Achievements"
+    required: true
+
+  - description: >
+      Leaving the game reaches the Xbox dashboard.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Xbox dashboard home screen"
+    required: true
+
+  # --- whole run ----------------------------------------------------------
+  - description: >
+      No unrecovered error dialog or connection failure remains visible during
+      the run.
+    check_type: no_error_dialog
+    required: true

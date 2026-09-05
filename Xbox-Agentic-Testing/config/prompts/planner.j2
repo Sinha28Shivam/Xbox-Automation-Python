@@ -162,6 +162,24 @@ Never emit multi-action gameplay bundles with no observation between them.
      observe menu -> navigate -> prove focus -> confirm -> verify transition
    and never jump straight from navigation intent to confirm.
 
+11d. **Cover EVERY declared stage in ONE plan.** If the scenario declares N
+   stages, your plan MUST contain at least one step for each of the N stages,
+   in the declared order, right through to the final stage. Do not stop after
+   proving early gameplay: a journey scenario that declares `pause_checkpoint`,
+   `main_menu_return`, `level_select_replay`, `achievements_review` and
+   `exit_to_dashboard` needs steps for all of them in this same plan. Emitting
+   a plan that ends at `closed_loop_play` when later stages are declared is a
+   planning DEFECT - the run will be judged INCONCLUSIVE because most criteria
+   were never even attempted. Budget generously: `max_steps` is usually 250, so
+   a 40-60 step plan is entirely acceptable and strongly preferred over a short
+   plan that abandons the journey half-way.
+
+   Pattern for a pause-menu revisit stage:
+     press_button(menu) -> wait_for_stable_screen -> capture_frame ->
+     read_screen_text -> detect_focus_highlight(target) ->
+     [navigate with up/down + re-prove focus if needed] ->
+     press_button(a) -> wait_for_stable_screen -> capture_frame
+
 12. **State your assumptions.** Put anything you are taking for granted into
    `assumptions` - "the console starts on the dashboard", "the game is already
    installed". If the run fails, the RCA agent will check these first, and an

@@ -109,6 +109,17 @@ class ScenarioStage(str, Enum):
     LEVEL_NAVIGATION = "level_navigation"
     LEVEL_LAUNCH = "level_launch"
     CLOSED_LOOP_PLAY = "closed_loop_play"
+    # --- extended journey stages -------------------------------------------
+    # These exist so a multi-scenario journey (play -> pause -> checkpoint ->
+    # main menu -> replay a level -> achievements -> exit) can be declared as
+    # ONE forward-moving pipeline. Adding stages is deliberately preferred
+    # over relaxing _validate_stage_sequence: repeats stay forbidden, so the
+    # guard that stops a planner looping the same stage forever is untouched.
+    PAUSE_CHECKPOINT = "pause_checkpoint"
+    MAIN_MENU_RETURN = "main_menu_return"
+    LEVEL_SELECT_REPLAY = "level_select_replay"
+    ACHIEVEMENTS_REVIEW = "achievements_review"
+    EXIT_TO_DASHBOARD = "exit_to_dashboard"
     FAILURE_POLICY = "failure_policy"
 
 
@@ -128,6 +139,11 @@ STAGE_ORDER: tuple[ScenarioStage, ...] = (
     ScenarioStage.LEVEL_NAVIGATION,
     ScenarioStage.LEVEL_LAUNCH,
     ScenarioStage.CLOSED_LOOP_PLAY,
+    ScenarioStage.PAUSE_CHECKPOINT,
+    ScenarioStage.MAIN_MENU_RETURN,
+    ScenarioStage.LEVEL_SELECT_REPLAY,
+    ScenarioStage.ACHIEVEMENTS_REVIEW,
+    ScenarioStage.EXIT_TO_DASHBOARD,
 )
 
 

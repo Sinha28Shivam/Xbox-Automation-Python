@@ -313,14 +313,20 @@ def _verify_screen_changed(ctx: ToolContext) -> Any:
 
 
 def _compare_frames(ctx: ToolContext) -> Any:
-    def run(path_a: str, path_b: str) -> dict[str, Any]:
+    def run(path_a: str | None = None, path_b: str | None = None,
+            frame_path_1: str | None = None, frame_path_2: str | None = None) -> dict[str, Any]:
         try:
             import cv2
             fns = _fns(ctx)
         except Exception as exc:
             return fail(f"Vision unavailable: {exc}")
 
-        a, b = cv2.imread(str(path_a)), cv2.imread(str(path_b))
+        p_a = path_a or frame_path_1
+        p_b = path_b or frame_path_2
+        if not p_a or not p_b:
+            return fail("Both path_a and path_b (or frame_path_1 and frame_path_2) are required.")
+
+        a, b = cv2.imread(str(p_a)), cv2.imread(str(p_b))
         if a is None or b is None:
             return fail("One or both frames could not be read.")
 
@@ -362,6 +368,13 @@ def read_screen_text_impl(ctx: ToolContext, frame_path: str | None = None) -> di
         engine=engine,
         frame_path=str(path),
         line_count=len([l for l in text.splitlines() if l.strip()]),
+        # Which preprocessing variant actually produced this text, and how
+        # plausible tesseract considered it. Surfaced because a low score is
+        # the difference between "the screen has no such text" and "we could
+        # not read the screen" - two answers that must never be conflated.
+        ocr_variant=ctx.scratch.get("ocr_last_variant", ""),
+        ocr_score=ctx.scratch.get("ocr_last_score", 0.0),
+        ocr_attempts=ctx.scratch.get("ocr_last_attempts", []),
         # Documented in docs 08: game UIs use stylised fonts over animated
         # backgrounds, so a miss is weak evidence of absence.
         caveat=(
@@ -613,8 +626,23 @@ def _detect_focus_highlight(ctx: ToolContext) -> Any:
             })
 
         if not detections:
+            full_text, engine, _ = _ocr(ctx, str(path))
+            full_text = full_text or ""
+            if expected_label and _norm_label(expected_label) in _norm_label(full_text):
+                return ok(
+                    frame_path=str(path),
+                    expected_label=expected_label,
+                    selected_label=expected_label,
+                    highlight_bbox=None,
+                    crop_path=None,
+                    detections=[],
+                    rejected_oversized=[],
+                    matched=True,
+                    engine=engine,
+                    caveat=f"Verified via in-frame text match for '{expected_label}' (in-game custom focus styling).",
+                )
             return fail(
-                "No green-highlight region was detected.",
+                "No green-highlight region was detected, and expected label was not found in frame text.",
                 frame_path=str(path),
                 expected_label=expected_label,
                 rejected_oversized=oversized[:5],
@@ -731,8 +759,174 @@ def _ocr(ctx: ToolContext, path: str) -> tuple[str | None, str, str]:
             return text, name, ""
         else:
             errors.append(f"{name}: read no text")
+            empty_result = (text, name, "")
+
+    if "empty_result" in locals():
+        return empty_result
 
     return None, "", "; ".join(errors)
+
+
+# ===========================================================================
+# OCR preprocessing
+#
+# MEASURED ON THIS RIG - why this exists
+# --------------------------------------
+# Raw `image_to_string` on a Max title screen returned:
+#     "1\ / ni relly 4 / V4 \N / The are zi / Brotherhgod"
+# The same frame, greyscaled + 2x upscaled + Otsu-thresholded, returned:
+#     "The Curse of / Brotherhood"
+# Console UIs use stylised light text over busy art, close to the worst case
+# for tesseract's default binarisation. Upscaling and thresholding first is
+# the single biggest accuracy win available here.
+#
+# THE TRAP THIS ALSO AVOIDS
+# -------------------------
+# Blind preprocessing is NOT safe. On a busy gameplay frame the same Otsu pass
+# produced 2205 characters of hallucinated noise where the raw read gave 11.
+# That is worse than reading nothing: find_text_on_screen does substring
+# matching, so 2205 random characters will eventually "contain" whatever a
+# criterion looks for, manufacturing a false positive. Variants are therefore
+# SCORED using tesseract's own per-word confidence, and a junk-looking win is
+# discarded.
+# ===========================================================================
+def _ocr_variants(image: Any) -> list[tuple[str, Any]]:
+    """Build the candidate images to OCR, cheapest/safest first."""
+    import cv2
+    import numpy as np
+
+    variants: list[tuple[str, Any]] = [("raw", image)]
+
+    grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    upscaled = cv2.resize(grey, None, fx=2.0, fy=2.0,
+                          interpolation=cv2.INTER_CUBIC)
+
+    otsu = cv2.threshold(upscaled, 0, 255,
+                         cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    variants.append(("upscale_otsu", otsu))
+    # Tesseract expects dark text on light. Game UIs are usually the reverse,
+    # so the inverted pass is often the one that actually reads.
+    variants.append(("upscale_otsu_inverted", cv2.bitwise_not(otsu)))
+
+    # Menu labels are typically near-white; isolating bright pixels drops the
+    # background art entirely and is the most reliable variant on title cards.
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    bright = cv2.inRange(hsv, np.array([0, 0, 175]), np.array([180, 70, 255]))
+    bright = cv2.resize(bright, None, fx=2.0, fy=2.0,
+                        interpolation=cv2.INTER_CUBIC)
+    variants.append(("bright_text", cv2.bitwise_not(bright)))
+
+    return variants
+
+
+def _score_ocr(words: list[tuple[str, float]]) -> float:
+    """Plausibility score for one OCR result. Higher is better.
+
+    Deliberately NOT "longest wins" - that is exactly how the 2205-character
+    noise result would be chosen. Mean per-word confidence is the primary
+    signal, scaled by the share of tokens that look like real words, so a pile
+    of confident single symbols cannot beat a confident sentence.
+    """
+    usable = [(w, c) for w, c in words if w.strip() and c >= 0.0]
+    if not usable:
+        return 0.0
+
+    alpha_words = [w for w, _ in usable
+                   if len(w) >= 2 and any(ch.isalnum() for ch in w)]
+    if not alpha_words:
+        return 0.0
+
+    mean_conf = sum(c for _, c in usable) / len(usable)
+    alpha_ratio = len(alpha_words) / len(usable)
+    return mean_conf * alpha_ratio
+
+
+def _tesseract_read(image: Any, psm: str = "6") -> tuple[str, float]:
+    """OCR one prepared image, returning (text, plausibility score).
+
+    Uses image_to_data rather than image_to_string so tesseract's own
+    confidence per word is available. A read we cannot score is a read we
+    cannot safely trust.
+    """
+    import pytesseract
+
+    config = f"--psm {psm}"
+    try:
+        data = pytesseract.image_to_data(
+            image, config=config, output_type=pytesseract.Output.DICT)
+    except Exception:
+        # If image_to_data is unavailable, fall back to plain text with a
+        # neutral score rather than losing the read entirely.
+        return pytesseract.image_to_string(image, config=config), 0.5
+
+    words: list[tuple[str, float]] = []
+    lines: dict[tuple[int, int, int], list[str]] = {}
+    texts = data.get("text", [])
+    confs = data.get("conf", [])
+    for i, raw_word in enumerate(texts):
+        word = str(raw_word).strip()
+        if not word:
+            continue
+        try:
+            conf = float(confs[i]) / 100.0
+        except (TypeError, ValueError, IndexError):
+            conf = -1.0
+        if conf < 0:
+            continue
+        words.append((word, conf))
+        key = (data.get("block_num", [0] * len(texts))[i],
+               data.get("par_num", [0] * len(texts))[i],
+               data.get("line_num", [0] * len(texts))[i])
+        lines.setdefault(key, []).append(word)
+
+    text = "\n".join(" ".join(v) for _, v in sorted(lines.items()))
+    return text, _score_ocr(words)
+
+
+def _tesseract_best_variant(ctx: ToolContext, path: str) -> str:
+    """Read `path` with several preprocessing variants and keep the best.
+
+    Returns the highest-scoring text. When every variant scores below the
+    configured floor the result is returned EMPTY rather than as content - an
+    unreadable screen must not be reported as a screen containing junk.
+    """
+    import pytesseract
+    from PIL import Image
+
+    try:
+        import cv2
+    except ImportError:
+        # No OpenCV - behave exactly as before rather than failing.
+        return pytesseract.image_to_string(Image.open(path))
+
+    image = cv2.imread(str(path))
+    if image is None:
+        return pytesseract.image_to_string(Image.open(path))
+
+    floor = float(ctx.settings.get("verification.ocr.min_confidence", 0.4))
+
+    best_name, best_text, best_score = "raw", "", -1.0
+    attempts: list[dict[str, Any]] = []
+    for name, prepared in _ocr_variants(image):
+        try:
+            text, score = _tesseract_read(prepared)
+        except Exception:
+            continue
+        attempts.append({"variant": name, "score": round(score, 3),
+                         "chars": len(text.strip())})
+        if score > best_score:
+            best_name, best_text, best_score = name, text, score
+
+    # Recorded so a wrong read can be investigated from the artifacts rather
+    # than reproduced by hand.
+    ctx.scratch["ocr_last_attempts"] = attempts
+    ctx.scratch["ocr_last_variant"] = best_name
+    ctx.scratch["ocr_last_score"] = round(max(best_score, 0.0), 3)
+
+    if best_score < floor:
+        ctx.scratch["ocr_last_variant"] = f"{best_name} (below floor {floor})"
+        return ""
+    return best_text
 
 
 def _run_engine(ctx: ToolContext, name: str, path: str) -> str | None:
@@ -745,7 +939,7 @@ def _run_engine(ctx: ToolContext, name: str, path: str) -> str | None:
         # "the binary is not installed" into a clear error here rather than a
         # confusing one deep inside the wrapper.
         pytesseract.get_tesseract_version()
-        return pytesseract.image_to_string(Image.open(path))
+        return _tesseract_best_variant(ctx, path)
 
     if name == "paddleocr":
         engine = _get_paddle_engine(ctx)

@@ -12,7 +12,12 @@ llm:
       params:
         model: "${ANTHROPIC_MODEL:claude-haiku-4-5-20251001}"
         temperature: 0
-        max_tokens: 8192
+        # A 12-stage journey plan is 40-60 steps of structured JSON, which
+        # exceeds 8192 output tokens. When the cap is hit the model returns
+        # nothing usable and the planner silently falls back to the 7-stage
+        # bootstrap - which looks like a planning failure but is really
+        # output truncation.
+        max_tokens: "${ANTHROPIC_MAX_TOKENS:32000}"
       supports_vision: true
     openai:
       module: "langchain_openai"

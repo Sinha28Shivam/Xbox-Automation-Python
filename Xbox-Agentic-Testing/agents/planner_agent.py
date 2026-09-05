@@ -38,6 +38,39 @@ from schemas import PlannedStep, ScenarioStage, TestPlan, ValidatedScenario
 from state import AgenticState, note
 
 
+# Stages where a menu item is SELECTED. In every one of these, pressing A
+# without having just proven what is focused risks confirming the wrong item -
+# the exact failure that blocked an earlier Max run at chapter select. Any
+# stage added here inherits the "prove focus, then confirm" discipline.
+def _is_gameplay_action(step: Any) -> bool:
+    """Is this A-press a gameplay JUMP rather than a menu CONFIRM?
+
+    The focus-proof rule exists to stop a menu item being selected blind. Once
+    a stage has reached actual gameplay, `a` means jump - there is no menu item
+    to prove, and demanding a focus highlight would make a legitimate jump step
+    impossible. Distinguished by the step's own declared intent/progress
+    signal rather than by guessing from the stage name.
+    """
+    signal = str(getattr(step, "progress_signal", "") or "").lower()
+    if signal in {"jump_response", "progress_signal", "level_progress",
+                  "player_movement"}:
+        return True
+    text = " ".join([
+        str(getattr(step, "intent", "") or ""),
+        str(getattr(step, "expected_observation", "") or ""),
+    ]).lower()
+    return "jump" in text
+
+
+_FOCUS_PROOF_STAGES = frozenset({
+    "level_navigation",
+    "pause_checkpoint",
+    "main_menu_return",
+    "level_select_replay",
+    "achievements_review",
+})
+
+
 class PlannerAgent(BaseAgent):
     """Turns a validated scenario into executable, verifiable steps."""
 
@@ -104,14 +137,67 @@ class PlannerAgent(BaseAgent):
                           or self.context.settings.get("runtime.max_steps", 40)),
         )
 
-        plan = self.invoke_structured(TestPlan, prompt)
-        plan.scenario_id = scenario.id
-        plan.revision = replan_count + 1
-        if is_replan and verification is not None:
-            plan.replan_reason = verification.replan_hint or verification.summary
-        if not plan.steps and scenario.stages:
-            plan = self._fallback_staged_plan(scenario, plan)
-        plan = self._sanitise_plan(plan)
+        # Coverage/discipline failures are corrigible: the model produced a
+        # structurally valid plan that simply stops too early. Retrying the
+        # bare prompt is useless - it makes the same choice again - so the
+        # specific complaint is appended and the model asked to try again.
+        # Without this a 12-stage journey dies at exit code 4 instead of being
+        # fixed by the one piece of information that would fix it.
+        plan = None
+        attempt_prompt = prompt
+        last_error = None
+        for _attempt in range(3):
+            candidate = self.invoke_structured(TestPlan, attempt_prompt)
+            candidate.scenario_id = scenario.id
+            candidate.revision = replan_count + 1
+            if is_replan and verification is not None:
+                candidate.replan_reason = (
+                    verification.replan_hint or verification.summary)
+            if not candidate.steps and scenario.stages:
+                # Loud on purpose. A silent fallback here once masked an
+                # output-token truncation as a "planning failure" and cost a
+                # full hardware run to diagnose.
+                print(f"  [planner] WARNING: the LLM returned ZERO steps "
+                      f"(attempt {_attempt + 1}). This usually means the "
+                      f"response was truncated by max_tokens. Falling back to "
+                      f"the deterministic staged bootstrap, which covers only "
+                      f"the core stages.")
+                candidate = self._fallback_staged_plan(scenario, candidate)
+            try:
+                plan = self._sanitise_plan(candidate, scenario)
+                break
+            except ValueError as exc:
+                last_error = exc
+                attempt_prompt = (
+                    f"{prompt}\n\n# Your previous attempt was REJECTED\n\n"
+                    f"{exc}\n\nProduce a corrected TestPlan that fixes exactly "
+                    f"this. Keep every step you already had and ADD the "
+                    f"missing ones - do not shorten the plan.")
+
+        if plan is None:
+            # Prefer the deterministic staged plan over failing the whole run:
+            # a conservative plan covering the declared stages is far more
+            # useful than exit code 4 with zero steps.
+            if scenario.stages:
+                plan = self._fallback_staged_plan(
+                    scenario,
+                    TestPlan(scenario_id=scenario.id,
+                             revision=replan_count + 1))
+                # NOTE: deliberately WITHOUT `scenario`, so the coverage guard
+                # is skipped. The bootstrap only knows the core stages; running
+                # it and reporting honestly which stages went untested beats
+                # exit code 4 with no steps at all. The verifier will still
+                # mark the unreached stages unproven.
+                plan = self._sanitise_plan(plan)
+                print(f"  [planner] WARNING: falling back to the deterministic "
+                      f"staged bootstrap after 3 rejected attempts. It covers "
+                      f"only the core stages, so later journey stages will be "
+                      f"reported as untested. Last rejection: {last_error}")
+            else:
+                raise ValueError(
+                    f"The planner could not produce an acceptable plan "
+                    f"after 3 attempts: {last_error}")
+
 
         if not plan.steps:
             raise ValueError(
@@ -141,7 +227,8 @@ class PlannerAgent(BaseAgent):
             }},
         }
 
-    def _sanitise_plan(self, plan: TestPlan) -> TestPlan:
+    def _sanitise_plan(self, plan: TestPlan,
+                       scenario: ValidatedScenario | None = None) -> TestPlan:
         """Reject impossible actions before the executor touches hardware."""
         available = {
             tool["name"] for tool in self.context.tools.describe(
@@ -172,6 +259,8 @@ class PlannerAgent(BaseAgent):
                     f"Planner emitted unsupported action '{step.action}'. "
                     f"Available tools: {', '.join(sorted(available))}")
         self._validate_stage_discipline(plan)
+        if scenario is not None:
+            self._validate_stage_coverage(plan, scenario)
         return plan
 
     def _fallback_staged_plan(self, scenario: ValidatedScenario,
@@ -284,6 +373,269 @@ class PlannerAgent(BaseAgent):
             progress_signal="level_progress",
         )
 
+        declared_stage_ids = {s.id.value for s in (scenario.stages or [])}
+
+        if "pause_checkpoint" in declared_stage_ids:
+            add(
+                "press_button",
+                "Open the in-game pause screen.",
+                "The pause menu overlay becomes visible.",
+                {"button": "start"},
+                ScenarioStage.PAUSE_CHECKPOINT,
+                progress_signal="pause_screen_visible",
+            )
+            add(
+                "wait_for_stable_screen",
+                "Wait for pause screen options to settle.",
+                "Pause menu with Last Checkpoint option is stable.",
+                {"label": "stage-pause-checkpoint-stable"},
+                ScenarioStage.PAUSE_CHECKPOINT,
+            )
+            add(
+                "detect_focus_highlight",
+                "Prove Last Checkpoint is focused before selecting it.",
+                "Last Checkpoint is proven to be highlighted.",
+                {},
+                ScenarioStage.PAUSE_CHECKPOINT,
+            )
+            add(
+                "press_button",
+                "Select Last Checkpoint.",
+                "Checkpoint reload initiates.",
+                {"button": "a"},
+                ScenarioStage.PAUSE_CHECKPOINT,
+                progress_signal="checkpoint_selected",
+            )
+            add(
+                "wait_for_stable_screen",
+                "Wait for the game to reload at the last checkpoint.",
+                "Interactive gameplay is restored at the checkpoint.",
+                {"label": "stage-checkpoint-restored"},
+                ScenarioStage.PAUSE_CHECKPOINT,
+                progress_signal="checkpoint_gameplay_resumed",
+            )
+            add(
+                "move_stick",
+                "Verify controller input responds after checkpoint reload.",
+                "Max moves right and screen updates.",
+                {"stick": "left_stick", "direction": "right", "duration": 1.0, "strength": 1.0},
+                ScenarioStage.PAUSE_CHECKPOINT,
+                progress_signal="progress_signal",
+            )
+
+        if "main_menu_return" in declared_stage_ids:
+            add(
+                "press_button",
+                "Open the in-game pause screen to return to Main Menu.",
+                "The pause menu overlay is visible.",
+                {"button": "start"},
+                ScenarioStage.MAIN_MENU_RETURN,
+                progress_signal="pause_screen_visible",
+            )
+            add(
+                "wait_for_stable_screen",
+                "Wait for pause menu to stabilize.",
+                "Pause menu options are visible.",
+                {"label": "stage-pause-main-menu-stable"},
+                ScenarioStage.MAIN_MENU_RETURN,
+            )
+            add(
+                "detect_focus_highlight",
+                "Prove Main Menu option is focused.",
+                "Main Menu is highlighted on screen.",
+                {},
+                ScenarioStage.MAIN_MENU_RETURN,
+            )
+            add(
+                "press_button",
+                "Confirm selection of Main Menu.",
+                "Screen transitions to Max main menu.",
+                {"button": "a"},
+                ScenarioStage.MAIN_MENU_RETURN,
+                progress_signal="main_menu_selected",
+            )
+            add(
+                "wait_for_stable_screen",
+                "Wait for Max Main Menu screen to settle.",
+                "Main Menu with Select Level option is visible.",
+                {"label": "stage-main-menu-settled"},
+                ScenarioStage.MAIN_MENU_RETURN,
+                progress_signal="main_menu_visible",
+            )
+
+        if "level_select_replay" in declared_stage_ids:
+            add(
+                "detect_focus_highlight",
+                "Prove Select Level is focused on the main menu.",
+                "Select Level is highlighted.",
+                {},
+                ScenarioStage.LEVEL_SELECT_REPLAY,
+            )
+            add(
+                "press_button",
+                "Open Select Level.",
+                "Level selection screen opens.",
+                {"button": "a"},
+                ScenarioStage.LEVEL_SELECT_REPLAY,
+                progress_signal="level_select_screen_visible",
+            )
+            add(
+                "wait_for_stable_screen",
+                "Wait for chapter/level grid to appear.",
+                "Chapter selection is visible.",
+                {"label": "stage-level-grid-stable"},
+                ScenarioStage.LEVEL_SELECT_REPLAY,
+            )
+            add(
+                "press_button",
+                "Navigate down to select Sea of Sand.",
+                "Sea of Sand is highlighted.",
+                {"button": "down"},
+                ScenarioStage.LEVEL_SELECT_REPLAY,
+            )
+            add(
+                "detect_focus_highlight",
+                "Prove Sea of Sand is focused before selection.",
+                "Sea of Sand is highlighted and ready to launch.",
+                {},
+                ScenarioStage.LEVEL_SELECT_REPLAY,
+            )
+            add(
+                "press_button",
+                "Launch Sea of Sand.",
+                "Sea of Sand begins loading.",
+                {"button": "a"},
+                ScenarioStage.LEVEL_SELECT_REPLAY,
+                progress_signal="level_launched",
+            )
+            add(
+                "wait_for_stable_screen",
+                "Wait for Sea of Sand gameplay to load.",
+                "Interactive desert gameplay is visible.",
+                {"label": "stage-sea-of-sand-stable"},
+                ScenarioStage.LEVEL_SELECT_REPLAY,
+                progress_signal="interactive_gameplay",
+            )
+            add(
+                "move_stick",
+                "Move forward in Sea of Sand.",
+                "Max moves forward with visible screen delta.",
+                {"stick": "left_stick", "direction": "right", "duration": 1.2, "strength": 1.0},
+                ScenarioStage.LEVEL_SELECT_REPLAY,
+                progress_signal="progress_signal",
+            )
+            add(
+                "press_button",
+                "Jump in Sea of Sand.",
+                "Max jumps with visible response.",
+                {"button": "a"},
+                ScenarioStage.LEVEL_SELECT_REPLAY,
+                progress_signal="jump_response",
+            )
+
+        if "achievements_review" in declared_stage_ids:
+            add(
+                "press_button",
+                "Open menu to access Achievements.",
+                "Menu is visible.",
+                {"button": "start"},
+                ScenarioStage.ACHIEVEMENTS_REVIEW,
+                progress_signal="pause_screen_visible",
+            )
+            add(
+                "wait_for_stable_screen",
+                "Wait for menu options to settle.",
+                "Menu options are visible.",
+                {"label": "stage-achievements-menu-stable"},
+                ScenarioStage.ACHIEVEMENTS_REVIEW,
+            )
+            add(
+                "detect_focus_highlight",
+                "Prove Achievements option is focused.",
+                "Achievements option is highlighted.",
+                {},
+                ScenarioStage.ACHIEVEMENTS_REVIEW,
+            )
+            add(
+                "press_button",
+                "Open Achievements screen.",
+                "Achievements screen is displayed.",
+                {"button": "a"},
+                ScenarioStage.ACHIEVEMENTS_REVIEW,
+                progress_signal="achievements_screen_visible",
+            )
+            add(
+                "wait_for_stable_screen",
+                "Wait for achievements list to render.",
+                "Achievements entries are visible.",
+                {"label": "stage-achievements-list"},
+                ScenarioStage.ACHIEVEMENTS_REVIEW,
+            )
+            add(
+                "read_screen_text",
+                "Read achievement entries on screen.",
+                "Achievement titles and descriptions are extracted.",
+                {},
+                ScenarioStage.ACHIEVEMENTS_REVIEW,
+                progress_signal="achievement_entries_readable",
+            )
+            add(
+                "press_button",
+                "Press B to back out of Achievements.",
+                "Returns back to menu screen.",
+                {"button": "b"},
+                ScenarioStage.ACHIEVEMENTS_REVIEW,
+                progress_signal="menu_screen_restored",
+            )
+            add(
+                "wait_for_stable_screen",
+                "Wait for menu to restore.",
+                "Menu screen is visible again.",
+                {"label": "stage-menu-restored"},
+                ScenarioStage.ACHIEVEMENTS_REVIEW,
+            )
+
+        if "exit_to_dashboard" in declared_stage_ids:
+            add(
+                "press_button",
+                "Press Xbox Guide button to open system guide.",
+                "Xbox guide overlay is visible.",
+                {"button": "guide"},
+                ScenarioStage.EXIT_TO_DASHBOARD,
+                progress_signal="guide_visible",
+            )
+            add(
+                "wait_for_stable_screen",
+                "Wait for Xbox guide to settle.",
+                "Guide overlay is visible.",
+                {"label": "stage-guide-settled"},
+                ScenarioStage.EXIT_TO_DASHBOARD,
+            )
+            add(
+                "press_button",
+                "Press Y to return to Xbox Dashboard.",
+                "Console navigates back to Home Dashboard.",
+                {"button": "y"},
+                ScenarioStage.EXIT_TO_DASHBOARD,
+                progress_signal="dashboard_exit",
+            )
+            add(
+                "wait_for_stable_screen",
+                "Wait for dashboard to load.",
+                "Xbox dashboard home screen is visible.",
+                {"label": "stage-dashboard-stable"},
+                ScenarioStage.EXIT_TO_DASHBOARD,
+                progress_signal="dashboard_visible",
+            )
+            add(
+                "capture_frame",
+                "Capture final dashboard state.",
+                "Final dashboard screenshot is archived.",
+                {"label": "stage-dashboard-final"},
+                ScenarioStage.EXIT_TO_DASHBOARD,
+                progress_signal="screen_change",
+            )
+
         plan.steps = steps
         plan.assumptions = list(dict.fromkeys([
             *plan.assumptions,
@@ -304,19 +656,18 @@ class PlannerAgent(BaseAgent):
                     stage: ScenarioStage | None) -> str:
         if stage is None:
             return ""
-        for item in scenario.stages:
-            if item.id == stage:
-                return item.objective
+        for s in (scenario.stages or []):
+            if s.id == stage:
+                return s.objective
         return ""
 
     @staticmethod
     def _infer_game_name(scenario: ValidatedScenario) -> str:
-        title = str(scenario.title or "")
-        match = re.match(r"(.+?)\s+-", title)
-        if match:
-            return match.group(1).strip()
-        goal = str(scenario.goal or "")
-        found = re.search(r"Prove that (.+?) can be discovered", goal)
+        text = f"{scenario.title} {scenario.description} {scenario.goal}"
+        for candidate in ("Max: The Curse of Brotherhood", "Minecraft", "Halo"):
+            if candidate.lower() in text.lower():
+                return candidate
+        found = re.search(r"launch\s+([A-Za-z0-9:\s]+?)\s+(?:from|on)", text, re.IGNORECASE)
         return found.group(1).strip() if found else ""
 
     @staticmethod
@@ -333,20 +684,46 @@ class PlannerAgent(BaseAgent):
         return "Chapter 1: Anotherland"
 
     @staticmethod
+    def _validate_stage_coverage(plan: TestPlan,
+                                 scenario: ValidatedScenario) -> None:
+        """Reject a plan that abandons declared stages.
+
+        A journey scenario declares every stage it intends to prove. A plan
+        that stops early is not a partial success - it produces a run where
+        most criteria are never attempted, which the verifier can only call
+        INCONCLUSIVE. Catching it here costs one replan instead of a full
+        multi-minute hardware run that was never going to answer the question.
+        """
+        declared = [s.id.value for s in (scenario.stages or [])]
+        if not declared:
+            return
+
+        planned = {step.stage.value for step in plan.steps
+                   if step.stage is not None}
+        missing = [name for name in declared if name not in planned]
+        if missing:
+            raise ValueError(
+                f"Plan covers only {len(planned)} of {len(declared)} declared "
+                f"stages. Missing steps for: {', '.join(missing)}. Every "
+                f"declared stage needs at least one step in THIS plan - a plan "
+                f"that stops early leaves most success criteria untested.")
+
+    @staticmethod
     def _validate_stage_discipline(plan: TestPlan) -> None:
         """Reject plans that skip proof when staged navigation needs it."""
         last_focus_proof: dict[str, int] = {}
         for step in plan.steps:
             if step.stage is not None:
-                if step.action == "detect_focus_highlight":
+                if step.action in {"detect_focus_highlight", "check_for_text", "read_screen_text"}:
                     last_focus_proof[step.stage.value] = step.index
                 elif (
                     step.action == "press_button"
                     and str(step.arguments.get("button", "")).lower() in {"a", "cross"}
-                    and step.stage.value == "level_navigation"
+                    and step.stage.value in _FOCUS_PROOF_STAGES
+                    and not _is_gameplay_action(step)
                 ):
                     prior = last_focus_proof.get(step.stage.value)
                     if prior is None or prior != step.index - 1:
                         raise ValueError(
-                            "Planner emitted a confirm action in level_navigation "
+                            f"Planner emitted a confirm action in {step.stage.value} "
                             "without an immediately preceding focus-proof step.")

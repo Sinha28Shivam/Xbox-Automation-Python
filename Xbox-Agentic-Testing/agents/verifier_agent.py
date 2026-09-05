@@ -150,9 +150,12 @@ class VerifierAgent(BaseAgent):
                          state: AgenticState) -> VerificationResult | None:
         """Deterministic Compliance Oracle: evaluate success criteria directly.
 
-        If on-screen OCR, visual checks, and execution signals definitively prove
-        all required criteria, issue an immediate PASS and bypass the LLM Vision call.
-        If there is any ambiguity or incomplete proof, return None to escalate to Layer 2.
+        Only resolves criteria with a mechanical check_type. Any criterion of
+        a different kind is refused, not guessed at.
+
+        Decidable kinds: text_present, no_error_dialog, screen_change.
+        Refusing even one required criterion sends the whole scenario to
+        layer 2 - a partial deterministic PASS is not produced.
         """
         if getattr(execution, "aborted", False):
             return None
@@ -175,78 +178,120 @@ class VerifierAgent(BaseAgent):
         if not proofs:
             return None
 
-        # Build combined observed corpus (OCR text, summary, details)
-        all_obs_text: list[str] = []
-        for e in proofs:
-            all_obs_text.append(str(e.summary).lower())
-            if isinstance(e.detail, dict):
-                for v in e.detail.values():
-                    all_obs_text.append(str(v).lower())
-        joined_text = " ".join(all_obs_text)
+        required = [c for c in scenario.success_criteria if c.required]
+        if not required:
+            return None
 
-        proven_criteria: list[str] = []
-        not_proven: list[str] = []
+        # Kinds the oracle is willing to answer without a vision model.
+        decidable = {"text_present", "no_error_dialog", "screen_change"}
+        if any(self._criterion_kind(c) not in decidable for c in required):
+            return None
 
-        for criterion in scenario.success_criteria:
-            if not criterion.required:
-                continue
+        joined_text = self._joined_observed_text(proofs)
+        results: list[CriterionResult] = []
 
-            desc = str(criterion.description or "").lower()
-            kind = getattr(criterion, "check_type", "") or getattr(criterion, "kind", "")
+        for criterion in required:
+            kind = self._criterion_kind(criterion)
             params = criterion.parameters or {}
-            expected_visual = str(params.get("expected_visual", "")).lower()
-            expected_screen = str(params.get("expected_screen", "")).lower()
 
-            # 1. Error dialog criterion
-            if kind == "no_error_dialog" or "error dialog" in desc:
-                error_words = ["something went wrong", "failed to launch", "corrupt file", "network error"]
-                if not any(w in joined_text for w in error_words):
-                    proven_criteria.append(criterion.description)
-                else:
-                    not_proven.append(criterion.description)
-                continue
+            if kind == "no_error_dialog":
+                met, matching = self._check_no_error_dialog(joined_text, proofs)
+            elif kind == "text_present":
+                expected = str(params.get("text", "")).strip()
+                if not expected:
+                    return None
+                met, matching = self._check_text_present(expected, joined_text, proofs)
+            else:
+                min_delta = float(params.get("min_delta", 0.0) or 0.0)
+                met, matching = self._check_screen_change(execution, min_delta, proofs)
 
-            # 2. Key phrases expected in the criterion
-            expected_tokens: list[str] = []
-            for phrase in (expected_visual, expected_screen, desc):
-                for token in ["anotherland", "brotherhood", "chapter 1", "curse of brotherhood"]:
-                    if token in phrase and token not in expected_tokens:
-                        expected_tokens.append(token)
+            if not met:
+                return None
 
-            if expected_tokens:
-                if all(tok in joined_text for tok in expected_tokens):
-                    proven_criteria.append(criterion.description)
-                else:
-                    not_proven.append(criterion.description)
-                continue
-
-            # 3. Dynamic gameplay / progress / stability criteria
-            if "progress signal" in desc or "interactive gameplay" in desc or "screen" in desc:
-                if execution.observed_any_change and len(execution.steps) >= 2:
-                    proven_criteria.append(criterion.description)
-                else:
-                    not_proven.append(criterion.description)
-                continue
-
-            # If unhandled or ambiguous criterion kind, fall through to LLM
-            return None
-
-        if not_proven or not proven_criteria:
-            return None
-
-        result = VerificationResult(
+            results.append(CriterionResult(
+                criterion=criterion.description,
+                met=True,
+                reasoning=(f"Deterministically verified by the compliance oracle "
+                          f"(check_type={kind}), no vision model call needed."),
+                evidence=matching,
+                confidence=0.95,
+            ))
+        return VerificationResult(
             scenario_id=scenario.id,
             verdict=Verdict.PASS,
-            confidence=0.98,
-            summary="Deterministic Compliance Oracle: All criteria verified by on-screen OCR, focus highlight, and visual evidence.",
-            proven_criteria=proven_criteria,
+            confidence=0.95,
+            summary=("Deterministic Compliance Oracle: all required criteria have "
+                     "a mechanical check_type and every one was proven by OCR or "
+                     "frame-diff evidence. No vision model call was needed."),
+            criteria=results,
             not_proven=[],
             evidence=evidence,
             stage_status=self._stage_status_map(execution),
             last_proven_stage=getattr(execution, "last_proven_stage", None),
             should_replan=False,
         )
-        return result
+
+    @staticmethod
+    def _criterion_kind(criterion: Any) -> str:
+        return str(getattr(criterion, "check_type", "")
+                   or getattr(criterion, "kind", "") or "").strip().lower()
+
+    @staticmethod
+    def _joined_observed_text(proofs: list[Evidence]) -> str:
+        """Flatten OCR text and evidence summaries into one lowercase corpus."""
+        parts: list[str] = []
+        for e in proofs:
+            parts.append(str(e.summary).lower())
+            if isinstance(e.detail, dict):
+                for v in e.detail.values():
+                    if isinstance(v, (str, int, float)):
+                        parts.append(str(v).lower())
+        return " ".join(parts)
+
+    _ERROR_PHRASES = (
+        "something went wrong", "failed to launch", "corrupt file",
+        "network error", "connection lost", "an error occurred",
+        "could not connect", "please try again later",
+    )
+
+    @classmethod
+    def _check_no_error_dialog(cls, joined_text: str,
+                               proofs: list[Evidence]) -> tuple[bool, list[Evidence]]:
+        hit = next((p for p in cls._ERROR_PHRASES if p in joined_text), None)
+        if hit is not None:
+            return False, []
+        matches = [e for e in proofs
+                  if e.kind in (EvidenceKind.OCR_TEXT, EvidenceKind.VISION_MODEL)]
+        return True, matches or proofs[:1]
+
+    @staticmethod
+    def _check_text_present(expected: str, joined_text: str,
+                            proofs: list[Evidence]) -> tuple[bool, list[Evidence]]:
+        expected_lower = expected.lower().strip()
+        if expected_lower not in joined_text:
+            return False, []
+        matching = [e for e in proofs
+                   if e.kind == EvidenceKind.OCR_TEXT
+                   and expected_lower in str(e.summary).lower()]
+        ocr_only = [e for e in proofs if e.kind == EvidenceKind.OCR_TEXT]
+        return True, matching or ocr_only[:1]
+
+    @staticmethod
+    def _check_screen_change(execution: Any, min_delta: float,
+                             proofs: list[Evidence]) -> tuple[bool, list[Evidence]]:
+        diffs = [e for e in proofs if e.kind == EvidenceKind.SCREEN_DIFF]
+        if not diffs:
+            return False, []
+        if min_delta > 0.0:
+            qualifying = [
+                e for e in diffs
+                if isinstance(e.detail, dict)
+                and float(e.detail.get("delta", 0.0) or 0.0) >= min_delta
+            ]
+            if not qualifying:
+                return False, []
+            return True, qualifying
+        return True, diffs
 
     @staticmethod
     def _stage_status_map(execution: Any) -> dict[str, StageStatus]:
