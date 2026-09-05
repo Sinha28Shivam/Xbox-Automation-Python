@@ -819,29 +819,64 @@ def _ocr_variants(image: Any) -> list[tuple[str, Any]]:
     return variants
 
 
+def _is_wordlike(word: str) -> bool:
+    """Does this token look like real UI text rather than OCR debris?
+
+    Console frames produce a lot of single-symbol garbage from icons, gradients
+    and antialiased edges. Requiring two characters with a majority of
+    alphanumerics removes most of it without discarding real short labels
+    like "OK", "A", "2" (kept when confidence is high - see _filter_words).
+    """
+    stripped = word.strip()
+    if len(stripped) < 2:
+        return False
+    alnum = sum(1 for ch in stripped if ch.isalnum())
+    return alnum >= max(2, len(stripped) // 2)
+
+
+def _filter_words(words: list[tuple[str, float]],
+                  floor: float) -> list[tuple[str, float]]:
+    """Keep only tokens we can actually stand behind.
+
+    WHY WORD-LEVEL AND NOT FRAME-LEVEL
+    ----------------------------------
+    An earlier version scored the whole frame and discarded everything when the
+    mean fell below the floor. On a live Xbox dashboard that threw away
+    genuinely readable text ("Asphalt Legends", "Browse the store", "GAME
+    PASS") because the same frame also contained a pile of icon debris that
+    dragged the average down. Filtering per WORD keeps the real labels and
+    drops only the debris, which is both more accurate and much safer: the
+    2205-character noise frame has no confident word-like tokens at all, so it
+    still collapses to nothing.
+    """
+    kept: list[tuple[str, float]] = []
+    for word, conf in words:
+        if conf < floor:
+            continue
+        if _is_wordlike(word) or conf >= 0.85:
+            kept.append((word, conf))
+    return kept
+
+
 def _score_ocr(words: list[tuple[str, float]]) -> float:
     """Plausibility score for one OCR result. Higher is better.
 
-    Deliberately NOT "longest wins" - that is exactly how the 2205-character
-    noise result would be chosen. Mean per-word confidence is the primary
-    signal, scaled by the share of tokens that look like real words, so a pile
-    of confident single symbols cannot beat a confident sentence.
+    Deliberately NOT "longest wins" - that is exactly how a 2205-character
+    noise result would be chosen. Score rewards how much CONFIDENT, word-like
+    text a variant produced, so a variant that reads five real labels beats one
+    that emits five hundred junk glyphs.
     """
-    usable = [(w, c) for w, c in words if w.strip() and c >= 0.0]
-    if not usable:
+    if not words:
         return 0.0
-
-    alpha_words = [w for w, _ in usable
-                   if len(w) >= 2 and any(ch.isalnum() for ch in w)]
-    if not alpha_words:
-        return 0.0
-
-    mean_conf = sum(c for _, c in usable) / len(usable)
-    alpha_ratio = len(alpha_words) / len(usable)
-    return mean_conf * alpha_ratio
+    mean_conf = sum(c for _, c in words) / len(words)
+    # Scaled by volume so a single lucky word does not outrank a full menu,
+    # saturating at ~12 words so long paragraphs do not dominate either.
+    volume = min(len(words), 12) / 12.0
+    return mean_conf * (0.4 + 0.6 * volume)
 
 
-def _tesseract_read(image: Any, psm: str = "6") -> tuple[str, float]:
+def _tesseract_read(image: Any, floor: float = 0.4,
+                    psm: str = "6") -> tuple[str, float]:
     """OCR one prepared image, returning (text, plausibility score).
 
     Uses image_to_data rather than image_to_string so tesseract's own
@@ -874,13 +909,16 @@ def _tesseract_read(image: Any, psm: str = "6") -> tuple[str, float]:
         if conf < 0:
             continue
         words.append((word, conf))
-        key = (data.get("block_num", [0] * len(texts))[i],
-               data.get("par_num", [0] * len(texts))[i],
-               data.get("line_num", [0] * len(texts))[i])
-        lines.setdefault(key, []).append(word)
+        # Only tokens that survive filtering are allowed into the returned
+        # text, so junk never reaches a substring match downstream.
+        if conf >= floor and (_is_wordlike(word) or conf >= 0.85):
+            key = (data.get("block_num", [0] * len(texts))[i],
+                   data.get("par_num", [0] * len(texts))[i],
+                   data.get("line_num", [0] * len(texts))[i])
+            lines.setdefault(key, []).append(word)
 
     text = "\n".join(" ".join(v) for _, v in sorted(lines.items()))
-    return text, _score_ocr(words)
+    return text, _score_ocr(_filter_words(words, floor))
 
 
 def _tesseract_best_variant(ctx: ToolContext, path: str) -> str:
@@ -909,7 +947,7 @@ def _tesseract_best_variant(ctx: ToolContext, path: str) -> str:
     attempts: list[dict[str, Any]] = []
     for name, prepared in _ocr_variants(image):
         try:
-            text, score = _tesseract_read(prepared)
+            text, score = _tesseract_read(prepared, floor)
         except Exception:
             continue
         attempts.append({"variant": name, "score": round(score, 3),
@@ -923,9 +961,13 @@ def _tesseract_best_variant(ctx: ToolContext, path: str) -> str:
     ctx.scratch["ocr_last_variant"] = best_name
     ctx.scratch["ocr_last_score"] = round(max(best_score, 0.0), 3)
 
-    if best_score < floor:
-        ctx.scratch["ocr_last_variant"] = f"{best_name} (below floor {floor})"
-        return ""
+    # No frame-level rejection here: junk was already dropped word-by-word in
+    # _tesseract_read, so whatever survived is text we can stand behind. An
+    # earlier version discarded the whole frame when the MEAN fell below the
+    # floor, which silently threw away a perfectly readable live dashboard
+    # because icon debris in the same frame dragged the average down.
+    if not best_text.strip():
+        ctx.scratch["ocr_last_variant"] = f"{best_name} (no confident text)"
     return best_text
 
 
