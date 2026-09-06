@@ -238,14 +238,17 @@ class VerifierAgent(BaseAgent):
 
     @staticmethod
     def _joined_observed_text(proofs: list[Evidence]) -> str:
-        """Flatten OCR text and evidence summaries into one lowercase corpus."""
+        """Flatten actual observed OCR and vision text into one lowercase corpus."""
         parts: list[str] = []
         for e in proofs:
-            parts.append(str(e.summary).lower())
-            if isinstance(e.detail, dict):
-                for v in e.detail.values():
-                    if isinstance(v, (str, int, float)):
-                        parts.append(str(v).lower())
+            if e.kind == EvidenceKind.OCR_TEXT:
+                if isinstance(e.detail, dict) and e.detail.get("text"):
+                    parts.append(str(e.detail["text"]).lower())
+                else:
+                    parts.append(str(e.summary).lower())
+            elif e.kind == EvidenceKind.VISION_MODEL:
+                if isinstance(e.detail, dict) and e.detail.get("observed_text"):
+                    parts.append(str(e.detail["observed_text"]).lower())
         return " ".join(parts)
 
     _ERROR_PHRASES = (
@@ -270,11 +273,14 @@ class VerifierAgent(BaseAgent):
         expected_lower = expected.lower().strip()
         if expected_lower not in joined_text:
             return False, []
-        matching = [e for e in proofs
-                   if e.kind == EvidenceKind.OCR_TEXT
-                   and expected_lower in str(e.summary).lower()]
-        ocr_only = [e for e in proofs if e.kind == EvidenceKind.OCR_TEXT]
-        return True, matching or ocr_only[:1]
+        matching = [
+            e for e in proofs
+            if e.kind == EvidenceKind.OCR_TEXT
+            and expected_lower in str((e.detail or {}).get("text", e.summary)).lower()
+        ]
+        if not matching:
+            return False, []
+        return True, matching
 
     @staticmethod
     def _check_screen_change(execution: Any, min_delta: float,
@@ -324,12 +330,7 @@ class VerifierAgent(BaseAgent):
         return [e for step in execution.steps for e in step.evidence]
 
     def _select_images(self, execution: Any) -> list[dict[str, str]]:
-        """Pick a few frames to show a vision model.
-
-        Sending all of them would be slow and expensive, so we take the first
-        frame (the starting state), the last (the end state) and the frame from
-        the step with the largest change (where the interesting thing happened).
-        """
+        """Pick representative frames across executed stages to show a vision model."""
         if not self.context.llm_factory.supports_vision(
                 self.spec.get("provider")):
             return []
@@ -342,6 +343,15 @@ class VerifierAgent(BaseAgent):
         if with_frames[0].frame_before:
             paths.append(with_frames[0].frame_before)
 
+        # Sample a frame from each distinct stage executed
+        stages_seen: set[str] = set()
+        for s in with_frames:
+            stage_name = str(getattr(s, "stage", "") or "")
+            if stage_name and stage_name not in stages_seen:
+                stages_seen.add(stage_name)
+                if s.frame_after:
+                    paths.append(s.frame_after)
+
         biggest = max(with_frames, key=lambda s: s.screen_delta or 0.0)
         if biggest.frame_after:
             paths.append(biggest.frame_after)
@@ -350,7 +360,7 @@ class VerifierAgent(BaseAgent):
             paths.append(with_frames[-1].frame_after)
 
         images: list[dict[str, str]] = []
-        for path in dict.fromkeys(paths):                 # de-dup, keep order
+        for path in list(dict.fromkeys(paths))[:8]:                 # de-dup, keep order, max 8
             encoded = self.call_tool("encode_frame_for_vision", frame_path=path)
             if encoded.get("ok"):
                 images.append({

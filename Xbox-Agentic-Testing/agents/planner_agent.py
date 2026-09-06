@@ -91,7 +91,9 @@ class PlannerAgent(BaseAgent):
         # Tier-1 Route Caching: check for verified route on initial run
         if not is_replan:
             cached_plan = load_cached_route(self.context.artifacts.run_dir, scenario.id)
-            if cached_plan is not None:
+            declared_stages = {s.id.value for s in (scenario.stages or [])}
+            cached_stages = {s.stage.value for s in (cached_plan.steps if cached_plan else []) if s.stage is not None}
+            if cached_plan is not None and (not declared_stages or declared_stages.issubset(cached_stages)):
                 cached_plan.scenario_id = scenario.id
                 cached_plan.revision = 1
                 for i, step in enumerate(cached_plan.steps):
@@ -366,11 +368,35 @@ class PlannerAgent(BaseAgent):
         )
         add(
             "move_stick",
-            "Move Max forward in Anotherland to prove interactive gameplay control.",
+            "Move Max forward (stick right) in gameplay to prove forward movement.",
             "Max moves forward and the gameplay scene updates visibly.",
-            {"stick": "left_stick", "direction": "right", "duration": 1.5, "strength": 1.0},
+            {"stick": "left_stick", "direction": "right", "duration": 1.2, "strength": 1.0},
             ScenarioStage.CLOSED_LOOP_PLAY,
             progress_signal="level_progress",
+        )
+        add(
+            "move_stick",
+            "Move Max backward (stick left) in gameplay to prove backward movement.",
+            "Max moves backward and the gameplay scene updates visibly.",
+            {"stick": "left_stick", "direction": "left", "duration": 1.2, "strength": 1.0},
+            ScenarioStage.CLOSED_LOOP_PLAY,
+            progress_signal="player_movement",
+        )
+        add(
+            "press_button",
+            "Jump in gameplay with A button to prove jump responsiveness.",
+            "Max jumps and returns to surface with visible screen delta.",
+            {"button": "a"},
+            ScenarioStage.CLOSED_LOOP_PLAY,
+            progress_signal="jump_response",
+        )
+        add(
+            "pull_trigger",
+            "Hold LT trigger to open Magic Marker / Pen in gameplay.",
+            "Magic Marker crosshair/glow becomes visible on screen.",
+            {"trigger": "lt", "duration": 1.5},
+            ScenarioStage.CLOSED_LOOP_PLAY,
+            progress_signal="progress_signal",
         )
 
         declared_stage_ids = {s.id.value for s in (scenario.stages or [])}
@@ -487,50 +513,52 @@ class PlannerAgent(BaseAgent):
                 ScenarioStage.LEVEL_SELECT_REPLAY,
             )
             add(
-                "press_button",
-                "Navigate down to select Sea of Sand.",
-                "Sea of Sand is highlighted.",
-                {"button": "down"},
-                ScenarioStage.LEVEL_SELECT_REPLAY,
-            )
-            add(
-                "detect_focus_highlight",
-                "Prove Sea of Sand is focused before selection.",
-                "Sea of Sand is highlighted and ready to launch.",
-                {},
-                ScenarioStage.LEVEL_SELECT_REPLAY,
-            )
-            add(
-                "press_button",
-                "Launch Sea of Sand.",
-                "Sea of Sand begins loading.",
-                {"button": "a"},
+                "select_level",
+                "Dynamically search for target level (Sea of Sand) via OCR across chapters and select it.",
+                "Level is matched via OCR, selected with A, and level loading initiates.",
+                {"target_level": "Sea of Sand", "chapter": "Chapter 1", "max_attempts": 8},
                 ScenarioStage.LEVEL_SELECT_REPLAY,
                 progress_signal="level_launched",
             )
             add(
                 "wait_for_stable_screen",
-                "Wait for Sea of Sand gameplay to load.",
-                "Interactive desert gameplay is visible.",
+                "Wait for level gameplay to load.",
+                "Interactive level gameplay is visible.",
                 {"label": "stage-sea-of-sand-stable"},
                 ScenarioStage.LEVEL_SELECT_REPLAY,
                 progress_signal="interactive_gameplay",
             )
             add(
                 "move_stick",
-                "Move forward in Sea of Sand.",
+                "Move forward in reloaded level to verify controls.",
                 "Max moves forward with visible screen delta.",
                 {"stick": "left_stick", "direction": "right", "duration": 1.2, "strength": 1.0},
                 ScenarioStage.LEVEL_SELECT_REPLAY,
                 progress_signal="progress_signal",
             )
             add(
+                "move_stick",
+                "Move backward in reloaded level to verify controls.",
+                "Max moves backward with visible screen delta.",
+                {"stick": "left_stick", "direction": "left", "duration": 1.2, "strength": 1.0},
+                ScenarioStage.LEVEL_SELECT_REPLAY,
+                progress_signal="player_movement",
+            )
+            add(
                 "press_button",
-                "Jump in Sea of Sand.",
+                "Jump in reloaded level with A.",
                 "Max jumps with visible response.",
                 {"button": "a"},
                 ScenarioStage.LEVEL_SELECT_REPLAY,
                 progress_signal="jump_response",
+            )
+            add(
+                "pull_trigger",
+                "Hold LT to open Magic Marker in reloaded level.",
+                "Magic Marker crosshair/drawing indicator appears.",
+                {"trigger": "lt", "duration": 1.5},
+                ScenarioStage.LEVEL_SELECT_REPLAY,
+                progress_signal="progress_signal",
             )
 
         if "achievements_review" in declared_stage_ids:
@@ -574,7 +602,7 @@ class PlannerAgent(BaseAgent):
             add(
                 "read_screen_text",
                 "Read achievement entries on screen.",
-                "Achievement titles and descriptions are extracted.",
+                "Achievement titles and descriptions are extracted via OCR.",
                 {},
                 ScenarioStage.ACHIEVEMENTS_REVIEW,
                 progress_signal="achievement_entries_readable",
@@ -598,7 +626,7 @@ class PlannerAgent(BaseAgent):
         if "exit_to_dashboard" in declared_stage_ids:
             add(
                 "press_button",
-                "Press Xbox Guide button to open system guide.",
+                "Press Xbox Guide button to open system guide overlay.",
                 "Xbox guide overlay is visible.",
                 {"button": "guide"},
                 ScenarioStage.EXIT_TO_DASHBOARD,
@@ -606,22 +634,58 @@ class PlannerAgent(BaseAgent):
             )
             add(
                 "wait_for_stable_screen",
-                "Wait for Xbox guide to settle.",
+                "Wait for Xbox guide overlay to settle.",
                 "Guide overlay is visible.",
                 {"label": "stage-guide-settled"},
                 ScenarioStage.EXIT_TO_DASHBOARD,
             )
             add(
                 "press_button",
-                "Press Y to return to Xbox Dashboard.",
-                "Console navigates back to Home Dashboard.",
-                {"button": "y"},
+                "Scroll down to Max: The Curse of Brotherhood in guide.",
+                "Highlight moves down to the running Max game tile in guide.",
+                {"button": "down"},
+                ScenarioStage.EXIT_TO_DASHBOARD,
+            )
+            add(
+                "wait_for_stable_screen",
+                "Wait for highlight to settle on Max tile in guide.",
+                "Max game item is selected in guide.",
+                {"label": "stage-guide-game-settled"},
+                ScenarioStage.EXIT_TO_DASHBOARD,
+            )
+            add(
+                "press_button",
+                "Press Menu button on Max entry to open contextual options.",
+                "Contextual pop-up menu with Quit option appears.",
+                {"button": "start"},
+                ScenarioStage.EXIT_TO_DASHBOARD,
+                progress_signal="menu_screen_restored",
+            )
+            add(
+                "wait_for_stable_screen",
+                "Wait for context menu to appear.",
+                "Context menu options are visible.",
+                {"label": "stage-context-menu-settled"},
+                ScenarioStage.EXIT_TO_DASHBOARD,
+            )
+            add(
+                "press_button",
+                "Navigate down to Quit option in popup menu.",
+                "Quit option is highlighted.",
+                {"button": "down"},
+                ScenarioStage.EXIT_TO_DASHBOARD,
+            )
+            add(
+                "press_button",
+                "Confirm Quit with A to terminate game and exit to dashboard.",
+                "Game terminates and Xbox dashboard is loaded.",
+                {"button": "a"},
                 ScenarioStage.EXIT_TO_DASHBOARD,
                 progress_signal="dashboard_exit",
             )
             add(
                 "wait_for_stable_screen",
-                "Wait for dashboard to load.",
+                "Wait for Xbox dashboard home screen to load.",
                 "Xbox dashboard home screen is visible.",
                 {"label": "stage-dashboard-stable"},
                 ScenarioStage.EXIT_TO_DASHBOARD,

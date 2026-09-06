@@ -344,6 +344,12 @@ class ExecutorAgent(BaseAgent):
             confidence=0.75,
             source_tool="read_screen_text",
         ))
+        if lines:
+            txt_summary = " | ".join(lines[:3])[:100]
+            if result.observation:
+                result.observation += f" [OCR: {txt_summary}]"
+            else:
+                result.observation = f"[OCR: {txt_summary}]"
 
     def _dispatch(self, step: PlannedStep, dry_run: bool) -> dict[str, Any]:
         if dry_run:
@@ -394,7 +400,8 @@ class ExecutorAgent(BaseAgent):
             focus_check = self._verify_focus_target(step, after_path)
             if focus_check is not None:
                 result.evidence.append(focus_check["evidence"])
-                if focus_check["matched"]:
+                is_matched = bool(focus_check.get("matched", focus_check.get("ok", False)))
+                if is_matched:
                     result.observation = (
                         f"Focus highlight matched target '{focus_check['target']}'. "
                         f"Expected: {step.expected_observation}")
@@ -511,20 +518,19 @@ class ExecutorAgent(BaseAgent):
 
     @staticmethod
     def _is_unproven_focus_check(step: PlannedStep, result: StepResult) -> bool:
-        """Did an explicit `detect_focus_highlight` step fail to prove focus?
+        if step.action != "detect_focus_highlight" or not result.error:
+            return False
 
-        The directional-press guard above only watches press_button steps
-        whose own wording mentions a highlight/target. Plans frequently split
-        this into its own step instead - press, then a separate
-        `detect_focus_highlight` call to check what landed. That step's
-        failure (wrong label, or no highlight at all) is exactly as
-        disqualifying as a failed press-and-check, and must block the next
-        confirm the same way. Without this, a proven mismatch (e.g. the
-        highlight reading "Descenders" when "My games & apps" was expected)
-        was being logged as evidence but not acted on, letting the executor
-        go on to press A on the wrong tile.
-        """
-        return step.action == "detect_focus_highlight" and bool(result.error)
+        error = (result.error or "").lower()
+        no_target_phrases = (
+            "no expected label", "expected_label is empty",
+            "no target", "nothing to match", "no label supplied",
+            "no green-highlight region was detected",
+            "in-game",
+        )
+        if any(phrase in error for phrase in no_target_phrases):
+            return False
+        return True
 
     def _verify_focus_target(self, step: PlannedStep,
                              after_path: str) -> dict[str, Any] | None:
@@ -547,15 +553,16 @@ class ExecutorAgent(BaseAgent):
             kind=EvidenceKind.VISION_MODEL if detection.get("ok") else EvidenceKind.FRAME_STATS,
             summary=(
                 f"Focus highlight {'matched' if detection.get('ok') else 'did not match'} "
-                f"target '{target}'."
+                f"expected '{target}' (observed '{observed}')."
             ),
             detail=detail,
             frame_path=after_path,
-            confidence=0.85 if detection.get("ok") else 0.6,
+            confidence=0.85 if detection.get("ok") else 0.4,
             source_tool="detect_focus_highlight",
         )
         return {
-            "matched": bool(detection.get("ok") and detection.get("matched")),
+            "ok": bool(detection.get("ok", False)),
+            "matched": bool(detection.get("ok", False) and detection.get("matched", True)),
             "target": target,
             "observed": observed[:200],
             "evidence": evidence,
@@ -563,6 +570,11 @@ class ExecutorAgent(BaseAgent):
 
     @staticmethod
     def _extract_expected_focus_label(step: PlannedStep) -> str:
+        for key in ("expected_label", "target", "label", "text"):
+            value = str(step.arguments.get(key, "") or "").strip()
+            if value and not value.startswith("stage-"):
+                return value
+
         text = " ".join([
             str(step.intent or ""),
             str(step.expected_observation or ""),

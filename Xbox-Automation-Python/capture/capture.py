@@ -456,6 +456,10 @@ class ScreenCapture:
             if cur is None or prev is None:
                 prev = cur
                 continue
+            if is_blank(cur, self.blank_threshold):
+                stable_since = None
+                prev = cur
+                continue
             if difference(prev, cur) < threshold:
                 stable_since = stable_since or time.time()
                 if time.time() - stable_since >= settle:

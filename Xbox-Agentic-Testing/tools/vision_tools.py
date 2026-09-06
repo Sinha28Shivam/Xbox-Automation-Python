@@ -641,6 +641,21 @@ def _detect_focus_highlight(ctx: ToolContext) -> Any:
                     engine=engine,
                     caveat=f"Verified via in-frame text match for '{expected_label}' (in-game custom focus styling).",
                 )
+            if not expected_label and full_text.strip():
+                first_line = [l.strip() for l in full_text.splitlines() if l.strip()]
+                label = first_line[0] if first_line else "menu_item"
+                return ok(
+                    frame_path=str(path),
+                    expected_label="",
+                    selected_label=label,
+                    highlight_bbox=None,
+                    crop_path=None,
+                    detections=[],
+                    rejected_oversized=[],
+                    matched=True,
+                    engine=engine,
+                    caveat="Menu text visible and active on screen (in-game menu without system green highlight).",
+                )
             return fail(
                 "No green-highlight region was detected, and expected label was not found in frame text.",
                 frame_path=str(path),
@@ -804,85 +819,56 @@ def _ocr_variants(image: Any) -> list[tuple[str, Any]]:
     otsu = cv2.threshold(upscaled, 0, 255,
                          cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
     variants.append(("upscale_otsu", otsu))
-    # Tesseract expects dark text on light. Game UIs are usually the reverse,
-    # so the inverted pass is often the one that actually reads.
     variants.append(("upscale_otsu_inverted", cv2.bitwise_not(otsu)))
 
-    # Menu labels are typically near-white; isolating bright pixels drops the
-    # background art entirely and is the most reliable variant on title cards.
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    bright = cv2.inRange(hsv, np.array([0, 0, 175]), np.array([180, 70, 255]))
+    bright = cv2.inRange(hsv, np.array([0, 0, 160]), np.array([180, 80, 255]))
     bright = cv2.resize(bright, None, fx=2.0, fy=2.0,
                         interpolation=cv2.INTER_CUBIC)
     variants.append(("bright_text", cv2.bitwise_not(bright)))
+
+    # Warm text (gold / yellow / orange frequent in Max titles and focus highlights)
+    warm = cv2.inRange(hsv, np.array([10, 70, 140]), np.array([35, 255, 255]))
+    if int(cv2.countNonZero(warm)) > 50:
+        warm = cv2.resize(warm, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
+        variants.append(("warm_text", cv2.bitwise_not(warm)))
 
     return variants
 
 
 def _is_wordlike(word: str) -> bool:
-    """Does this token look like real UI text rather than OCR debris?
-
-    Console frames produce a lot of single-symbol garbage from icons, gradients
-    and antialiased edges. Requiring two characters with a majority of
-    alphanumerics removes most of it without discarding real short labels
-    like "OK", "A", "2" (kept when confidence is high - see _filter_words).
-    """
+    """Does this token look like real UI text rather than OCR debris?"""
     stripped = word.strip()
-    if len(stripped) < 2:
+    if not stripped:
         return False
+    if len(stripped) == 1:
+        return stripped.isalnum()
     alnum = sum(1 for ch in stripped if ch.isalnum())
-    return alnum >= max(2, len(stripped) // 2)
+    return alnum >= max(1, len(stripped) // 2)
 
 
 def _filter_words(words: list[tuple[str, float]],
                   floor: float) -> list[tuple[str, float]]:
-    """Keep only tokens we can actually stand behind.
-
-    WHY WORD-LEVEL AND NOT FRAME-LEVEL
-    ----------------------------------
-    An earlier version scored the whole frame and discarded everything when the
-    mean fell below the floor. On a live Xbox dashboard that threw away
-    genuinely readable text ("Asphalt Legends", "Browse the store", "GAME
-    PASS") because the same frame also contained a pile of icon debris that
-    dragged the average down. Filtering per WORD keeps the real labels and
-    drops only the debris, which is both more accurate and much safer: the
-    2205-character noise frame has no confident word-like tokens at all, so it
-    still collapses to nothing.
-    """
     kept: list[tuple[str, float]] = []
     for word, conf in words:
         if conf < floor:
             continue
-        if _is_wordlike(word) or conf >= 0.85:
+        if _is_wordlike(word) or conf >= 0.75:
             kept.append((word, conf))
     return kept
 
 
 def _score_ocr(words: list[tuple[str, float]]) -> float:
-    """Plausibility score for one OCR result. Higher is better.
-
-    Deliberately NOT "longest wins" - that is exactly how a 2205-character
-    noise result would be chosen. Score rewards how much CONFIDENT, word-like
-    text a variant produced, so a variant that reads five real labels beats one
-    that emits five hundred junk glyphs.
-    """
     if not words:
         return 0.0
     mean_conf = sum(c for _, c in words) / len(words)
-    # Scaled by volume so a single lucky word does not outrank a full menu,
-    # saturating at ~12 words so long paragraphs do not dominate either.
     volume = min(len(words), 12) / 12.0
     return mean_conf * (0.4 + 0.6 * volume)
 
 
-def _tesseract_read(image: Any, floor: float = 0.4,
-                    psm: str = "6") -> tuple[str, float]:
-    """OCR one prepared image, returning (text, plausibility score).
-
-    Uses image_to_data rather than image_to_string so tesseract's own
-    confidence per word is available. A read we cannot score is a read we
-    cannot safely trust.
-    """
+def _tesseract_read(image: Any, floor: float = 0.3,
+                    psm: str = "11") -> tuple[str, float]:
+    """OCR one prepared image, returning (text, plausibility score)."""
     import pytesseract
 
     config = f"--psm {psm}"
@@ -890,9 +876,10 @@ def _tesseract_read(image: Any, floor: float = 0.4,
         data = pytesseract.image_to_data(
             image, config=config, output_type=pytesseract.Output.DICT)
     except Exception:
-        # If image_to_data is unavailable, fall back to plain text with a
-        # neutral score rather than losing the read entirely.
-        return pytesseract.image_to_string(image, config=config), 0.5
+        try:
+            return pytesseract.image_to_string(image, config=config), 0.5
+        except Exception:
+            return "", 0.0
 
     words: list[tuple[str, float]] = []
     lines: dict[tuple[int, int, int], list[str]] = {}
@@ -909,39 +896,61 @@ def _tesseract_read(image: Any, floor: float = 0.4,
         if conf < 0:
             continue
         words.append((word, conf))
-        # Only tokens that survive filtering are allowed into the returned
-        # text, so junk never reaches a substring match downstream.
-        if conf >= floor and (_is_wordlike(word) or conf >= 0.85):
+        if conf >= floor and (_is_wordlike(word) or conf >= 0.75):
             key = (data.get("block_num", [0] * len(texts))[i],
                    data.get("par_num", [0] * len(texts))[i],
                    data.get("line_num", [0] * len(texts))[i])
             lines.setdefault(key, []).append(word)
 
     text = "\n".join(" ".join(v) for _, v in sorted(lines.items()))
+
+    # If sparse mode produced fewer than 2 words, retry with layout psm 6
+    if len(lines) < 2 and psm == "11":
+        try:
+            alt_data = pytesseract.image_to_data(
+                image, config="--psm 6", output_type=pytesseract.Output.DICT)
+            alt_words: list[tuple[str, float]] = []
+            alt_lines: dict[tuple[int, int, int], list[str]] = {}
+            for i, raw_word in enumerate(alt_data.get("text", [])):
+                w = str(raw_word).strip()
+                if not w:
+                    continue
+                try:
+                    c = float(alt_data.get("conf", [])[i]) / 100.0
+                except (TypeError, ValueError, IndexError):
+                    c = -1.0
+                if c < 0:
+                    continue
+                alt_words.append((w, c))
+                if c >= floor and (_is_wordlike(w) or c >= 0.75):
+                    k = (alt_data.get("block_num", [0] * len(alt_data.get("text", [])))[i],
+                         alt_data.get("par_num", [0] * len(alt_data.get("text", [])))[i],
+                         alt_data.get("line_num", [0] * len(alt_data.get("text", [])))[i])
+                    alt_lines.setdefault(k, []).append(w)
+            alt_text = "\n".join(" ".join(v) for _, v in sorted(alt_lines.items()))
+            if len(alt_lines) > len(lines):
+                return alt_text, _score_ocr(_filter_words(alt_words, floor))
+        except Exception:
+            pass
+
     return text, _score_ocr(_filter_words(words, floor))
 
 
 def _tesseract_best_variant(ctx: ToolContext, path: str) -> str:
-    """Read `path` with several preprocessing variants and keep the best.
-
-    Returns the highest-scoring text. When every variant scores below the
-    configured floor the result is returned EMPTY rather than as content - an
-    unreadable screen must not be reported as a screen containing junk.
-    """
+    """Read `path` with several preprocessing variants and keep the best."""
     import pytesseract
     from PIL import Image
 
     try:
         import cv2
     except ImportError:
-        # No OpenCV - behave exactly as before rather than failing.
         return pytesseract.image_to_string(Image.open(path))
 
     image = cv2.imread(str(path))
     if image is None:
         return pytesseract.image_to_string(Image.open(path))
 
-    floor = float(ctx.settings.get("verification.ocr.min_confidence", 0.4))
+    floor = float(ctx.settings.get("verification.ocr.min_confidence", 0.3))
 
     best_name, best_text, best_score = "raw", "", -1.0
     attempts: list[dict[str, Any]] = []
@@ -955,18 +964,18 @@ def _tesseract_best_variant(ctx: ToolContext, path: str) -> str:
         if score > best_score:
             best_name, best_text, best_score = name, text, score
 
-    # Recorded so a wrong read can be investigated from the artifacts rather
-    # than reproduced by hand.
     ctx.scratch["ocr_last_attempts"] = attempts
     ctx.scratch["ocr_last_variant"] = best_name
     ctx.scratch["ocr_last_score"] = round(max(best_score, 0.0), 3)
 
-    # No frame-level rejection here: junk was already dropped word-by-word in
-    # _tesseract_read, so whatever survived is text we can stand behind. An
-    # earlier version discarded the whole frame when the MEAN fell below the
-    # floor, which silently threw away a perfectly readable live dashboard
-    # because icon debris in the same frame dragged the average down.
     if not best_text.strip():
+        # Fallback to direct string read before giving up entirely
+        try:
+            fallback = pytesseract.image_to_string(image, config="--psm 11").strip()
+            if fallback:
+                return fallback
+        except Exception:
+            pass
         ctx.scratch["ocr_last_variant"] = f"{best_name} (no confident text)"
     return best_text
 

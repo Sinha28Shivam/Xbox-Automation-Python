@@ -96,6 +96,85 @@ def _list_artifacts(ctx: ToolContext) -> Any:
 
 
 # ===========================================================================
+# Scenario Mechanics Coverage Matrix
+# ===========================================================================
+def _mechanics_coverage_matrix(r: dict[str, Any]) -> list[dict[str, Any]]:
+    execution = r.get("execution") or {}
+    steps = execution.get("steps") or []
+
+    categories = [
+        {
+            "title": "Scenario 1: Controller Inputs & Gameplay",
+            "icon": "🎮",
+            "items": [
+                ("Move forward / right", lambda s: s.get("action") == "move_stick" and str(s.get("arguments", {}).get("direction")).lower() in {"right", "forward"}),
+                ("Move backward / left", lambda s: s.get("action") == "move_stick" and str(s.get("arguments", {}).get("direction")).lower() in {"left", "backward"}),
+                ("Jump (A)", lambda s: s.get("action") == "press_button" and str(s.get("arguments", {}).get("button", "")).lower() in {"a", "cross"} and s.get("stage") in {"closed_loop_play", "level_launch"}),
+                ("Hold LT (Magic Marker / Pen)", lambda s: (s.get("action") == "pull_trigger" and str(s.get("arguments", {}).get("trigger", "")).lower() in {"lt", "l2"}) or (s.get("action") == "hold_button" and str(s.get("arguments", {}).get("button", "")).lower() in {"lt", "l2"})),
+                ("Gameplay screen motion", lambda s: s.get("stage") == "closed_loop_play" and (s.get("screen_delta") or 0) > 0.0),
+            ]
+        },
+        {
+            "title": "Scenario 2: Pause & Restart Checkpoint",
+            "icon": "🔄",
+            "items": [
+                ("Open in-game pause menu (Menu)", lambda s: s.get("action") == "press_button" and str(s.get("arguments", {}).get("button", "")).lower() in {"menu", "start", "pause"} and s.get("stage") == "pause_checkpoint"),
+                ("Focus Last Checkpoint", lambda s: s.get("stage") == "pause_checkpoint" and s.get("action") in {"detect_focus_highlight", "read_screen_text", "check_for_text"}),
+                ("Confirm checkpoint reload (A)", lambda s: s.get("stage") == "pause_checkpoint" and s.get("action") == "press_button" and str(s.get("arguments", {}).get("button", "")).lower() in {"a", "cross"}),
+                ("Verify checkpoint restored & controls respond", lambda s: s.get("stage") == "pause_checkpoint" and s.get("action") == "move_stick"),
+            ]
+        },
+        {
+            "title": "Scenario 3: Dynamic Level Select & Chapter Replay",
+            "icon": "🗺️",
+            "items": [
+                ("Return to Main Menu", lambda s: s.get("stage") == "main_menu_return" and s.get("action") == "press_button" and str(s.get("arguments", {}).get("button", "")).lower() in {"a", "cross"}),
+                ("Select Level dynamically (OCR across chapters)", lambda s: s.get("action") == "select_level" or (s.get("stage") == "level_select_replay" and "sea of sand" in str(s.get("observation", "")).lower())),
+                ("Replay move forward", lambda s: s.get("stage") == "level_select_replay" and s.get("action") == "move_stick" and str(s.get("arguments", {}).get("direction")).lower() in {"right", "forward"}),
+                ("Replay move backward", lambda s: s.get("stage") == "level_select_replay" and s.get("action") == "move_stick" and str(s.get("arguments", {}).get("direction")).lower() in {"left", "backward"}),
+                ("Replay jump (A)", lambda s: s.get("stage") == "level_select_replay" and s.get("action") == "press_button" and str(s.get("arguments", {}).get("button", "")).lower() in {"a", "cross"}),
+                ("Replay Magic Marker (Hold LT)", lambda s: s.get("stage") == "level_select_replay" and ((s.get("action") == "pull_trigger" and str(s.get("arguments", {}).get("trigger", "")).lower() in {"lt", "l2"}) or (s.get("action") == "hold_button" and str(s.get("arguments", {}).get("button", "")).lower() in {"lt", "l2"}))),
+            ]
+        },
+        {
+            "title": "Scenario 4: Achievements Review",
+            "icon": "🏆",
+            "items": [
+                ("Navigate to Achievements", lambda s: s.get("stage") == "achievements_review" and s.get("action") == "press_button" and str(s.get("arguments", {}).get("button", "")).lower() in {"a", "cross"}),
+                ("Extract achievement entries (OCR)", lambda s: s.get("stage") == "achievements_review" and s.get("action") in {"read_screen_text", "check_for_text"}),
+                ("Back out with B", lambda s: s.get("stage") == "achievements_review" and s.get("action") == "press_button" and str(s.get("arguments", {}).get("button", "")).lower() in {"b", "circle"}),
+            ]
+        },
+        {
+            "title": "Scenario 5: Guide Quit & Dashboard Return",
+            "icon": "🚪",
+            "items": [
+                ("Open Xbox Guide", lambda s: s.get("stage") == "exit_to_dashboard" and s.get("action") == "press_button" and str(s.get("arguments", {}).get("button", "")).lower() in {"guide", "xbox"}),
+                ("Navigate to Max in Guide & open Menu", lambda s: s.get("stage") == "exit_to_dashboard" and s.get("action") == "press_button" and str(s.get("arguments", {}).get("button", "")).lower() in {"menu", "start"}),
+                ("Select and confirm Quit (A)", lambda s: s.get("stage") == "exit_to_dashboard" and s.get("action") == "press_button" and str(s.get("arguments", {}).get("button", "")).lower() in {"a", "cross"}),
+                ("Verify Xbox Dashboard restored", lambda s: s.get("stage") == "exit_to_dashboard" and s.get("action") in {"wait_for_stable_screen", "capture_frame"}),
+            ]
+        },
+    ]
+
+    out = []
+    for cat in categories:
+        cat_items = []
+        for name, fn in cat["items"]:
+            # Strict criteria: must be dispatched without error to count as PROVEN
+            matching = [s for s in steps if fn(s) and s.get("dispatched") and not s.get("error")]
+            if matching:
+                m = matching[0]
+                delta = m.get("screen_delta")
+                delta_str = f"delta {float(delta):.2f}" if delta is not None else "verified"
+                cat_items.append({"name": name, "status": "PROVEN", "evidence": f"Step #{m.get('index')} ({m.get('action')}) - {delta_str}"})
+            else:
+                cat_items.append({"name": name, "status": "UNTESTED", "evidence": "Not exercised or not proven"})
+        out.append({"title": cat["title"], "icon": cat["icon"], "items": cat_items})
+    return out
+
+
+# ===========================================================================
 # Markdown
 # ===========================================================================
 def _markdown(ctx: ToolContext, r: dict[str, Any]) -> str:
@@ -202,22 +281,38 @@ def _markdown(ctx: ToolContext, r: dict[str, Any]) -> str:
                     f"`{item.get('to_stage')}` at {item.get('timestamp', '')}")
             out.append("")
 
+    matrix = _mechanics_coverage_matrix(r)
+    if matrix:
+        out += ["## Gameplay & Mechanics Scenario Coverage", "",
+                "Detailed test matrix mapping actions to controller, menu, platforming, Magic Marker, and death recovery scenarios.", ""]
+        for cat in matrix:
+            out += [f"### {cat['icon']} {cat['title']}", "",
+                    "| Scenario | Status | Action & Verification |",
+                    "|---|---|---|"]
+            for item in cat["items"]:
+                mark = "[x] PROVEN" if item["status"] == "PROVEN" else "[ ] UNTESTED"
+                out.append(f"| {item['name']} | {mark} | {item['evidence']} |")
+            out.append("")
+
     execution = r.get("execution") or {}
     steps = execution.get("steps") or []
     if steps:
         out += ["## Steps", "",
-                "| # | Action | Dispatched | Screen delta | Observation |",
-                "|---|---|---|---|---|"]
+                "| # | Action | Dispatched | Screen delta | Observation | Extracted Text (OCR) |",
+                "|---|---|---|---|---|---|"]
         for s in steps:
             delta = s.get("screen_delta")
             # "n/a" and 0.0 mean different things: not measured versus measured
             # and unchanged. The second is a finding; the first is a gap.
             delta_text = "n/a" if delta is None else f"{float(delta):.3f}"
-            obs = str(s.get("observation", "")).replace("|", "\\|")[:120]
+            obs = str(s.get("observation", "")).replace("|", "\\|")[:80]
+            ocr = str(s.get("ocr_text", "")).replace("|", "\\|").replace("\n", " ").strip()[:80]
+            if not ocr:
+                ocr = "-"
             out.append(
                 f"| {s.get('index', '')} | `{s.get('action', '')}` | "
                 f"{'yes' if s.get('dispatched') else 'no'} | {delta_text} | "
-                f"{obs} |")
+                f"{obs} | {ocr} |")
         out.append("")
 
     rca = r.get("rca") or {}
@@ -598,6 +693,29 @@ def _html(ctx: ToolContext, r: dict[str, Any]) -> str:
     </section>
 """)
 
+    matrix = _mechanics_coverage_matrix(r)
+    if matrix:
+        matrix_blocks = []
+        for cat in matrix:
+            rows = "".join(
+                f"<tr><td><span class=\"pill {'pass' if item['status'] == 'PROVEN' else 'inconclusive'}\">{'PROVEN' if item['status'] == 'PROVEN' else 'UNTESTED'}</span></td><td><strong>{p(item['name'])}</strong></td><td>{p(item['evidence'])}</td></tr>"
+                for item in cat["items"]
+            )
+            matrix_blocks.append(f"""
+      <h3 style="margin-top:18px;">{cat['icon']} {p(cat['title'])}</h3>
+      <table>
+        <thead><tr><th>Status</th><th>Scenario</th><th>Action &amp; Verification Evidence</th></tr></thead>
+        <tbody>{rows}</tbody>
+      </table>
+""")
+        sections.append(f"""
+    <section class="section card">
+      <h2>Gameplay &amp; Mechanics Scenario Coverage</h2>
+      <p class="muted">Detailed test matrix mapping actions to controller, menu, platforming, Magic Marker, and death recovery scenarios.</p>
+      {''.join(matrix_blocks)}
+    </section>
+""")
+
     if stage_summary:
         stage_rows = "".join(
             f"<tr><td><code>{p(item.get('stage', ''))}</code></td><td>{p(item.get('status', ''))}</td><td>{p(item.get('summary', ''))}</td></tr>"
@@ -708,6 +826,7 @@ def _html(ctx: ToolContext, r: dict[str, Any]) -> str:
         <div class="kv">
           <div>Dispatched</div><div>{'yes' if s.get('dispatched') else 'no'}</div>
           <div>Error</div><div>{p(s.get('error', '') or '-')}</div>
+          <div>Extracted Text</div><div>{p(s.get('ocr_text', '')[:140] or '-')}</div>
         </div>
         <div class="frames">{''.join(frames) or '<p class="muted">No frames saved for this step.</p>'}</div>
         {ocr}

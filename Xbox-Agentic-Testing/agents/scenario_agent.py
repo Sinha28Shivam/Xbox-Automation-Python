@@ -334,5 +334,5 @@ _TOOL_ACTIONS = {
     "encode_frame_for_vision", "list_captured_frames", "press_button",
     "hold_button", "move_stick", "pull_trigger", "run_macro",
     "run_special_action", "run_sequence", "type_text", "wait",
-    "get_timing", "discover_game", "launch_game",
+    "get_timing", "discover_game", "launch_game", "select_level",
 }

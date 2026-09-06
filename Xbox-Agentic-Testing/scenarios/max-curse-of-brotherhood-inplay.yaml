@@ -34,12 +34,12 @@ tags:
   - gameplay
 
 game_controls:
-  left_stick: "Move Max"
+  left_stick: "Move Max (normal) / Move magic Marker to draw (when LT is held)"
   a: "Jump / interact / confirm"
+  b: "Context action / cancel"
   x: "To destroy the drawing"
   y: "Contextual action"
-  lt: "holds to Opens magic Marker and holds to use it"
-  left_stick: "Move magic Marker to draw anything"
+  lt: "Holds to opens magic Marker and holds to use it"
   dpad: "Menu navigation / selection"
   menu: "Pause"
   

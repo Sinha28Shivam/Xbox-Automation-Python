@@ -1,0 +1,470 @@
+# ===========================================================================
+# TEST SCENARIO:
+# Max: The Curse of Brotherhood - Comprehensive Mechanics & Any-Chapter Play
+#
+# Purpose:
+#   Validate that the Xbox automation framework can:
+#     1. Discover Max on dashboard or detect active game
+#     2. Launch / resume the game
+#     3. Detect in-game menu, level selection, or continue prompt
+#     4. Focus and navigate to an available level/chapter or continue state
+#     5. Launch level and enter interactive gameplay
+#     6. Execute controller actions (move left/right, jump with A, action B)
+#     7. Validate Magic Marker mechanics (LT hold, marker drawing, X destroy)
+#     8. Detect and prove genuine gameplay progression
+#     9. Recover from death / respawn when encountered
+#    10. Produce full screenshot and coverage evidence for all test domains
+#
+# Run from Xbox-Agentic-Testing:
+#   python console.py run --file scenarios/max-any-chapter.yaml
+# ===========================================================================
+
+id: max-any-chapter
+title: "Max: The Curse of Brotherhood - Comprehensive Mechanics & Any-Chapter Play"
+description: >
+  Deterministic validation scenario for the Xbox automation framework.
+  The scenario validates game discovery, launch, menu detection, level
+  selection, interactive gameplay, controller response, Magic Marker
+  interaction, gameplay progress, recovery behavior, and final evidence.
+
+console: xbox_one
+
+goal: >
+  Validate that the automation framework can control and visually verify
+  Max: The Curse of Brotherhood through a complete closed-loop workflow across
+  controller, platforming, Magic Marker, progress, and recovery mechanics.
+
+preconditions:
+  - The console/device is powered on and awake.
+  - The GIMX session is authenticated and connected.
+  - The capture adapter provides the live Xbox display.
+  - The user is signed in.
+  - Max: The Curse of Brotherhood is installed and available.
+  - At least one playable chapter or continue state is available.
+
+tags:
+  - xbox
+  - max
+  - validation
+  - automation
+  - controller
+  - gameplay
+  - regression
+
+execution:
+  mode: scenario
+  max_steps: 250
+  max_replans: 5
+  timeout_seconds: 3600
+  require_visual_evidence: true
+  save_frames: true
+  stop_on_unproven_progress: true
+  recover_from_death: true
+
+# ---------------------------------------------------------------------------
+# CONTROLLER CONTRACT
+# ---------------------------------------------------------------------------
+
+game_controls:
+  left_stick:
+    semantic_action: move_player
+    description: "Move Max during gameplay or steer Magic Marker."
+
+  a:
+    semantic_action: jump_or_confirm
+    description: "Jump during gameplay or confirm a menu selection."
+
+  b:
+    semantic_action: cancel_or_context_action
+    description: "Cancel menus or perform a contextual gameplay action."
+
+  x:
+    semantic_action: destroy_marker_drawing
+    description: "Destroy/remove the current Magic Marker drawing."
+
+  y:
+    semantic_action: contextual_action
+    description: "Perform a context-dependent interaction when visually required."
+
+  lt:
+    semantic_action: activate_magic_marker
+    description: "Hold to enter/use Magic Marker interaction."
+
+  rt:
+    semantic_action: marker_action
+    description: "Use the context-dependent marker interaction when required."
+
+  dpad:
+    semantic_action: menu_navigation
+    description: "Navigate menu/selection interfaces."
+
+  menu:
+    semantic_action: pause
+    description: "Open the pause menu."
+
+# ---------------------------------------------------------------------------
+# TEST STAGES
+# ---------------------------------------------------------------------------
+
+stages:
+
+  # ========================================================================
+  # T01 - PREFLIGHT
+  # ========================================================================
+  - id: preflight
+    objective: >
+      Validate that the automation environment is capable of executing
+      a test before interacting with the game.
+    required_evidence:
+      - healthy_rig
+    allowed_actions:
+      - capture_frame
+    stop_conditions:
+      - rig_blocked
+    replan_conditions:
+      - none
+
+  # ========================================================================
+  # T02 - GAME DISCOVERY
+  # ========================================================================
+  - id: game_discovery
+    objective: >
+      Visually identify Max: The Curse of Brotherhood on the dashboard
+      or prove that Max is already the active application.
+    required_evidence:
+      - focused_tile
+      - focused_tile_title_match
+    allowed_actions:
+      - launch_game
+      - capture_frame
+      - read_screen_text
+      - detect_focus_highlight
+    stop_conditions:
+      - wrong_game_detected
+      - game_not_found
+    replan_conditions:
+      - focused_tile_not_proven
+
+  # ========================================================================
+  # T03 - GAME LAUNCH
+  # ========================================================================
+  - id: game_launch
+    objective: >
+      Launch or resume Max and verify that the application becomes
+      visually active.
+    required_evidence:
+      - screen_change
+      - game_screen
+    allowed_actions:
+      - launch_game
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - check_for_text
+    stop_conditions:
+      - launch_failed
+      - unrecovered_error_dialog
+    replan_conditions:
+      - launch_unproven
+
+  # ========================================================================
+  # T04 - MENU / STATE DETECTION
+  # ========================================================================
+  - id: menu_detection
+    objective: >
+      Determine the current valid Max state and reach the in-game menu,
+      chapter selection, or continue prompt.
+    required_evidence:
+      - game_screen
+    allowed_actions:
+      - press_button
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - detect_focus_highlight
+      - check_for_text
+    stop_conditions:
+      - menu_unreachable
+      - unrecovered_error_dialog
+    replan_conditions:
+      - menu_not_proven
+
+  # ========================================================================
+  # T05 - LEVEL NAVIGATION
+  # ========================================================================
+  - id: level_navigation
+    objective: >
+      Navigate the available level/chapter interface and visually prove
+      that a playable level or continue option is focused before selection.
+    required_evidence:
+      - focus_highlight
+    allowed_actions:
+      - press_button
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - detect_focus_highlight
+    stop_conditions:
+      - target_not_visible
+    replan_conditions:
+      - focus_not_proven
+      - menu_changed_unexpectedly
+
+  # ========================================================================
+  # T06 - LEVEL LAUNCH
+  # ========================================================================
+  - id: level_launch
+    objective: >
+      Enter the selected level and prove that the game has transitioned
+      into interactive gameplay.
+    required_evidence:
+      - screen_change
+      - interactive_gameplay
+    allowed_actions:
+      - press_button
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - check_for_text
+    stop_conditions:
+      - level_launch_failed
+      - unrecovered_error_dialog
+    replan_conditions:
+      - level_launch_unproven
+
+  # ========================================================================
+  # T07 - CLOSED LOOP PLAY (SCENARIO 1: CONTROLLER INPUTS)
+  # ========================================================================
+  - id: closed_loop_play
+    objective: >
+      Execute closed-loop gameplay verifying all controller inputs: forward
+      movement (stick right), backward movement (stick left), jump (A),
+      and holding LT to open Magic Marker.
+    required_evidence:
+      - progress_signal
+    allowed_actions:
+      - move_stick
+      - press_button
+      - hold_button
+      - pull_trigger
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - check_for_text
+      - detect_focus_highlight
+      - compare_frames
+    stop_conditions:
+      - unrecovered_error_dialog
+      - stuck_without_progress
+    replan_conditions:
+      - death_recovery_failed
+      - gameplay_stuck
+
+  # ========================================================================
+  # T08 - PAUSE & RESTART CHECKPOINT (SCENARIO 2)
+  # ========================================================================
+  - id: pause_checkpoint
+    objective: >
+      Press menu button to access in-game pause screen, select and confirm
+      restart from last checkpoint, and verify interactive gameplay is restored.
+    required_evidence:
+      - progress_signal
+    allowed_actions:
+      - press_button
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - check_for_text
+      - detect_focus_highlight
+      - move_stick
+    stop_conditions:
+      - unrecovered_error_dialog
+    replan_conditions:
+      - menu_not_proven
+
+  # ========================================================================
+  # T09 - MAIN MENU RETURN
+  # ========================================================================
+  - id: main_menu_return
+    objective: >
+      Open pause screen, navigate to Main Menu option, confirm selection, and
+      verify the game returns to the title/main menu.
+    required_evidence:
+      - game_screen
+    allowed_actions:
+      - press_button
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - detect_focus_highlight
+    stop_conditions:
+      - unrecovered_error_dialog
+    replan_conditions:
+      - menu_not_proven
+
+  # ========================================================================
+  # T10 - DYNAMIC LEVEL SELECT & REPLAY (SCENARIO 3)
+  # ========================================================================
+  - id: level_select_replay
+    objective: >
+      Open Select Level, dynamically scan chapters using OCR for target level
+      (Sea of Sand), select and load the level, and verify controller inputs
+      (move forward, move backward, jump A, hold LT).
+    required_evidence:
+      - interactive_gameplay
+    allowed_actions:
+      - press_button
+      - select_level
+      - move_stick
+      - pull_trigger
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - detect_focus_highlight
+    stop_conditions:
+      - unrecovered_error_dialog
+    replan_conditions:
+      - level_launch_unproven
+
+  # ========================================================================
+  # T11 - ACHIEVEMENTS REVIEW (SCENARIO 4)
+  # ========================================================================
+  - id: achievements_review
+    objective: >
+      Open menu to access Achievements screen, verify achievements are visible
+      and extract entries via OCR, then press B to return.
+    required_evidence:
+      - game_screen
+    allowed_actions:
+      - press_button
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - detect_focus_highlight
+    stop_conditions:
+      - unrecovered_error_dialog
+    replan_conditions:
+      - menu_not_proven
+
+  # ========================================================================
+  # T12 - EXIT TO DASHBOARD VIA GUIDE (SCENARIO 5)
+  # ========================================================================
+  - id: exit_to_dashboard
+    objective: >
+      Press Xbox Guide button, scroll down to running Max: The Curse of Brotherhood
+      item, press Menu button, select Quit, and verify console returns to dashboard.
+    required_evidence:
+      - screen_change
+    allowed_actions:
+      - press_button
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - detect_focus_highlight
+    stop_conditions:
+      - unrecovered_error_dialog
+    replan_conditions:
+      - launch_unproven
+
+# ---------------------------------------------------------------------------
+# PROGRESS / FAILURE SIGNALS
+# ---------------------------------------------------------------------------
+
+progress_signals:
+  - screen_change
+  - player_movement
+  - jump_response
+  - marker_interaction
+  - room_transition
+  - checkpoint_reached
+  - puzzle_progress
+  - level_progress
+
+death_signals:
+  - death_screen
+  - respawn_screen
+  - restart_from_checkpoint
+
+failure_signals:
+  - unrecovered_error_dialog
+  - capture_lost
+  - controller_unresponsive
+  - launch_failed
+  - gameplay_stuck
+
+# ---------------------------------------------------------------------------
+# POLICIES
+# ---------------------------------------------------------------------------
+
+stuck_policy:
+  no_visible_change_retries: 3
+  action_change_required: true
+  require_observation_between_actions: true
+  no_blind_repeat_sequences: true
+
+recovery_policy:
+  recover_from_death: true
+  preserve_checkpoint_evidence: true
+  no_blind_repeat_sequences: true
+  require_post_recovery_observation: true
+
+# ---------------------------------------------------------------------------
+# SUCCESS CRITERIA
+# ---------------------------------------------------------------------------
+
+success_criteria:
+
+  - description: >
+      Max: The Curse of Brotherhood is visually identified on the dashboard
+      tile or visually verified as already active before launch is attempted.
+    check_type: vision_judgement
+    parameters:
+      expected_visual: "The focused dashboard tile shows Max: The Curse of Brotherhood or the game is already active."
+    required: true
+
+  - description: >
+      The game reaches a visible Max startup, menu, or interactive screen after launch.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Max: The Curse of Brotherhood startup, menu, or gameplay screen"
+    required: true
+
+  - description: >
+      Scenario 1: Controller inputs (forward, backward, jump with A, hold LT for Magic Marker) are executed with observable gameplay response.
+    check_type: screen_change
+    parameters:
+      min_delta: 0.5
+    required: true
+
+  - description: >
+      Scenario 2: In-game pause menu is opened and restarting from checkpoint successfully reloads interactive gameplay.
+    check_type: vision_judgement
+    parameters:
+      expected_visual: "Checkpoint reload completes and interactive gameplay is restored"
+    required: true
+
+  - description: >
+      Scenario 3: Level selection dynamically locates target level across chapters via OCR, loads the level, and verifies controller inputs.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Interactive level gameplay loaded from chapter/level select"
+    required: true
+
+  - description: >
+      Scenario 4: Achievements screen is opened, achievement entries are visible and extracted via OCR, and backed out with B.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Achievements interface with visible achievement titles or progress"
+    required: true
+
+  - description: >
+      Scenario 5: Game is terminated via Xbox Guide contextual Quit option and Xbox home dashboard is restored.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Xbox One Home Dashboard"
+    required: true
+
+  - description: >
+      No unrecovered error dialog or connection failure remains visible during the run.
+    check_type: no_error_dialog
+    required: true

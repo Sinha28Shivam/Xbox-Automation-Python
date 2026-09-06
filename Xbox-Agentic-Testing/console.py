@@ -35,8 +35,14 @@ import json
 import sys
 from pathlib import Path
 
+# Ensure Windows console does not crash on LLM-generated Unicode characters (arrows, symbols)
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 _ROOT = Path(__file__).resolve().parent
-for _sub in ("core", "tools", "agents", "graph"):
+for _sub in ("core", "tools", "agents", "graph", "gameplay"):
     _path = str(_ROOT / _sub)
     if _path not in sys.path:
         sys.path.insert(0, _path)
@@ -286,6 +292,18 @@ def cmd_interactive(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_play(args: argparse.Namespace) -> int:
+    """Autonomous AI Vision-LLM Gameplay."""
+    from config import Config
+    from gameplay.autonomous_player import AutonomousPlayer
+
+    configs = Config.load_all(args.config_dir or (_ROOT / "config"), {"settings": "settings.yaml"}, base=_ROOT)
+    settings = configs["settings"]
+    player = AutonomousPlayer(settings=settings, game_name=args.game)
+    player.play(max_steps=args.max_steps, cycle_delay=args.delay)
+    return 0
+
+
 # ===========================================================================
 # Entry point
 # ===========================================================================
@@ -303,6 +321,7 @@ examples:
   python console.py run --file scenarios/dashboard-navigation.yaml
   python console.py run --requirement-file requirements/open-guide.yaml
   python console.py run "Open the guide" --dry-run
+  python console.py play --game "Max: The Curse of Brotherhood" --max-steps 50
   python console.py interactive
 
 exit codes:
@@ -325,6 +344,14 @@ exit codes:
     p_run.add_argument("--no-artifacts", action="store_true",
                        help="do not save frames or reports")
 
+    p_play = sub.add_parser("play", help="autonomous vision-LLM gameplay")
+    p_play.add_argument("--game", default="Max: The Curse of Brotherhood",
+                        help="name of the game to play")
+    p_play.add_argument("--max-steps", type=int, default=50,
+                        help="number of gameplay thinking/action cycles")
+    p_play.add_argument("--delay", type=float, default=0.4,
+                        help="delay in seconds between action cycles")
+
     sub.add_parser("health", help="check the rig and exit")
 
     p_info = sub.add_parser("info", help="show the configured setup")
@@ -339,6 +366,7 @@ exit codes:
 
     handlers = {
         "run": cmd_run,
+        "play": cmd_play,
         "health": cmd_health,
         "info": cmd_info,
         "tools": cmd_tools,

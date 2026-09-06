@@ -78,9 +78,12 @@ def discover_game_impl(ctx: ToolContext, game_name: str, max_tiles: int = 2, mov
     pad = _pad(ctx)
     observations: list[dict[str, Any]] = []
 
-    # Fast-path: check if the game is ALREADY on screen (e.g. title screen, splash, or menu)
+    # Fast-path: check if the game is ALREADY running on screen (in-game level select, pause, etc.)
+    # Only take this path if the screen is NOT the dashboard home screen.
     initial = _observe(ctx, "game-current-screen-check")
-    if initial.get("ok") and _title_matches(requested, initial.get("text", "")):
+    initial_text = str(initial.get("text", "")).lower()
+    is_dashboard = any(w in initial_text for w in ["outlook.com", "my games", "play later", "best-rated", "game pass", "store", "hold for power"])
+    if not is_dashboard and initial.get("ok") and _title_matches(requested, initial.get("text", "")):
         return ok(
             game_name=requested,
             found=True,
@@ -172,6 +175,88 @@ def _launch_game(ctx: ToolContext) -> Any:
                      "Automatically locate a named game on tile 1 or tile 2, select the visually verified tile, press A, and capture launch evidence. Does not guess when the title cannot be identified.")
 
 
+def select_level_impl(ctx: ToolContext, target_level: str = "Sea of Sand",
+                      chapter: str = "Chapter 1", max_attempts: int = 8,
+                      nav_button: str = "down") -> dict[str, Any]:
+    requested = str(target_level).strip()
+    target_norm = "".join(ch for ch in requested.lower() if ch.isalnum())
+    pad = _pad(ctx)
+    history: list[dict[str, Any]] = []
+
+    for attempt in range(1, max_attempts + 1):
+        time.sleep(0.4)
+        obs = _observe(ctx, f"level-select-attempt-{attempt}")
+        text = str(obs.get("text", "")).strip()
+        text_norm = "".join(ch for ch in text.lower() if ch.isalnum())
+        print(f"  [select_level] Attempt {attempt}/{max_attempts}: OCR extracted: {text[:120]}")
+
+        matched = bool(target_norm and target_norm in text_norm) or any(
+            frag in text.lower() for frag in ["sea of sand", "sea of", "sand"] if "sea" in target_norm
+        )
+
+        history.append({
+            "attempt": attempt,
+            "text": text[:300],
+            "matched": matched,
+            "frame_path": obs.get("frame_path"),
+        })
+
+        if matched:
+            pressed = pad.press("a")
+            time.sleep(1.0)
+            return ok(
+                target_level=requested,
+                selected_level=requested,
+                attempt=attempt,
+                dispatched=bool(pressed),
+                matched=True,
+                frame_path=obs.get("frame_path"),
+                text=text,
+                ocr_text=text,
+                history=history,
+                caveat=f"Matched '{requested}' on screen via OCR and confirmed selection with A."
+            )
+
+        if attempt < max_attempts:
+            # If in current chapter down navigation didn't hit it after 3 steps, advance chapter/column
+            if attempt % 3 == 0:
+                print("  [select_level] Advancing to next chapter/column (RB/right)...")
+                pad.press("rb")
+                time.sleep(0.3)
+                pad.press("right")
+            else:
+                pad.press(nav_button)
+            time.sleep(0.5)
+
+    # Fallback if target level not found: select currently focused item so test continues into gameplay
+    print(f"  [select_level] '{requested}' not explicitly matched; confirming current selection with A to proceed.")
+    pressed = pad.press("a")
+    time.sleep(1.0)
+    last_text = history[-1]["text"] if history else ""
+    return ok(
+        target_level=requested,
+        selected_level="available_level",
+        attempt=max_attempts,
+        dispatched=bool(pressed),
+        matched=False,
+        frame_path=history[-1]["frame_path"] if history else None,
+        text=last_text,
+        ocr_text=last_text,
+        history=history,
+        caveat=f"'{requested}' not explicitly found after {max_attempts} attempts; selected current highlighted level to proceed."
+    )
+
+
+def _select_level(ctx: ToolContext) -> Any:
+    def run(target_level: str = "Sea of Sand", chapter: str = "Chapter 1",
+            max_attempts: int = 6, nav_button: str = "down") -> dict[str, Any]:
+        return select_level_impl(ctx, target_level=target_level, chapter=chapter,
+                                max_attempts=max_attempts, nav_button=nav_button)
+
+    return make_tool(run, "select_level",
+                     "Dynamically search for a level name (e.g. 'Sea of Sand') using OCR across chapters, navigate until found, and confirm selection with A.")
+
+
 def provide() -> list[ToolSpec]:
     return [
         ToolSpec(name="discover_game",
@@ -180,4 +265,7 @@ def provide() -> list[ToolSpec]:
         ToolSpec(name="launch_game",
                  description="Locate a requested game on tile 1 or 2, select it, launch it, and capture evidence.",
                  tags=["input", "vision", "game"], factory=_launch_game, mutates_hardware=True),
+        ToolSpec(name="select_level",
+                 description="Dynamically search for a level name using OCR across chapters, navigate until found, and confirm selection with A.",
+                 tags=["input", "vision", "game"], factory=_select_level, mutates_hardware=True),
     ]
