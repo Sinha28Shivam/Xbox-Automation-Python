@@ -335,4 +335,5 @@ _TOOL_ACTIONS = {
     "hold_button", "move_stick", "pull_trigger", "run_macro",
     "run_special_action", "run_sequence", "type_text", "wait",
     "get_timing", "discover_game", "launch_game", "select_level",
+    "draw_magic_marker",
 }

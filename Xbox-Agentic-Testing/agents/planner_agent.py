@@ -216,6 +216,7 @@ class PlannerAgent(BaseAgent):
 
         summary = (f"Plan revision {plan.revision}: {len(plan.steps)} steps"
                    + (f" (replan: {plan.replan_reason})" if is_replan else ""))
+        print(f"  [planner] Generated {len(plan.steps)} steps across {len(scenario.stages or [])} stages (Revision {plan.revision}).", flush=True)
 
         return {
             "plan": plan,
@@ -391,12 +392,12 @@ class PlannerAgent(BaseAgent):
             progress_signal="jump_response",
         )
         add(
-            "pull_trigger",
-            "Hold LT trigger to open Magic Marker / Pen in gameplay.",
-            "Magic Marker crosshair/glow becomes visible on screen.",
-            {"trigger": "lt", "duration": 1.5},
+            "draw_magic_marker",
+            "Hold RT and move left stick to draw with Magic Marker holding A.",
+            "Magic Marker opens via RT, draws with A + Left Stick, and returns to gameplay.",
+            {"direction": "up", "duration": 1.5, "stick": "left_stick"},
             ScenarioStage.CLOSED_LOOP_PLAY,
-            progress_signal="progress_signal",
+            progress_signal="marker_interaction",
         )
 
         declared_stage_ids = {s.id.value for s in (scenario.stages or [])}
@@ -553,12 +554,12 @@ class PlannerAgent(BaseAgent):
                 progress_signal="jump_response",
             )
             add(
-                "pull_trigger",
-                "Hold LT to open Magic Marker in reloaded level.",
-                "Magic Marker crosshair/drawing indicator appears.",
-                {"trigger": "lt", "duration": 1.5},
+                "draw_magic_marker",
+                "Hold RT and move left stick to draw with Magic Marker holding A in reloaded level.",
+                "Magic Marker opens via RT, draws with A + Left Stick, and returns to gameplay.",
+                {"direction": "up", "duration": 1.5, "stick": "left_stick"},
                 ScenarioStage.LEVEL_SELECT_REPLAY,
-                progress_signal="progress_signal",
+                progress_signal="marker_interaction",
             )
 
         if "achievements_review" in declared_stage_ids:

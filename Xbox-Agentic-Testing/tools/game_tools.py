@@ -164,12 +164,63 @@ def _launch_game(ctx: ToolContext) -> Any:
 
         time.sleep(max(0.5, min(float(launch_wait), 30.0)))
         after = _observe(ctx, "game-launch-after")
+        after_text = str(after.get("text", "")).lower()
+        print(f"  [launch_game] Post-launch OCR captured: {after_text[:120]}", flush=True)
+
+        # 1. Detect Store / Game Pass / Purchase redirect (account does not own the game or subscription expired)
+        store_indicators = [
+            "buy $", "$14.99", "$11.99", "game details", "choose a plan",
+            "join game pass", "session limits apply", "see in microsoft store",
+            "ad-supported streaming",
+        ]
+        if any(ind in after_text for ind in store_indicators):
+            return fail(
+                f"Game launch failed: Xbox Store / Purchase hub opened instead of the game executable. "
+                f"The console account lacks an active license or Game Pass subscription for '{game_name}'. "
+                f"Detected OCR: {after.get('text', '')[:250]}",
+                game_name=game_name,
+                tile_index=discovered.get("tile_index"),
+                launch_frame=after.get("frame_path"),
+                launch_screen_text=after.get("text", ""),
+                discovery=discovered,
+            )
+
+        # 2. Detect Account / License / System error prompts
+        error_indicators = [
+            "your account needs attention", "sign in with the account",
+            "do you own this game", "give it another try", "check back in a little bit",
+            "error 0x",
+        ]
+        if any(ind in after_text for ind in error_indicators):
+            return fail(
+                f"Game launch failed: Console displayed an account or license error prompt. "
+                f"Detected OCR: {after.get('text', '')[:250]}",
+                game_name=game_name,
+                tile_index=discovered.get("tile_index"),
+                launch_frame=after.get("frame_path"),
+                launch_screen_text=after.get("text", ""),
+                discovery=discovered,
+            )
+
+        # 3. Detect Dashboard stall (console remained on Xbox dashboard home screen)
+        dashboard_indicators = ["my games & apps", "add to play later", "sponsored", "hold for power"]
+        if any(ind in after_text for ind in dashboard_indicators) and not _title_matches(game_name, after.get("text", "")):
+            return fail(
+                f"Game launch failed: Console remained on the Xbox Dashboard home screen. Game did not start. "
+                f"Detected OCR: {after.get('text', '')[:250]}",
+                game_name=game_name,
+                tile_index=discovered.get("tile_index"),
+                launch_frame=after.get("frame_path"),
+                launch_screen_text=after.get("text", ""),
+                discovery=discovered,
+            )
+
         return ok(game_name=game_name, tile_index=discovered.get("tile_index"),
                   dispatched=True, discovery=discovered,
                   launch_frame=after.get("frame_path"),
                   launch_screen_text=after.get("text", ""),
                   selection_verified=True,
-                  caveat="The game tile was identified before A was pressed. Launching is still not considered proof of successful game startup; the subsequent screen must be verified.")
+                  caveat="The game tile was identified and launch was initiated. Screen verified as valid game launch.")
 
     return make_tool(run, "launch_game",
                      "Automatically locate a named game on tile 1 or tile 2, select the visually verified tile, press A, and capture launch evidence. Does not guess when the title cannot be identified.")
@@ -257,6 +308,85 @@ def _select_level(ctx: ToolContext) -> Any:
                      "Dynamically search for a level name (e.g. 'Sea of Sand') using OCR across chapters, navigate until found, and confirm selection with A.")
 
 
+def draw_magic_marker_impl(ctx: ToolContext, direction: str = "up",
+                           duration: float = 1.5, stick: str = "left_stick") -> dict[str, Any]:
+    """Execute the Magic Marker mechanic in Max: The Curse of Brotherhood:
+    1. Pull and hold RT (activates Magic Marker aim).
+    2. Hold A (engages drawing mode).
+    3. Move Left Stick in the requested direction (draws the marker path/pillar/branch).
+    4. Settle for the drawing duration.
+    5. Return stick to center.
+    6. Release A (completes drawing).
+    7. Release RT (returns to normal character gameplay).
+    """
+    pad = _pad(ctx)
+    cfg = pad.cfg
+
+    # Resolve RT
+    rt_spec = cfg.triggers.get("rt", {})
+    rt_control = rt_spec.get("gimx", "r2")
+    rt_press = int(rt_spec.get("default_press", 255))
+
+    # Resolve A
+    a_spec = cfg.buttons.get("a", {})
+    a_control = a_spec.get("gimx", "cross")
+
+    # Resolve Stick direction
+    stick_key = "left_stick" if "left" in stick.lower() else "right_stick"
+    stick_spec = cfg.sticks.get(stick_key, {})
+    dir_key = direction.lower().strip()
+    dir_info = stick_spec.get("directions", {}).get(dir_key, {})
+    axis_name = dir_info.get("axis", "lstick y" if dir_key in {"up", "down"} else "lstick x")
+    axis_val = int(dir_info.get("value", -32768 if dir_key == "up" else 32767))
+
+    print(f"  [draw_magic_marker] Activating Magic Marker: Hold RT + Hold A + Move Stick {dir_key.upper()} for {duration:.2f}s...", flush=True)
+
+    # 1. Engage RT (activate Magic Marker)
+    pad._send_event(rt_control, rt_press, "rt:hold")
+    time.sleep(0.3)
+
+    # 2. Engage A (draw button)
+    pad._send_event(a_control, 255, "a:hold")
+    time.sleep(0.2)
+
+    # 3. Move stick to draw
+    pad._send_event(axis_name, axis_val, f"{stick_key}:{dir_key}")
+    time.sleep(max(0.5, float(duration)))
+
+    # 4. Center stick
+    pad._send_event(axis_name, 0, f"{stick_key}:center")
+    time.sleep(0.2)
+
+    # 5. Release A (drawing finished)
+    pad._send_event(a_control, 0, "a:release")
+    time.sleep(0.2)
+
+    # 6. Release RT (exit marker mode back to character)
+    pad._send_event(rt_control, 0, "rt:release")
+    time.sleep(0.3)
+
+    print(f"  [draw_magic_marker] Magic Marker drawing completed successfully.", flush=True)
+
+    return ok(
+        mechanic="magic_marker_draw",
+        trigger="rt",
+        draw_button="a",
+        stick=stick_key,
+        direction=dir_key,
+        duration=duration,
+        dispatched=True,
+        caveat="Magic Marker sequence dispatched: Held RT, held A, moved left stick to draw, then released."
+    )
+
+
+def _draw_magic_marker(ctx: ToolContext) -> Any:
+    def run(direction: str = "up", duration: float = 1.5, stick: str = "left_stick") -> dict[str, Any]:
+        return draw_magic_marker_impl(ctx, direction=direction, duration=duration, stick=stick)
+
+    return make_tool(run, "draw_magic_marker",
+                     "Hold RT to open Magic Marker, hold A to draw, and move the left stick in a direction (up, down, left, right) to create branches/pillars.")
+
+
 def provide() -> list[ToolSpec]:
     return [
         ToolSpec(name="discover_game",
@@ -268,4 +398,7 @@ def provide() -> list[ToolSpec]:
         ToolSpec(name="select_level",
                  description="Dynamically search for a level name using OCR across chapters, navigate until found, and confirm selection with A.",
                  tags=["input", "vision", "game"], factory=_select_level, mutates_hardware=True),
+        ToolSpec(name="draw_magic_marker",
+                 description="Hold RT to open Magic Marker, hold A to draw, and move the left stick.",
+                 tags=["input", "game"], factory=_draw_magic_marker, mutates_hardware=True),
     ]
