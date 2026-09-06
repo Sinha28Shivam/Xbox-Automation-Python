@@ -71,8 +71,8 @@ game_controls:
     description: "Move Max during gameplay or steer Magic Marker."
 
   a:
-    semantic_action: jump_or_confirm
-    description: "Jump during gameplay or confirm a menu selection."
+    semantic_action: jump_or_confirm_or_draw
+    description: "Jump during gameplay, confirm a menu selection, or hold A while holding RT to draw Magic Marker."
 
   b:
     semantic_action: cancel_or_context_action
@@ -86,13 +86,13 @@ game_controls:
     semantic_action: contextual_action
     description: "Perform a context-dependent interaction when visually required."
 
-  lt:
-    semantic_action: activate_magic_marker
-    description: "Hold to enter/use Magic Marker interaction."
-
   rt:
-    semantic_action: marker_action
-    description: "Use the context-dependent marker interaction when required."
+    semantic_action: activate_magic_marker
+    description: "Hold to enter/use Magic Marker aim mode; hold A and move left stick to draw."
+
+  lt:
+    semantic_action: contextual_action
+    description: "Context-dependent camera or gameplay action."
 
   dpad:
     semantic_action: menu_navigation
@@ -239,7 +239,7 @@ stages:
     objective: >
       Execute closed-loop gameplay verifying all controller inputs: forward
       movement (stick right), backward movement (stick left), jump (A),
-      and holding LT to open Magic Marker.
+      and Magic Marker drawing (Hold RT, hold A, and move left stick to draw).
     required_evidence:
       - progress_signal
     allowed_actions:
@@ -247,6 +247,7 @@ stages:
       - press_button
       - hold_button
       - pull_trigger
+      - draw_magic_marker
       - wait_for_stable_screen
       - capture_frame
       - read_screen_text
@@ -309,7 +310,7 @@ stages:
     objective: >
       Open Select Level, dynamically scan chapters using OCR for target level
       (Sea of Sand), select and load the level, and verify controller inputs
-      (move forward, move backward, jump A, hold LT).
+      (move forward, move backward, jump A, and Magic Marker drawing via Hold RT + Hold A + stick).
     required_evidence:
       - interactive_gameplay
     allowed_actions:
@@ -317,6 +318,7 @@ stages:
       - select_level
       - move_stick
       - pull_trigger
+      - draw_magic_marker
       - wait_for_stable_screen
       - capture_frame
       - read_screen_text
@@ -430,7 +432,7 @@ success_criteria:
     required: true
 
   - description: >
-      Scenario 1: Controller inputs (forward, backward, jump with A, hold LT for Magic Marker) are executed with observable gameplay response.
+      Scenario 1: Controller inputs (forward, backward, jump with A, Magic Marker drawing via Hold RT + Hold A + stick) are executed with observable gameplay response.
     check_type: screen_change
     parameters:
       min_delta: 0.5
@@ -444,7 +446,7 @@ success_criteria:
     required: true
 
   - description: >
-      Scenario 3: Level selection dynamically locates target level across chapters via OCR, loads the level, and verifies controller inputs.
+      Scenario 3: Level selection dynamically locates target level across chapters via OCR, loads the level, and verifies controller inputs (movement, jump, Magic Marker draw).
     check_type: vision_judgement
     parameters:
       expected_screen: "Interactive level gameplay loaded from chapter/level select"

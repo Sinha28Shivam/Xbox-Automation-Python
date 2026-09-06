@@ -110,7 +110,7 @@ def _mechanics_coverage_matrix(r: dict[str, Any]) -> list[dict[str, Any]]:
                 ("Move forward / right", lambda s: s.get("action") == "move_stick" and str(s.get("arguments", {}).get("direction")).lower() in {"right", "forward"}),
                 ("Move backward / left", lambda s: s.get("action") == "move_stick" and str(s.get("arguments", {}).get("direction")).lower() in {"left", "backward"}),
                 ("Jump (A)", lambda s: s.get("action") == "press_button" and str(s.get("arguments", {}).get("button", "")).lower() in {"a", "cross"} and s.get("stage") in {"closed_loop_play", "level_launch"}),
-                ("Hold LT (Magic Marker / Pen)", lambda s: (s.get("action") == "pull_trigger" and str(s.get("arguments", {}).get("trigger", "")).lower() in {"lt", "l2"}) or (s.get("action") == "hold_button" and str(s.get("arguments", {}).get("button", "")).lower() in {"lt", "l2"})),
+                ("Hold RT & Draw with A + Stick (Magic Marker)", lambda s: s.get("action") == "draw_magic_marker" or ((s.get("action") == "pull_trigger" and str(s.get("arguments", {}).get("trigger", "")).lower() in {"rt", "r2"}) or (s.get("action") == "hold_button" and str(s.get("arguments", {}).get("button", "")).lower() in {"rt", "r2"}))),
                 ("Gameplay screen motion", lambda s: s.get("stage") == "closed_loop_play" and (s.get("screen_delta") or 0) > 0.0),
             ]
         },
@@ -133,7 +133,7 @@ def _mechanics_coverage_matrix(r: dict[str, Any]) -> list[dict[str, Any]]:
                 ("Replay move forward", lambda s: s.get("stage") == "level_select_replay" and s.get("action") == "move_stick" and str(s.get("arguments", {}).get("direction")).lower() in {"right", "forward"}),
                 ("Replay move backward", lambda s: s.get("stage") == "level_select_replay" and s.get("action") == "move_stick" and str(s.get("arguments", {}).get("direction")).lower() in {"left", "backward"}),
                 ("Replay jump (A)", lambda s: s.get("stage") == "level_select_replay" and s.get("action") == "press_button" and str(s.get("arguments", {}).get("button", "")).lower() in {"a", "cross"}),
-                ("Replay Magic Marker (Hold LT)", lambda s: s.get("stage") == "level_select_replay" and ((s.get("action") == "pull_trigger" and str(s.get("arguments", {}).get("trigger", "")).lower() in {"lt", "l2"}) or (s.get("action") == "hold_button" and str(s.get("arguments", {}).get("button", "")).lower() in {"lt", "l2"}))),
+                ("Replay Magic Marker (Hold RT & Draw)", lambda s: s.get("stage") == "level_select_replay" and (s.get("action") == "draw_magic_marker" or ((s.get("action") == "pull_trigger" and str(s.get("arguments", {}).get("trigger", "")).lower() in {"rt", "r2"}) or (s.get("action") == "hold_button" and str(s.get("arguments", {}).get("button", "")).lower() in {"rt", "r2"})))),
             ]
         },
         {
