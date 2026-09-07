@@ -75,6 +75,8 @@ class AutonomousPlayer:
         self.action_history: list[dict[str, Any]] = []
         self.death_count = 0
         self.last_frame: np.ndarray | None = None
+        # Per-instance, so one session's repeats never leak into another.
+        self._recent_actions = []
 
     def _build_model(self) -> Any:
         # Prefer claude-3-5-sonnet for spatial reasoning if available, or configured model
@@ -147,6 +149,52 @@ class AutonomousPlayer:
         if "error" in box:
             raise box["error"]
         return box["value"]
+
+    # Rolling record of dispatched macros, for breaking repeat loops.
+    _recent_actions: list[str] = []
+
+    def _veto_repeat(self, act: GameplayAction) -> GameplayAction:
+        """Break out of a macro the model keeps repeating without effect.
+
+        Observed live: the model read the blue 'X' badge on its own pillar as
+        "destroy me" and issued destroy_drawing FOUR cycles running, each with
+        an ambient-only delta, while the pillar stayed standing. The pillar was
+        the solution - it needed CLIMBING. Prompting alone did not stop this,
+        so the loop now forces a different macro after two identical tries.
+        """
+        # Track what the MODEL ASKED FOR, not what we substituted. Recording
+        # the substitute would reset the streak and allow an endless
+        # destroy/destroy/climb/destroy... cycle.
+        self._requested_actions = getattr(self, "_requested_actions", [])
+        self._requested_actions.append(act.action)
+        recent = self._requested_actions[-3:]
+        if len(recent) < 3 or not all(a == act.action for a in recent):
+            return act
+
+        if act.action == "destroy_drawing":
+            print("  !! destroy_drawing twice already had no effect - the "
+                  "pillar is the SOLUTION, not the obstacle. Climbing it "
+                  "instead.", flush=True)
+            return GameplayAction(action="edge_jump_grab",
+                                  direction=act.direction if act.direction in
+                                  ("left", "right") else "right",
+                                  duration=0.9, run_before_jump=0.7,
+                                  air_time=0.9)
+        if act.action == "jump":
+            print("  !! a standing jump twice did nothing - too high. "
+                  "Running jump from the edge instead.", flush=True)
+            return GameplayAction(action="running_jump",
+                                  direction=act.direction if act.direction in
+                                  ("left", "right") else "right",
+                                  duration=0.9, run_before_jump=0.7,
+                                  air_time=0.9)
+        if act.action == "push_pull":
+            print("  !! push_pull twice did nothing - that object will not "
+                  "move. Looking for a marker node instead.", flush=True)
+            return GameplayAction(action="magic_marker", direction="up",
+                                  duration=1.8, node_y=0.6, aim_time=0.4,
+                                  settle_after_draw=1.5)
+        return act
 
     @staticmethod
     def _delta_verdict(delta: float | None) -> str:
@@ -525,8 +573,10 @@ class AutonomousPlayer:
                     self.execute_action(GameplayAction(action="edge_jump_grab", direction="right", duration=0.8))
                 else:
                     for act in analysis.actions:
+                        act = self._veto_repeat(act)
                         print(f"Action      : {act.action.upper()} dir={act.direction} dur={act.duration:.2f}s", flush=True)
                         self.execute_action(act)
+                        self._recent_actions.append(act.action)
 
                 # 9. Record history
                 action_desc = ", ".join(f"{a.action}({a.direction})" for a in analysis.actions) or "edge_jump_grab(right)"

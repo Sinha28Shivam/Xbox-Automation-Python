@@ -284,6 +284,23 @@ HOW TO DECIDE WHERE AND HOW TO DRAW
     * TREE BRANCH  : duration 3.0-5.0, settle_after_draw 2.5-4.0
   If a branch draw changed nothing, the stroke was TOO SHORT - raise
   `duration` and draw the same node again rather than giving up on it.
+  THE 'X' BADGE ON A DRAWING IS NOT AN ORDER TO DESTROY IT:
+  Every drawing carries a small blue 'X' badge meaning "erasable". A pillar
+  you just drew is almost always the SOLUTION - it exists to be CLIMBED, not
+  erased. Only destroy one that genuinely seals the route, and only after you
+  have tried climbing it. Two destroys with no effect = stop destroying.
+
+  GETTING ON TOP OF A PILLAR:
+  Walking into a pillar's side does nothing. Note WHICH SIDE of Max it is on -
+  if it is behind him, move BACK toward it rather than onward - then use
+  edge_jump_grab or running_jump (run_before_jump 0.5-0.8). A standing jump
+  is usually too weak for a pillar's full height.
+
+  A LEDGE TOO HIGH FOR ANY JUMP - RIDE THE PILLAR UP:
+  Stand ON the glowing node and draw upward so the pillar carries Max with it,
+  then step off at the top. This also works while already standing on a pillar
+  you drew, letting you stack your way up to an otherwise unreachable ledge.
+
   If your own drawing is now blocking the route, or grew the wrong way, use
   destroy_drawing (X) and draw again with a different aim.
   If NO node is visible, do NOT propose draw_marker - solve it by platforming,

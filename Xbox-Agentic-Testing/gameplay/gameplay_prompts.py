@@ -195,6 +195,38 @@ You are playing "Max: The Curse of Brotherhood", a 2.5D cinematic puzzle-platfor
    If you instead need a STEPPING STONE, stand BESIDE the node, grow the
    pillar next to Max, then jump onto its top. Say which one you are doing.
 
+   THE 'X' BADGE ON A PILLAR DOES **NOT** MEAN "DESTROY IT":
+   Every drawing you make shows a small blue 'X' badge. That only means "this
+   is erasable" - it is NOT an instruction. A pillar you just drew is almost
+   always the SOLUTION, not an obstacle: it is there to be CLIMBED.
+   Only destroy a drawing when it is genuinely sealing off the route AND you
+   have already tried climbing it. If two destroy attempts in a row changed
+   nothing, STOP destroying - climb the pillar instead.
+
+   HOW TO GET ON TOP OF A PILLAR YOU DREW (do this, do not destroy it):
+   A pillar is tall, so walking into its side does nothing - Max just bumps
+   into it. You must approach it and jump onto its top:
+     1. Note which SIDE of Max the pillar is on. If the pillar is BEHIND Max
+        (to his left while he faces right), you must first `move` LEFT toward
+        it - continuing to move right walks away from it forever.
+     2. `move` toward the pillar to reach the base/edge next to it.
+     3. `edge_jump_grab` toward the pillar, or `running_jump` with
+        run_before_jump 0.5-0.8 - a standing `jump` is usually too weak to
+        clear a pillar's height. RUN then JUMP from the very edge.
+     4. Once on top, `move` on in your travel direction.
+   If plain `jump` produced AMBIENT ONLY twice, the pillar is too high for a
+   standing jump: use running_jump/edge_jump_grab, not another jump.
+
+   IF THE LEDGE IS FAR TOO HIGH TO JUMP AT ALL - RIDE THE PILLAR UP:
+   When a ledge is far above Max and no jump can reach it, do NOT jump. Stand
+   ON the glowing node and grow the pillar UNDER YOURSELF so it carries you:
+     1. `move` until Max is standing directly ON the glowing mound.
+     2. `magic_marker` direction="up" - the pillar lifts Max as it rises.
+     3. `move`/`jump` off the top onto the high ledge.
+   You can also do this while ALREADY STANDING ON a pillar you drew: draw
+   again on the node under you to go even higher, stacking your way up to a
+   ledge that a single pillar could not reach.
+
    IF YOUR OWN PILLAR NOW BLOCKS THE WAY:
    A pillar you drew can wall off the route. If Max cannot get past something
    you created, use `destroy_drawing` with (node_x, node_y) aimed AT THE
@@ -219,6 +251,15 @@ If you are unable to cross an obstacle or died on the previous attempt:
    - Execute `climb_or_pull_up` immediately.
 4. If there is an environmental object (rock, tree branch, cart):
    - Try `push_pull` or `interact`.
+
+### PROGRESS IS NOT ALWAYS RIGHTWARD
+Advancing usually means going right, but "right" is not a rule you must obey
+when it is not working. If the thing you need - a pillar you drew, a glowing
+node, a ledge - is on Max's LEFT, then move LEFT to reach it. Walking right
+past your own pillar means you will never get on top of it.
+Before moving, state in `tactical_reasoning` WHICH SIDE of Max the target is
+on, and move toward it. If several `move right` steps in a row report AMBIENT
+ONLY, Max is against a wall: stop pressing right and look up/behind instead.
 
 ### Reading the delta in your action history - IMPORTANT
 The `observation` for each past step carries a pixel delta AND a verdict. Trust
