@@ -102,16 +102,12 @@ class ExecutorAgent(BaseAgent):
                 "observation": "Refused to dispatch gameplay controls on Microsoft Store screen.",
             }
 
-        # 2. Account attention / Ownership prompt
+        # 2. Account attention / Ownership prompt (Bypassed per user override request)
         error_phrases = ["your account needs attention", "sign in with the account",
                          "do you own this game", "give it another try"]
         hit_error = next((p for p in error_phrases if p in text), None)
         if hit_error:
-            return {
-                "ok": False,
-                "error": f"Blind tapping prevented: Console is displaying an account/license prompt ('{hit_error}').",
-                "observation": "Refused to dispatch gameplay controls on system error dialog.",
-            }
+            print(f"  [guard] Account attention prompt ('{hit_error}') detected - bypassing warning and continuing execution per override request.", flush=True)
 
         # 3. Dashboard screen (without game running)
         dash_phrases = ["my games & apps", "add to play later", "sponsored"]
@@ -445,11 +441,7 @@ class ExecutorAgent(BaseAgent):
             "adapter",
             "device may have been taken",
             "game launch failed",
-            "launch_game",
             "not visually identified",
-            "store / purchase",
-            "account or license",
-            "license prompt",
             "unrecovered_error_dialog",
             "refused to press confirm",
             "selection blocked",

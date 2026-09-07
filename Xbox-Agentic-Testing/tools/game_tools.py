@@ -185,22 +185,18 @@ def _launch_game(ctx: ToolContext) -> Any:
                 discovery=discovered,
             )
 
-        # 2. Detect Account / License / System error prompts
+        # 2. Detect Account / License / System error prompts (Bypass prompt per user request)
         error_indicators = [
             "your account needs attention", "sign in with the account",
             "do you own this game", "give it another try", "check back in a little bit",
             "error 0x",
         ]
         if any(ind in after_text for ind in error_indicators):
-            return fail(
-                f"Game launch failed: Console displayed an account or license error prompt. "
-                f"Detected OCR: {after.get('text', '')[:250]}",
-                game_name=game_name,
-                tile_index=discovered.get("tile_index"),
-                launch_frame=after.get("frame_path"),
-                launch_screen_text=after.get("text", ""),
-                discovery=discovered,
-            )
+            print(f"  [launch_game] 'Your account needs attention' prompt detected. Pressing A to bypass warning...", flush=True)
+            _pad(ctx).press("a")
+            time.sleep(3.0)
+            after = _observe(ctx, "game-launch-after-bypass")
+            after_text = str(after.get("text", "")).lower()
 
         # 3. Detect Dashboard stall (console remained on Xbox dashboard home screen)
         dashboard_indicators = ["my games & apps", "add to play later", "sponsored", "hold for power"]
@@ -322,10 +318,15 @@ def draw_magic_marker_impl(ctx: ToolContext, direction: str = "up",
     pad = _pad(ctx)
     cfg = pad.cfg
 
-    # Resolve RT
+    # Resolve RT.
+    # HARDWARE-VERIFIED: on XOnePad the trigger axis spans 0..32767 like the
+    # sticks, NOT 0..255. gimx.exe ACCEPTS r2(255), but that is only ~0.8% of a
+    # full pull, so the console sees an almost-unpressed trigger and the Magic
+    # Marker never opens. Measured against the RT tutorial prompt in Max:
+    #   r2(255)/r2(512) -> no effect;  r2(1023)+ -> marker opens.
     rt_spec = cfg.triggers.get("rt", {})
     rt_control = rt_spec.get("gimx", "r2")
-    rt_press = int(rt_spec.get("default_press", 255))
+    rt_press = int(rt_spec.get("default_press", 32767))
 
     # Resolve A
     a_spec = cfg.buttons.get("a", {})
@@ -341,28 +342,42 @@ def draw_magic_marker_impl(ctx: ToolContext, direction: str = "up",
 
     print(f"  [draw_magic_marker] Activating Magic Marker: Hold RT + Hold A + Move Stick {dir_key.upper()} for {duration:.2f}s...", flush=True)
 
-    # 1. Engage RT (activate Magic Marker)
-    pad._send_event(rt_control, rt_press, "rt:hold")
-    time.sleep(0.3)
+    # Each pad._send_event() spawns its own gimx.exe (~250ms) and only carries a
+    # SINGLE event, so setting RT, then A, then the stick sequentially means the
+    # earlier holds have already lapsed by the time the stroke starts - the
+    # marker closes mid-draw. gimx.exe accepts MULTIPLE --event flags in one
+    # invocation, so we assert the whole combination atomically per tick and
+    # re-send it for the duration to keep every hold alive simultaneously.
+    def _hold(events: list[tuple[str, int]], seconds: float, label: str) -> None:
+        deadline = time.time() + max(0.0, seconds)
+        # Always send at least once, even for a zero-length settle.
+        while True:
+            pad._send_events(events, label)
+            if time.time() >= deadline:
+                break
 
-    # 2. Engage A (draw button)
-    pad._send_event(a_control, 255, "a:hold")
-    time.sleep(0.2)
+    rt_on = (rt_control, rt_press)
+    a_on = (a_control, 1)          # buttons are 1/0; 255 was wrong
 
-    # 3. Move stick to draw
-    pad._send_event(axis_name, axis_val, f"{stick_key}:{dir_key}")
-    time.sleep(max(0.5, float(duration)))
+    # 1. Engage RT and let the Magic Marker open (time slows).
+    _hold([rt_on], 0.6, "rt:hold")
 
-    # 4. Center stick
-    pad._send_event(axis_name, 0, f"{stick_key}:center")
-    time.sleep(0.2)
+    # 2. Engage A while RT stays held, so the ink anchors to the surface.
+    _hold([rt_on, a_on], 0.35, "rt+a:hold")
 
-    # 5. Release A (drawing finished)
-    pad._send_event(a_control, 0, "a:release")
-    time.sleep(0.2)
+    # 3. Draw: RT + A + stick deflection, all held together.
+    _hold([rt_on, a_on, (axis_name, axis_val)],
+          max(0.5, float(duration)), f"draw:{dir_key}")
 
-    # 6. Release RT (exit marker mode back to character)
-    pad._send_event(rt_control, 0, "rt:release")
+    # 4. Recenter the stick but keep RT + A so the stroke is not cut short.
+    _hold([rt_on, a_on, (axis_name, 0)], 0.2, "stick:center")
+
+    # 5. Release A to commit the drawing, RT still held.
+    _hold([rt_on, (a_control, 0), (axis_name, 0)], 0.3, "a:release")
+
+    # 6. Release RT (exit marker mode back to character control).
+    pad._send_events([(rt_control, 0), (a_control, 0), (axis_name, 0)],
+                     "rt:release")
     time.sleep(0.3)
 
     print(f"  [draw_magic_marker] Magic Marker drawing completed successfully.", flush=True)
@@ -387,6 +402,65 @@ def _draw_magic_marker(ctx: ToolContext) -> Any:
                      "Hold RT to open Magic Marker, hold A to draw, and move the left stick in a direction (up, down, left, right) to create branches/pillars.")
 
 
+def vision_guided_gameplay_impl(
+    ctx: ToolContext,
+    goal: str = ("Advance through the level: move forward, jump gaps, draw "
+                 "Magic Marker pillars/branches where the terrain needs them, "
+                 "and destroy drawings that block the route."),
+    max_cycles: int = 40,
+    cycle_delay: float = 0.4,
+    stop_on_checkpoint: bool = True,
+) -> dict[str, Any]:
+    """Play the game by SHOWING every frame to a vision model and acting on it.
+
+    This used to grep OCR text for words like "pillar" - which is not vision at
+    all, because a frame of Max at the edge of a chasm contains no text, so the
+    tool always fell through to "walk right" and marched him into the pit.
+
+    It now runs the real observe -> decide -> act -> re-observe loop in
+    gameplay_vision.py: each cycle the live frame goes to a multimodal model,
+    which reports what it sees (terrain, hazards, glowing marker nodes) and
+    returns controller macros - including a Magic Marker stroke aimed along an
+    arbitrary stick vector, so it can choose WHERE and HOW to draw.
+
+    The loop keeps playing until a checkpoint/level-complete screen is seen,
+    the cycle budget runs out, the operator interrupts, or several cycles in a
+    row produce no visual change at all.
+    """
+    from gameplay_vision import vision_gameplay_loop
+
+    return vision_gameplay_loop(
+        ctx,
+        goal=goal,
+        max_cycles=max_cycles,
+        cycle_delay=cycle_delay,
+        stop_on_checkpoint=stop_on_checkpoint,
+    )
+
+
+def _vision_guided_gameplay(ctx: ToolContext) -> Any:
+    def run(goal: str = ("Advance through the level: move forward, jump gaps, "
+                         "draw Magic Marker pillars/branches where needed, and "
+                         "destroy drawings that block the route."),
+            max_cycles: int = 40,
+            cycle_delay: float = 0.4,
+            stop_on_checkpoint: bool = True) -> dict[str, Any]:
+        return vision_guided_gameplay_impl(
+            ctx, goal=goal, max_cycles=max_cycles, cycle_delay=cycle_delay,
+            stop_on_checkpoint=stop_on_checkpoint)
+
+    return make_tool(
+        run, "vision_guided_gameplay",
+        "Play the game closed-loop with a VISION model: every cycle it looks "
+        "at the live frame, reads the terrain, hazards and glowing Magic "
+        "Marker nodes, then decides and executes controller macros (move, "
+        "jump, running/edge jump, climb, swing, draw a marker stroke aimed "
+        "along a stick vector, destroy a drawing, push/pull, advance a "
+        "prompt). Keeps playing until a checkpoint is seen, max_cycles is "
+        "reached, or nothing on screen changes any more. Returns a per-cycle "
+        "log of frames, deltas and reasoning as evidence.")
+
+
 def provide() -> list[ToolSpec]:
     return [
         ToolSpec(name="discover_game",
@@ -401,4 +475,10 @@ def provide() -> list[ToolSpec]:
         ToolSpec(name="draw_magic_marker",
                  description="Hold RT to open Magic Marker, hold A to draw, and move the left stick.",
                  tags=["input", "game"], factory=_draw_magic_marker, mutates_hardware=True),
+        ToolSpec(name="vision_guided_gameplay",
+                 description=("Closed-loop vision gameplay: look at the live frame every "
+                              "cycle, decide where/how to draw with the Magic Marker, "
+                              "when to jump and how to advance, and play on until a "
+                              "checkpoint is seen or the cycle budget runs out."),
+                 tags=["input", "vision", "game"], factory=_vision_guided_gameplay, mutates_hardware=True),
     ]

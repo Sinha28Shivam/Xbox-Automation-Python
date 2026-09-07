@@ -218,6 +218,67 @@ class ConsolePad:
         self._record(label or control, control, value, "sent")
         return True
 
+    def _send_events(self, events: list[tuple[str, int]],
+                     label: str = "") -> bool:
+        """Send SEVERAL GIMX events in ONE gimx.exe call.
+
+        Needed for combinations that must be held simultaneously (e.g. the
+        Magic Marker: RT + A + stick). Each process launch costs ~250ms, so
+        issuing the events one at a time lets the earlier holds lapse before
+        the last one arrives. gimx.exe accepts repeated --event flags, which
+        applies them together in a single controller state update.
+        """
+        if not events:
+            return True
+
+        cmd = [self.gimx_exe, "--type", self.ctype]
+        for control, value in events:
+            cmd += ["--event", f"{control}({value})"]
+        cmd += ["--dst", self.addr]
+
+        pretty = " ".join(f"{c}({v})" for c, v in events)
+        if self.dry_run:
+            print(f"  [dry-run] {label or pretty:<14} {' '.join(cmd)}")
+            for control, value in events:
+                self._record(label or control, control, value, "dry-run")
+            return True
+
+        out = ""
+        res = None
+        for _ in range(self.max_retries):
+            try:
+                res = subprocess.run(cmd, capture_output=True, text=True,
+                                     timeout=15)
+            except (subprocess.TimeoutExpired, OSError) as exc:
+                print(f"   FAILED: {exc}")
+                self.failed = True
+                for control, value in events:
+                    self._record(label or control, control, value,
+                                 f"error: {exc}")
+                return False
+            out = (res.stdout or "") + (res.stderr or "")
+            if "can't get controller type from remote gimx" in out:
+                print(".", end="", flush=True)
+                time.sleep(self.retry_delay)
+                continue
+            break
+
+        bad = (res is None or res.returncode != 0
+               or "Error" in out or "failed" in out)
+        if bad:
+            print("   FAILED")
+            for line in out.splitlines():
+                if line.strip():
+                    print(f"       {line.strip()}")
+            self.failed = True
+            for control, value in events:
+                self._record(label or control, control, value, "failed")
+            return False
+
+        for control, value in events:
+            self._record(label or control, control, value, "sent")
+        return True
+
     def _record(self, name: str, control: str, value: int, status: str) -> None:
         self.action_log.append({
             "time": time.time(), "name": name, "gimx": control,

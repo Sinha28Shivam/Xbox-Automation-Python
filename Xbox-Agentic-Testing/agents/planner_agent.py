@@ -62,6 +62,15 @@ def _is_gameplay_action(step: Any) -> bool:
     return "jump" in text
 
 
+# Stages that can only happen once the game is already running and playable.
+# A scenario declaring nothing outside this set is a "resume from live
+# gameplay" scenario: no discovery, no launch, no menu walking.
+_IN_GAMEPLAY_ONLY_STAGES = frozenset({
+    "closed_loop_play",
+    "pause_checkpoint",
+})
+
+
 _FOCUS_PROOF_STAGES = frozenset({
     "level_navigation",
     "pause_checkpoint",
@@ -266,6 +275,107 @@ class PlannerAgent(BaseAgent):
             self._validate_stage_coverage(plan, scenario)
         return plan
 
+    def _fallback_in_gameplay_plan(self, scenario: ValidatedScenario,
+                                   plan: TestPlan) -> TestPlan:
+        """Bootstrap for a scenario that starts from LIVE gameplay.
+
+        Deliberately tiny. The interesting decisions - where to draw, when to
+        jump, when to destroy a drawing, when to keep advancing - are made
+        inside `vision_guided_gameplay`, one decision per captured frame. A
+        long pre-baked step list would be the opposite of vision-guided: it
+        would commit to actions chosen before anything had been looked at.
+
+        So the plan is: prove we really are in gameplay, hand over to the
+        vision loop, then prove the screen moved.
+        """
+        steps: list[PlannedStep] = []
+        goal = (scenario.goal or "").strip() or (
+            "Advance through the level under vision guidance until a "
+            "checkpoint is reached.")
+
+        def add(action: str, intent: str, expected: str,
+                arguments: dict[str, Any] | None = None,
+                progress_signal: str = "",
+                timeout_seconds: float | None = None) -> None:
+            steps.append(PlannedStep(
+                index=len(steps),
+                action=action,
+                arguments=arguments or {},
+                intent=intent,
+                expected_observation=expected,
+                stage=ScenarioStage.CLOSED_LOOP_PLAY,
+                stage_goal=self._stage_goal(scenario, ScenarioStage.CLOSED_LOOP_PLAY),
+                progress_signal=progress_signal,
+                timeout_seconds=timeout_seconds,
+            ))
+
+        add(
+            "capture_frame",
+            "Capture the live gameplay screen before touching anything, so "
+            "every later frame has a baseline to be compared against.",
+            "An interactive Max: The Curse of Brotherhood gameplay frame is "
+            "captured - not the dashboard, store, or a menu.",
+            {"label": "gameplay-baseline"},
+            progress_signal="gameplay_screen",
+        )
+        add(
+            "read_screen_text",
+            "Read any text on the live frame to confirm this is gameplay and "
+            "not a store/account/dashboard screen.",
+            "Either no menu text is found (plain gameplay) or the text is "
+            "consistent with being inside the game.",
+            {},
+        )
+        add(
+            "vision_guided_gameplay",
+            "Hand control to the vision loop: look at each frame, decide where "
+            "and how to draw with the Magic Marker, when to jump, when to "
+            "destroy a drawing, and how to advance - and keep playing until a "
+            "checkpoint is seen or the run is stopped.",
+            "Successive captured frames show Max advancing through the level, "
+            "with marker strokes drawn at visible nodes, and the loop reports "
+            "the observed reason it stopped.",
+            {
+                "goal": goal,
+                "max_cycles": 40,
+                "cycle_delay": 0.4,
+                "stop_on_checkpoint": True,
+            },
+            progress_signal="progress_signal",
+            # NOT the scenario timeout. The executor spends step.timeout_seconds
+            # inside wait_for_stable_screen AFTER the tool returns, and a live
+            # gameplay screen never becomes stable - a large value here would
+            # block for the whole budget. The loop bounds its own duration via
+            # max_cycles, so this only needs to be long enough to grab a
+            # settled-ish closing frame.
+            timeout_seconds=6.0,
+        )
+        add(
+            "capture_frame",
+            "Capture the final gameplay state the loop left the game in.",
+            "A final gameplay frame is archived showing where the session "
+            "ended - ideally a checkpoint or a further point in the level.",
+            {"label": "gameplay-final"},
+            progress_signal="progress_signal",
+        )
+
+        plan.steps = steps
+        plan.assumptions = list(dict.fromkeys([
+            *plan.assumptions,
+            "Max: The Curse of Brotherhood is already running and in "
+            "interactive gameplay when the run starts.",
+            "The configured LLM provider supports vision, so frames can "
+            "actually be looked at.",
+            "A checkpoint is close enough to reach within the cycle budget; "
+            "otherwise the run ends on the budget and says so.",
+        ]))
+        plan.rationale = (
+            plan.rationale or
+            "In-gameplay bootstrap: prove we are in live gameplay, then hand "
+            "over to the frame-by-frame vision loop rather than pre-baking "
+            "gameplay actions that were chosen before anything was seen.")
+        return plan
+
     def _fallback_staged_plan(self, scenario: ValidatedScenario,
                               plan: TestPlan) -> TestPlan:
         """Deterministic bootstrap when the LLM returns an empty staged plan."""
@@ -289,6 +399,14 @@ class PlannerAgent(BaseAgent):
                 replan_on=replan_on or [],
                 progress_signal=progress_signal,
             ))
+
+        # A scenario that declares ONLY in-gameplay stages is starting from
+        # live gameplay, not from the dashboard. Emitting the launch/menu
+        # bootstrap for it would walk the dashboard while the game is already
+        # running - blind input at best, quitting the level at worst.
+        declared = {s.id.value for s in (scenario.stages or [])}
+        if declared and declared.issubset(_IN_GAMEPLAY_ONLY_STAGES):
+            return self._fallback_in_gameplay_plan(scenario, plan)
 
         add(
             "capture_frame",

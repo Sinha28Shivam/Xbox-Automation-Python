@@ -15,7 +15,16 @@
 #
 #  Value semantics:
 #     buttons : 1 = pressed, 0 = released
-#     triggers: 0..255 analog (l2/r2). 255 = fully pressed
+#     triggers: 0..32767 analog (l2/r2). 32767 = fully pressed.
+#               HARDWARE-VERIFIED: on XOnePad the trigger axis uses the SAME
+#               wide range as the sticks, NOT 0..255. r2(255) is only ~0.8% of
+#               a full pull - gimx.exe ACCEPTS it, but the console sees an
+#               almost-unpressed trigger and games ignore it. Measured on Max:
+#               The Curse of Brotherhood, watching the RT tutorial prompt:
+#                 r2(255)/r2(512) -> prompt ROI delta 0.2-0.3  (no effect)
+#                 r2(1023)        -> delta 65.9  (magic marker OPENS)
+#                 r2(32767)       -> delta 66.3  (magic marker OPENS)
+#               Activation threshold sits between 512 and 1023.
 #     sticks  : XOnePad axes use -32768..32767. 0 = centered
 # ============================================================================
 
@@ -219,15 +228,15 @@ triggers:
     gimx: "l2"
     aliases: ["l2", "left_trigger"]
     min: 0
-    max: 255
-    default_press: 255            # value used for a normal "press"
+    max: 32767
+    default_press: 32767          # value used for a normal "press"
     description: "Left trigger (analog)"
   rt:
     gimx: "r2"
     aliases: ["r2", "right_trigger"]
     min: 0
-    max: 255
-    default_press: 255
+    max: 32767
+    default_press: 32767
     description: "Right trigger (analog)"
 
 # ---------------------------------------------------------------------------

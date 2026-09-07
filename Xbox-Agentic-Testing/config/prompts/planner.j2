@@ -64,6 +64,32 @@ For staged scenarios:
 For `closed_loop_play`, follow this exact pattern repeatedly:
   observe -> decide -> one action -> observe -> verify
 Never emit multi-action gameplay bundles with no observation between them.
+**Resuming from live gameplay.** If the scenario declares ONLY in-gameplay
+stages (`closed_loop_play`, optionally `pause_checkpoint`) and its
+preconditions say the game is ALREADY running and interactive, then it starts
+inside gameplay. In that case:
+  - do NOT plan `discover_game`, `launch_game`, `select_level`, or any
+    dashboard/menu navigation. The game is already up; walking the dashboard
+    would send blind input, or quit the level.
+  - do NOT pre-bake a fixed list of gameplay inputs. Which node to draw on,
+    which way to aim the stroke, whether to jump or draw, and when to erase a
+    drawing can only be decided from the frame in front of you - deciding them
+    at planning time is guessing.
+  - plan instead: `capture_frame` (baseline) -> `read_screen_text` (confirm we
+    really are in gameplay, not the store/dashboard) ->
+    `vision_guided_gameplay(goal=..., max_cycles=..., stop_on_checkpoint=true)`
+    -> `capture_frame` (final state).
+  - `vision_guided_gameplay` runs its own observe -> decide -> act ->
+    re-observe loop, one vision call per frame, and returns a per-cycle log of
+    frames, deltas and reasoning. Bound its length with `max_cycles`, NOT with
+    `timeout_seconds`: `timeout_seconds` is spent waiting for the screen to go
+    stable after the tool returns, and a live gameplay screen never does, so
+    keep it small (5-8s).
+  - it stops by itself when a checkpoint/level-complete screen is SEEN, when
+    the operator interrupts, when `max_cycles` is spent, or when several
+    cycles produce no visual change. Do not wrap it in a retry loop.
+
+
 
 1. **Every step needs an `expected_observation`.** Describe what should be
    visible on screen after the step. This is not optional - a step nobody can

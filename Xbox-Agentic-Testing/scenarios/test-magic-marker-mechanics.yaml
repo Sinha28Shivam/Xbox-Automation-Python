@@ -1,0 +1,148 @@
+# ===========================================================================
+# VISION-GUIDED GAMEPLAY:
+# Max: The Curse of Brotherhood - play from wherever the level already is
+#
+# Purpose:
+#   You are ALREADY inside gameplay. This scenario does not launch the game,
+#   does not touch the dashboard and does not walk any menus. It hands control
+#   to the vision loop, which every cycle:
+#       1. captures the live frame
+#       2. shows it to a multimodal model
+#       3. gets back what is on screen (terrain, hazards, glowing Magic Marker
+#          nodes) plus the controller macros to run
+#       4. executes them and re-captures to measure what actually changed
+#
+#   The model decides WHERE to draw (which node), HOW to draw (stick vector +
+#   stroke length), when to destroy a drawing (X), when to jump, and when to
+#   keep advancing - the same decisions a human player makes.
+#
+# It plays until ONE of these happens:
+#   * a checkpoint / level-complete screen is actually SEEN on screen
+#   * you stop it with Ctrl+C (evidence captured so far is kept)
+#   * the cycle budget runs out
+#   * several cycles in a row produce no visual change at all (which means
+#     input is not reaching the console, or the obstacle is unsolvable)
+#
+# Run it:
+#   python console.py run --file scenarios/test-magic-marker-mechanics.yaml
+#
+# Preconditions are deliberately strict: the game must ALREADY be in
+# interactive gameplay before you start this. If you are on the dashboard,
+# use scenarios/max-any-chapter.yaml instead - that one launches and navigates.
+# ===========================================================================
+
+id: test-magic-marker-mechanics
+title: "Max: The Curse of Brotherhood - Vision-Guided Gameplay to Checkpoint"
+description: >
+  Vision-guided gameplay scenario that starts from live, already-running
+  gameplay. A multimodal model looks at every captured frame and decides how to
+  play: move, jump, edge-jump across gaps, draw Magic Marker earth pillars and
+  tree branches aimed at the glowing nodes it can see, destroy its own drawings
+  when they block the route, and keep advancing until a checkpoint is reached
+  or the operator stops the run.
+
+console: xbox_one
+
+goal: >
+  Starting from live gameplay, play Max forward under continuous vision
+  guidance - drawing, destroying, jumping and advancing based on what is
+  actually visible on screen - until a checkpoint or level-complete screen is
+  observed, or the run is stopped.
+
+preconditions:
+  - The console/device is powered on and awake.
+  - The GIMX session is authenticated and connected.
+  - The capture adapter shows live Xbox display.
+  - "Max: The Curse of Brotherhood is ALREADY running and in interactive
+    gameplay - not on the dashboard, not on a menu, not in a cutscene."
+  - The configured LLM provider supports vision (supports_vision true).
+
+tags:
+  - xbox
+  - max
+  - gameplay
+  - vision_guided
+  - magic_marker
+  - checkpoint
+
+game_controls:
+  left_stick:
+    semantic_action: move_player_and_aim_marker
+    description: "Move Max during gameplay, or steer the Magic Marker stroke while RT is held."
+
+  a:
+    semantic_action: jump_or_confirm_or_draw
+    description: "Jump during gameplay, advance a prompt, or hold while RT is held to draw."
+
+  b:
+    semantic_action: cancel_or_context_action
+    description: "Grip a pushable object, or perform a contextual gameplay action."
+
+  x:
+    semantic_action: destroy_marker_drawing
+    description: "Destroy/remove the current Magic Marker drawing."
+
+  rt:
+    semantic_action: activate_magic_marker
+    description: "Hold RT to enter Magic Marker aim mode; hold A and push the stick to draw."
+
+  lt:
+    semantic_action: contextual_action
+    description: "Context-dependent camera or gameplay action."
+
+  dpad:
+    semantic_action: menu_navigation
+    description: "Navigate menu/selection interfaces."
+
+  menu:
+    semantic_action: pause
+    description: "Open in-game pause menu."
+
+# Long-running by design: the loop plays until a checkpoint is seen or it is
+# stopped. runtime.run_timeout_seconds is the outer bound.
+timeout_seconds: 3600
+max_steps: 12
+
+stages:
+  - id: closed_loop_play
+    objective: >
+      From live gameplay, play under continuous vision guidance - deciding each
+      cycle from the visible frame whether to move, jump, draw a Magic Marker
+      pillar/branch on a visible node, or destroy a blocking drawing - and keep
+      advancing until a checkpoint is observed or the run is stopped.
+    required_evidence:
+      - progress_signal
+      - gameplay_screen
+    allowed_actions:
+      - capture_frame
+      - vision_guided_gameplay
+      - wait_for_stable_screen
+      - read_screen_text
+      - verify_screen_changed
+
+success_criteria:
+  - description: >
+      Max: The Curse of Brotherhood is live on screen in interactive gameplay
+      when the run starts - not the dashboard, store, or a menu.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Max: The Curse of Brotherhood interactive gameplay screen"
+    required: true
+
+  - description: >
+      The vision-guided gameplay loop produced observable movement on screen -
+      the captured before/after frame pairs differ across cycles, proving the
+      decided controller input reached the console.
+    check_type: screen_change
+    parameters:
+      min_delta: 0.5
+    required: true
+
+  - description: >
+      The run ended for a stated, observed reason - a checkpoint/level-complete
+      screen was seen, the operator stopped it, or the cycle budget was spent -
+      and that reason is recorded together with the frame that shows it.
+    check_type: vision_judgement
+    parameters:
+      expected_visual: "Gameplay progressed and the loop reported why it stopped"
+    required: true

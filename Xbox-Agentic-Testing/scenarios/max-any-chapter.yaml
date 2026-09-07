@@ -248,6 +248,7 @@ stages:
       - hold_button
       - pull_trigger
       - draw_magic_marker
+      - vision_guided_gameplay
       - wait_for_stable_screen
       - capture_frame
       - read_screen_text
