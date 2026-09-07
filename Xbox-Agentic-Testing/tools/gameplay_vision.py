@@ -81,8 +81,19 @@ class GameplayMove(BaseModel):
         description="Travel direction for move/jump/push_pull macros.")
 
     duration: float = Field(
-        default=0.8, ge=0.1, le=3.0,
-        description="Seconds to hold the stick or the drawing stroke.")
+        default=0.8, ge=0.1, le=6.0,
+        description="Seconds to hold the stick or the drawing stroke. For "
+                    "draw_marker: 1.5-2.0 raises an earth pillar, but a TREE "
+                    "BRANCH needs 3.0-5.0 so it grows heavy enough to bend "
+                    "and FALL. Too short leaves a stub that never drops.")
+
+    settle_after_draw: float = Field(
+        default=1.5, ge=0.0, le=6.0,
+        description="draw_marker only: seconds to WAIT after the stroke so "
+                    "the drawing finishes animating. A branch keeps bending, "
+                    "snaps and falls under its own weight after the stroke "
+                    "ends - use 2.5-4.0 when waiting for a branch to fall, "
+                    "1.0-1.5 for an earth pillar.")
 
     run_before_jump: float = Field(
         default=0.4, ge=0.05, le=2.0,
@@ -103,6 +114,32 @@ class GameplayMove(BaseModel):
         description="draw_marker only. Left-stick Y while drawing. "
                     "-1 = full UP (raise an earth pillar / grow a branch "
                     "upward), +1 = full down.")
+
+    # ---- Cursor aiming -----------------------------------------------------
+    # The marker cursor does NOT start on the node: it opens near the middle
+    # of the screen and must be STEERED onto the glowing node before the ink
+    # is anchored. Measured travel is ~450 px/s at full deflection.
+    node_x: float = Field(
+        default=0.0, ge=-1.0, le=1.0,
+        description="draw_marker/destroy_drawing. Direction to STEER THE "
+                    "CURSOR from the middle of the screen onto the glowing "
+                    "node (or onto the drawing you want to erase), BEFORE "
+                    "drawing. -1 = left, +1 = right. If the node is below "
+                    "and right of screen centre use node_x=+0.7, node_y=+0.7.")
+
+    node_y: float = Field(
+        default=0.0, ge=-1.0, le=1.0,
+        description="draw_marker/destroy_drawing. Vertical cursor steering. "
+                    "-1 = up, +1 = DOWN. Nodes sitting on the ground are "
+                    "usually BELOW the cursor's start point, so node_y is "
+                    "commonly positive.")
+
+    aim_time: float = Field(
+        default=0.4, ge=0.0, le=2.0,
+        description="Seconds to steer the cursor before anchoring the ink. "
+                    "The cursor moves ~450 px/s, so 0.4s ~= 180px of travel. "
+                    "Raise it for a node far from the screen centre; 0 skips "
+                    "aiming and draws where the cursor already is.")
 
     button: str = Field(
         default="",
@@ -189,14 +226,43 @@ CONTROLS AVAILABLE TO YOU (as macros)
                         the far ledge or a rope, then pull up. USE THIS FOR GAPS.
   climb_or_pull_up    : hanging on a ledge/rope -> stick UP + A to get on top
   swing_and_jump      : on a rope/vine -> build momentum, release at the peak
-  draw_marker         : hold RT (aim) + hold A (draw) and push the left stick
-                        along (aim_x, aim_y) for `duration`s. This is the
-                        Magic Marker. aim_y=-1 pushes the stroke UPWARD.
-  destroy_drawing     : X - erase your own drawing
+  draw_marker         : the Magic Marker. Two separate vectors:
+                        (node_x, node_y) STEERS THE CURSOR onto the glowing
+                        node, then (aim_x, aim_y) is the STROKE direction.
+                        aim_y=-1 grows the stroke UPWARD.
+  destroy_drawing     : erase one of YOUR OWN drawings. Also needs
+                        (node_x, node_y) to steer the cursor onto the drawing.
   push_pull           : hold B and move `direction` to shift a block/cart
   interact            : B
   advance_prompt      : A (dismiss a cutscene, dialog, or skip prompt)
   wait                : do nothing for `duration`s
+
+AIMING THE MARKER CURSOR - DO THIS OR THE INK LANDS IN MID-AIR
+  When the marker opens, the cursor appears near the MIDDLE OF THE SCREEN -
+  NOT on the node and NOT on Max. You must steer it onto the glowing node
+  with (node_x, node_y) before the ink is anchored.
+    * Compare the node's position to the CENTRE of the image.
+      node below-and-right of centre -> node_x=+0.7, node_y=+0.7
+      node below-and-left  of centre -> node_x=-0.7, node_y=+0.7
+      node straight below centre     -> node_x= 0.0, node_y=+1.0
+      REMEMBER: node_y is POSITIVE for DOWN. Ground nodes are usually below
+      the centre, so node_y is usually POSITIVE.
+    * The cursor travels ~450 px/s, so aim_time 0.4s ~= 180px on a 1920-wide
+      screen. Node close to centre -> 0.2s. Node near a screen edge -> 0.8s.
+  Getting this wrong is the single most common failure: the stroke appears
+  somewhere useless. If the previous cycle drew a pillar in the wrong place,
+  change (node_x, node_y) and aim_time - do not just repeat the same values.
+
+STANDING ON YOUR OWN PILLAR (the most useful marker technique)
+  A pillar rises from the ground UPWARD. To ride one up to a high ledge, Max
+  must already be standing ON the node when it grows:
+    1. move so Max is standing directly ON the glowing mound.
+    2. draw_marker with aim_y=-1.0 - the pillar lifts Max as it grows.
+    3. then jump/move onto the ledge you were trying to reach.
+  If instead you need a STEPPING STONE, do the opposite: stand BESIDE the
+  node, grow the pillar next to Max, then jump onto its top.
+  Decide which of the two you need from the terrain, and say which in
+  `reasoning`.
 
 HOW TO DECIDE WHERE AND HOW TO DRAW
   The marker only works on GLOWING NODES. Look for them before proposing a draw:
@@ -209,6 +275,15 @@ HOW TO DECIDE WHERE AND HOW TO DRAW
     * water node -> sprays a jet of water.
   Aim the stroke at the SPACE YOU NEED FILLED, not at Max. A longer `duration`
   makes a longer stroke: 0.6-1.0s is a short step, 1.5-2.5s is a tall pillar.
+
+  A BRANCH TAKES TIME - KEEP DRAWING UNTIL IT FALLS:
+  A tree branch is not done when it first appears. Keep the stroke going until
+  it is long and heavy enough to bend over and FALL - the falling branch is
+  what bridges the gap, forms a ramp, or knocks an obstacle down.
+    * earth pillar : duration 1.5-2.0, settle_after_draw 1.0-1.5
+    * TREE BRANCH  : duration 3.0-5.0, settle_after_draw 2.5-4.0
+  If a branch draw changed nothing, the stroke was TOO SHORT - raise
+  `duration` and draw the same node again rather than giving up on it.
   If your own drawing is now blocking the route, or grew the wrong way, use
   destroy_drawing (X) and draw again with a different aim.
   If NO node is visible, do NOT propose draw_marker - solve it by platforming,
@@ -317,17 +392,39 @@ def _trigger_control(pad: Any, name: str) -> tuple[str, int]:
 # ===========================================================================
 # Magic Marker
 # ===========================================================================
+def _hold(pad: Any, events: list[tuple[str, int]], label: str) -> bool:
+    """Assert several controller states in ONE gimx call.
+
+    Multi-call sequences can drop a hold between calls, which silently ruins
+    the marker: RT must stay down for the whole gesture or the marker closes
+    and the stroke is thrown away. `_send_events` exists for exactly this.
+    """
+    sender = getattr(pad, "_send_events", None)
+    if callable(sender):
+        return bool(sender(events, label))
+    okay = True
+    for control, value in events:
+        okay = bool(pad._send_event(control, value, label)) and okay
+    return okay
+
+
 def draw_marker_stroke(ctx: ToolContext, aim_x: float = 0.0, aim_y: float = -1.0,
-                       duration: float = 1.2) -> dict[str, Any]:
-    """Draw with the Magic Marker along an arbitrary stick vector.
+                       duration: float = 1.2, node_x: float = 0.0,
+                       node_y: float = 0.0, aim_time: float = 0.4,
+                       settle_after_draw: float = 1.5) -> dict[str, Any]:
+    """Draw with the Magic Marker: OPEN -> AIM -> ANCHOR -> STROKE -> COMMIT.
 
-    The verified mechanic on this rig, in this order:
-      hold RT (open the marker and aim) -> hold A (start drawing) ->
-      push the left stick along (aim_x, aim_y) for `duration` -> centre the
-      stick -> release A (finish the stroke) -> release RT (back to Max)
+    Hardware-verified on this rig (see MARKER_FINDINGS.md). The AIM phase is
+    the part that used to be missing: the cursor opens near the middle of the
+    screen, NOT on the node, so pressing A immediately anchored the ink at the
+    cursor's rest position. Measured rest was (967,534) while the target glow
+    sat at (1246,891) - about 450px away. It only ever appeared to work
+    because the game auto-snaps ink to a NEARBY node; outside snap range it
+    drew in mid-air.
 
-    A vector rather than one of four directions: a branch that has to reach
-    up-and-right cannot be drawn with "up" or "right" alone.
+    Aiming always uses FULL deflection: measured gain is ~450 px/s at
+    strength 1.0 but only ~17 px/s at 0.4, so a weak push barely moves the
+    cursor at all.
     """
     pad = ctx.hardware.pad()
     rt_control, rt_value = _trigger_control(pad, "rt")
@@ -342,31 +439,128 @@ def draw_marker_stroke(ctx: ToolContext, aim_x: float = 0.0, aim_y: float = -1.0
 
     x_value = _scale_axis(pad, "left_stick", aim_x)
     y_value = _scale_axis(pad, "left_stick", aim_y)
-    hold = max(0.3, min(3.0, float(duration)))
+    # Up to 6s: a tree branch must grow far enough to become heavy and then
+    # physically FALL, which takes far longer than raising a short pillar.
+    hold = max(0.3, min(6.0, float(duration)))
+    aim_hold = max(0.0, min(2.0, float(aim_time)))
+    settle = max(0.35, min(6.0, float(settle_after_draw)))
+    centre = [(x_axis, 0), (y_axis, 0)]
 
-    print(f"  -> [MARKER] RT+A, stick ({aim_x:+.2f}, {aim_y:+.2f}) "
+    # 1. Open the marker. RT spans 0..32767; anything under ~1023 does nothing.
+    dispatched = _hold(pad, [(rt_control, rt_value)] + centre, "marker:open")
+    time.sleep(0.45)
+
+    # 2. Steer the cursor onto the node, at FULL deflection.
+    aimed = False
+    if aim_hold > 0.05 and (abs(node_x) >= 0.05 or abs(node_y) >= 0.05):
+        norm = max(abs(float(node_x)), abs(float(node_y))) or 1.0
+        nx = _scale_axis(pad, "left_stick", float(node_x) / norm)
+        ny = _scale_axis(pad, "left_stick", float(node_y) / norm)
+        print(f"  -> [MARKER] aim cursor ({node_x:+.2f},{node_y:+.2f}) "
+              f"for {aim_hold:.2f}s (~{aim_hold * 450:.0f}px)", flush=True)
+        _hold(pad, [(rt_control, rt_value), (x_axis, nx), (y_axis, ny)],
+              "marker:aim")
+        time.sleep(aim_hold)
+        _hold(pad, [(rt_control, rt_value)] + centre, "marker:aim_settle")
+        time.sleep(0.20)
+        aimed = True
+
+    # 3. Anchor the ink where the cursor now is, then 4. draw the stroke.
+    print(f"  -> [MARKER] anchor A, stroke ({aim_x:+.2f},{aim_y:+.2f}) "
           f"for {hold:.2f}s", flush=True)
-
-    dispatched = pad._send_event(rt_control, rt_value, "marker:aim")
-    time.sleep(0.30)
-    pad._send_event(a_control, 1, "marker:draw_hold")
-    time.sleep(0.15)
-    pad._send_event(x_axis, x_value, "marker:stroke_x")
-    pad._send_event(y_axis, y_value, "marker:stroke_y")
+    _hold(pad, [(rt_control, rt_value), (a_control, 1)] + centre,
+          "marker:anchor")
+    time.sleep(0.35)
+    _hold(pad, [(rt_control, rt_value), (a_control, 1),
+                (x_axis, x_value), (y_axis, y_value)], "marker:stroke")
     time.sleep(hold)
-    pad._send_event(x_axis, 0, "marker:centre_x")
-    pad._send_event(y_axis, 0, "marker:centre_y")
+
+    # 5. Commit, then close. A is 1/0 - never 255.
+    _hold(pad, [(rt_control, rt_value), (a_control, 1)] + centre,
+          "marker:stroke_end")
     time.sleep(0.15)
-    pad._send_event(a_control, 0, "marker:draw_release")
-    time.sleep(0.20)
-    pad._send_event(rt_control, 0, "marker:close")
+    _hold(pad, [(rt_control, rt_value), (a_control, 0)] + centre,
+          "marker:commit")
     time.sleep(0.25)
+    _hold(pad, [(rt_control, 0), (a_control, 0)] + centre, "marker:close")
+    # Let the drawing SETTLE before the next frame is judged: a grown branch
+    # keeps bending, snaps and falls under its own weight after the stroke
+    # ends, and a pillar finishes rising. Measuring too early captures the
+    # mid-animation state.
+    time.sleep(settle)
 
     return {
         "macro": "draw_marker",
+        "settle_after_draw": settle,
         "aim_x": round(float(aim_x), 3),
         "aim_y": round(float(aim_y), 3),
+        "node_x": round(float(node_x), 3),
+        "node_y": round(float(node_y), 3),
+        "aim_time": aim_hold,
+        "cursor_aimed": aimed,
         "duration": hold,
+        "dispatched": bool(dispatched),
+    }
+
+
+def destroy_marker_drawing(ctx: ToolContext, node_x: float = 0.0,
+                           node_y: float = 0.0, aim_time: float = 0.4,
+                           presses: int = 1) -> dict[str, Any]:
+    """Erase a drawing: hold RT -> aim at it -> tap X -> release RT.
+
+    A bare `pad.press("x")` cannot work, and that is what this replaces. Two
+    hardware-verified requirements it was missing:
+
+      1. RT must stay HELD. X only erases while the marker is OPEN; pressing
+         X during normal gameplay is an unrelated context action.
+      2. The cursor must physically sit on the drawing. Unlike drawing there
+         is NO auto-snap when erasing - which is exactly why destroy failed
+         for a long time while draw succeeded with identical aiming.
+    """
+    pad = ctx.hardware.pad()
+    rt_control, rt_value = _trigger_control(pad, "rt")
+    x_button = _button_control(pad, "x")
+    x_axis = _axis(pad, "left_stick", "x")
+    y_axis = _axis(pad, "left_stick", "y")
+    aim_hold = max(0.0, min(2.0, float(aim_time)))
+    centre = [(x_axis, 0), (y_axis, 0)]
+
+    dispatched = _hold(pad, [(rt_control, rt_value)] + centre, "destroy:open")
+    time.sleep(0.45)
+
+    aimed = False
+    if aim_hold > 0.05 and (abs(node_x) >= 0.05 or abs(node_y) >= 0.05):
+        norm = max(abs(float(node_x)), abs(float(node_y))) or 1.0
+        nx = _scale_axis(pad, "left_stick", float(node_x) / norm)
+        ny = _scale_axis(pad, "left_stick", float(node_y) / norm)
+        print(f"  -> [DESTROY] aim cursor ({node_x:+.2f},{node_y:+.2f}) "
+              f"for {aim_hold:.2f}s", flush=True)
+        _hold(pad, [(rt_control, rt_value), (x_axis, nx), (y_axis, ny)],
+              "destroy:aim")
+        time.sleep(aim_hold)
+        aimed = True
+
+    # Hold the aim through the press: re-centring first can let the cursor
+    # drift off the drawing before X registers.
+    taps = max(1, min(5, int(presses)))
+    print(f"  -> [DESTROY] press X x{taps} (RT still held)", flush=True)
+    for _ in range(taps):
+        _hold(pad, [(rt_control, rt_value), (x_button, 1)], "destroy:x_down")
+        time.sleep(0.25)
+        _hold(pad, [(rt_control, rt_value), (x_button, 0)], "destroy:x_up")
+        time.sleep(0.30)
+
+    _hold(pad, [(rt_control, 0), (x_button, 0)] + centre, "destroy:close")
+    time.sleep(0.35)
+
+    return {
+        "macro": "destroy_drawing",
+        "button": x_button,
+        "node_x": round(float(node_x), 3),
+        "node_y": round(float(node_y), 3),
+        "aim_time": aim_hold,
+        "cursor_aimed": aimed,
+        "presses": taps,
         "dispatched": bool(dispatched),
     }
 
@@ -450,13 +644,17 @@ def execute_move(ctx: ToolContext, move: GameplayMove) -> dict[str, Any]:
 
     if action == "draw_marker":
         return draw_marker_stroke(ctx, aim_x=move.aim_x, aim_y=move.aim_y,
-                                  duration=duration)
+                                  duration=duration,
+                                  node_x=move.node_x, node_y=move.node_y,
+                                  aim_time=move.aim_time,
+                                  settle_after_draw=move.settle_after_draw)
 
     if action == "destroy_drawing":
-        pressed = pad.press("x", duration=0.20)
-        time.sleep(0.30)
-        return {"macro": "destroy_drawing", "button": "x",
-                "dispatched": bool(pressed)}
+        # NOT a bare X press: X only erases while RT holds the marker open,
+        # and the cursor has to be steered onto the drawing first.
+        return destroy_marker_drawing(ctx, node_x=move.node_x,
+                                      node_y=move.node_y,
+                                      aim_time=move.aim_time)
 
     if action == "push_pull":
         b_control = _button_control(pad, "b")
@@ -696,8 +894,14 @@ def vision_gameplay_loop(
             # --- 5. act -----------------------------------------------------
             dispatched_moves: list[dict[str, Any]] = []
             for move in moves[:3]:
-                aim = (f"aim=({move.aim_x:+.2f},{move.aim_y:+.2f}) "
-                       if move.action == "draw_marker" else "")
+                aim = ""
+                if move.action == "draw_marker":
+                    aim = (f"node=({move.node_x:+.2f},{move.node_y:+.2f})@"
+                           f"{move.aim_time:.2f}s "
+                           f"stroke=({move.aim_x:+.2f},{move.aim_y:+.2f}) ")
+                elif move.action == "destroy_drawing":
+                    aim = (f"node=({move.node_x:+.2f},{move.node_y:+.2f})@"
+                           f"{move.aim_time:.2f}s ")
                 print(f"  Act       : {move.action} dir={move.direction} "
                       f"dur={move.duration:.2f}s {aim}- {move.purpose}",
                       flush=True)

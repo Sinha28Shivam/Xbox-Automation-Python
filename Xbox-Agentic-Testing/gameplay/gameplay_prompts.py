@@ -27,8 +27,26 @@ class GameplayAction(BaseModel):
     duration: float = Field(
         default=0.8,
         ge=0.1,
-        le=4.0,
-        description="Duration in seconds to hold the stick or action.",
+        le=6.0,
+        description=(
+            "Duration in seconds to hold the stick or action. For "
+            "magic_marker this is the STROKE length: 1.5-2.0 raises an earth "
+            "pillar, but a TREE BRANCH needs 3.0-5.0 so it grows heavy "
+            "enough to bend and FALL. Too short leaves a stub that never "
+            "drops."
+        ),
+    )
+    settle_after_draw: float = Field(
+        default=1.5,
+        ge=0.0,
+        le=6.0,
+        description=(
+            "magic_marker only: seconds to WAIT after the stroke so the "
+            "drawing finishes animating. A grown branch keeps bending, snaps "
+            "and falls under its own weight after you stop drawing - use "
+            "2.5-4.0 when you are waiting for a branch to fall, 1.0-1.5 for "
+            "an earth pillar."
+        ),
     )
     button: str = Field(
         default="",
@@ -45,6 +63,39 @@ class GameplayAction(BaseModel):
         ge=0.1,
         le=2.0,
         description="Air travel time with stick held forward toward target ledge/object.",
+    )
+    # ---- Magic Marker cursor aiming ---------------------------------------
+    # The cursor opens near the MIDDLE OF THE SCREEN, not on the node, so it
+    # must be steered before the ink is anchored. ~450 px/s at full stick.
+    node_x: float = Field(
+        default=0.0,
+        ge=-1.0,
+        le=1.0,
+        description=(
+            "magic_marker / destroy_drawing: horizontal direction to steer the "
+            "CURSOR from screen centre onto the glowing node (or onto the "
+            "drawing to erase). -1 = left, +1 = right."
+        ),
+    )
+    node_y: float = Field(
+        default=0.0,
+        ge=-1.0,
+        le=1.0,
+        description=(
+            "magic_marker / destroy_drawing: vertical cursor steering. "
+            "-1 = up, +1 = DOWN. Nodes on the ground sit BELOW screen centre, "
+            "so this is usually POSITIVE."
+        ),
+    )
+    aim_time: float = Field(
+        default=0.4,
+        ge=0.0,
+        le=2.0,
+        description=(
+            "Seconds to steer the cursor before drawing. The cursor moves "
+            "~450 px/s, so 0.4s is about 180px. Use 0.2s for a node near the "
+            "centre, 0.8s for one near a screen edge."
+        ),
     )
 
 
@@ -96,11 +147,59 @@ You are playing "Max: The Curse of Brotherhood", a 2.5D cinematic puzzle-platfor
 
 2. Magic Marker Mechanics (Crucial for Crossing Gaps):
    - When a gap is too wide or a ledge is too high to jump across, DO NOT KEEP JUMPING TO YOUR DEATH!
-   - Look around for glowing Magic Marker nodes:
+   - IF YOU CAN SEE A GLOWING EARTH NODE, DRAW ON IT. Do not walk past it and
+     do not keep pushing rocks: the node is the intended solution.
      * Orange glowing earth nodes (mounds in the dirt/rock): Use `magic_marker` (direction="up") to raise an earth pillar that lifts Max or acts as a stepping stone.
      * Green glowing tree nodes: Use `magic_marker` (direction="right" or "up") to grow a branch or swingable vine.
      * Water nodes: Use `magic_marker` to spray a jet of water.
-   - Reset drawing: If a pillar is misplaced or in the way, use `destroy_drawing` (presses 'X').
+   - Reset drawing: If a pillar is misplaced or in the way, use `destroy_drawing`.
+
+   A BRANCH TAKES TIME - KEEP DRAWING UNTIL IT FALLS:
+   A tree branch is not finished when it appears. Keep the stroke going until
+   the branch is long and heavy enough to bend over and FALL - the falling
+   branch is what bridges the gap, forms a ramp, or knocks an obstacle down.
+     * earth pillar : duration 1.5-2.0, settle_after_draw 1.0-1.5
+     * TREE BRANCH  : duration 3.0-5.0, settle_after_draw 2.5-4.0
+   If a branch draw changed nothing, your stroke was TOO SHORT - raise
+   `duration` and draw on the same node again. Do not abandon the node, and
+   do not switch to pushing rocks.
+
+   THE GAME TELLS YOU WHEN TO DRAW - LOOK FOR THE CONTROLLER HINT ICON:
+   Max shows a small black CONTROLLER ICON on screen with one button
+   highlighted in orange when it wants you to use that control here. If you
+   can see a controller icon with "RT" (or a highlighted right trigger), the
+   game is telling you: OPEN THE MAGIC MARKER NOW, at this spot. Treat that
+   icon as a direct instruction and return `magic_marker` - do not wander off
+   looking for something else, and do not report "no nodes visible" and walk
+   away. The drawable node is near Max, even if the glow is subtle.
+   Similarly an "A" hint means jump/confirm, "B" means grab/interact, and an
+   "X" hint next to one of YOUR drawings means you can erase it.
+
+   AIM THE CURSOR OR THE INK LANDS IN MID-AIR:
+   The marker cursor opens near the MIDDLE OF THE SCREEN - not on the node and
+   not on Max. Set (node_x, node_y) to steer it onto the node, comparing the
+   node's position with the CENTRE of the image:
+     node below-and-right of centre -> node_x=+0.7, node_y=+0.7
+     node below-and-left  of centre -> node_x=-0.7, node_y=+0.7
+     node straight below centre     -> node_x= 0.0, node_y=+1.0
+   node_y is POSITIVE for DOWN, and ground nodes are usually below centre, so
+   node_y is usually positive. The cursor moves ~450 px/s: aim_time 0.4 is
+   ~180px, use 0.2 near the centre and 0.8 near a screen edge.
+
+   STANDING ON YOUR OWN PILLAR (the key technique):
+   A pillar grows UPWARD from the ground. To ride one up to a high ledge, Max
+   must ALREADY BE STANDING ON the node when it grows:
+     1. `move` so Max is standing directly ON the glowing mound.
+     2. `magic_marker` direction="up" - the pillar carries Max up with it.
+     3. `move`/`jump` onto the ledge you were trying to reach.
+   If you instead need a STEPPING STONE, stand BESIDE the node, grow the
+   pillar next to Max, then jump onto its top. Say which one you are doing.
+
+   IF YOUR OWN PILLAR NOW BLOCKS THE WAY:
+   A pillar you drew can wall off the route. If Max cannot get past something
+   you created, use `destroy_drawing` with (node_x, node_y) aimed AT THE
+   PILLAR, then move on. Erasing needs the cursor ON the pillar - there is no
+   auto-snap for erasing, so aim it properly.
 
 3. Pushing & Pulling Objects (`push_pull`):
    - Large stone blocks, carts, or fallen trees can be gripped with 'B' and pushed/pulled to bridge gaps or provide elevation.
@@ -120,6 +219,19 @@ If you are unable to cross an obstacle or died on the previous attempt:
    - Execute `climb_or_pull_up` immediately.
 4. If there is an environmental object (rock, tree branch, cart):
    - Try `push_pull` or `interact`.
+
+### Reading the delta in your action history - IMPORTANT
+The `observation` for each past step carries a pixel delta AND a verdict. Trust
+the verdict, not the raw number. On this capture rig an IDLE screen already
+measures 2-3 because foliage sways and dust drifts, and Max walking only
+reaches about 4. So "Delta 3.6 (AMBIENT ONLY ...)" means NOTHING HAPPENED -
+it is NOT progress, however plausible the number looks.
+If you see two AMBIENT ONLY / NOTHING CHANGED results in a row:
+  - STOP repeating that action. It is not working.
+  - Something is blocking Max, or the object you are pushing will not move.
+  - Look for a GLOWING NODE and use `magic_marker`. That is usually the
+    intended solution, and pushing rocks usually is not.
+  - If you already drew something that is now in the way, `destroy_drawing`.
 
 Provide 1-3 macro actions per turn with precise timings (0.5s - 1.5s). Always prioritize staying alive while advancing right!
 """

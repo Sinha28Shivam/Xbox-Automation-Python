@@ -112,6 +112,158 @@ class AutonomousPlayer:
         _, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 82])
         return base64.b64encode(buffer).decode("utf-8")
 
+    # ---- Magic Marker: hardware-verified values from MARKER_FINDINGS.md ---
+    # RT is an AXIS spanning 0..32767, not a 0..255 byte. Anything below ~1023
+    # leaves the trigger unpressed as far as the console is concerned.
+    MARKER_RT = 32767
+    # Measured cursor travel at full stick deflection. Strength matters far
+    # more than time: ~450 px/s at 1.0 but only ~17 px/s at 0.4.
+    CURSOR_PX_PER_SEC = 450
+
+    # A vision call that never returns would hang the session silently.
+    llm_timeout = 90.0
+
+    def _invoke_with_timeout(self, messages: Any, timeout: float = 90.0) -> Any:
+        """Run the model on a worker thread so a stuck call cannot hang us.
+
+        The thread is daemonic: if the provider never answers, we abandon the
+        call and continue with the next cycle rather than freezing forever.
+        """
+        import threading
+
+        box: dict[str, Any] = {}
+
+        def work() -> None:
+            try:
+                box["value"] = self.runnable.invoke(messages)
+            except Exception as exc:            # re-raised on the caller side
+                box["error"] = exc
+
+        worker = threading.Thread(target=work, daemon=True)
+        worker.start()
+        worker.join(max(5.0, float(timeout)))
+        if worker.is_alive():
+            raise TimeoutError(f"vision model exceeded {timeout:.0f}s")
+        if "error" in box:
+            raise box["error"]
+        return box["value"]
+
+    @staticmethod
+    def _delta_verdict(delta: float | None) -> str:
+        """Translate a raw pixel delta into what it actually means here.
+
+        Measured on this rig: an IDLE screen (swaying foliage, drifting dust)
+        already reads 2-3, and Max walking only reaches 2.7-4.2. The two
+        ranges OVERLAP, so a bare "delta 3.6" was being read by the model as
+        "steady progress" when nothing had moved at all - which is why it kept
+        pushing rocks for eight cycles instead of drawing.
+        """
+        if delta is None:
+            return "not measured"
+        if delta < 2.0:
+            return "NOTHING CHANGED - that attempt did nothing"
+        if delta < 4.5:
+            return ("AMBIENT ONLY - this is the same as an idle screen, so "
+                    "Max most likely did NOT move; try a different approach")
+        if delta < 12.0:
+            return "something really moved"
+        return "big change - scene transition, draw, or death"
+
+    @staticmethod
+    def _hold(pad: Any, events: list[tuple[str, int]], label: str) -> bool:
+        """Assert several controller states in ONE gimx call.
+
+        Sending them one at a time lets a hold lapse between calls, which
+        silently ruins the gesture: RT has to stay down for the whole stroke
+        or the marker closes and the ink is discarded.
+        """
+        sender = getattr(pad, "_send_events", None)
+        if callable(sender):
+            return bool(sender(events, label))
+        okay = True
+        for control, value in events:
+            okay = bool(pad._send_event(control, value, label)) and okay
+        return okay
+
+    def _aim_cursor(self, pad: Any, node_x: float, node_y: float,
+                    aim_time: float, label: str) -> bool:
+        """Steer the marker cursor onto a node at FULL deflection."""
+        aim_hold = max(0.0, min(2.0, float(aim_time)))
+        if aim_hold <= 0.05 or (abs(node_x) < 0.05 and abs(node_y) < 0.05):
+            return False
+        norm = max(abs(float(node_x)), abs(float(node_y))) or 1.0
+        nx = int(round(max(-1.0, min(1.0, node_x / norm)) * 32767))
+        ny = int(round(max(-1.0, min(1.0, node_y / norm)) * 32767))
+        print(f"     aim cursor ({node_x:+.2f},{node_y:+.2f}) for "
+              f"{aim_hold:.2f}s (~{aim_hold * self.CURSOR_PX_PER_SEC:.0f}px)",
+              flush=True)
+        self._hold(pad, [("r2", self.MARKER_RT),
+                         ("lstick x", nx), ("lstick y", ny)], label)
+        time.sleep(aim_hold)
+        return True
+
+    def _marker_stroke(self, pad: Any, node_x: float, node_y: float,
+                       aim_time: float, direction: str,
+                       duration: float, settle: float = 1.5) -> None:
+        """OPEN -> AIM -> ANCHOR -> STROKE -> COMMIT -> CLOSE -> SETTLE."""
+        centre = [("lstick x", 0), ("lstick y", 0)]
+        stroke = {"up": (0, -32767), "down": (0, 32767),
+                  "left": (-32767, 0), "right": (32767, 0)}
+        sx, sy = stroke.get(direction, (0, -32767))
+        # Up to 6s: a tree branch has to grow far enough to become heavy and
+        # then physically FALL, which takes much longer than raising a short
+        # earth pillar. Cutting the stroke off early leaves a stub that never
+        # drops, so the route stays blocked.
+        hold = max(0.3, min(6.0, float(duration)))
+
+        self._hold(pad, [("r2", self.MARKER_RT)] + centre, "marker:open")
+        time.sleep(0.45)
+
+        if self._aim_cursor(pad, node_x, node_y, aim_time, "marker:aim"):
+            self._hold(pad, [("r2", self.MARKER_RT)] + centre,
+                       "marker:aim_settle")
+            time.sleep(0.20)
+
+        # A is a BUTTON: 1/0, never 255.
+        self._hold(pad, [("r2", self.MARKER_RT), ("cross", 1)] + centre,
+                   "marker:anchor")
+        time.sleep(0.35)
+        self._hold(pad, [("r2", self.MARKER_RT), ("cross", 1),
+                         ("lstick x", sx), ("lstick y", sy)], "marker:stroke")
+        time.sleep(hold)
+        self._hold(pad, [("r2", self.MARKER_RT), ("cross", 1)] + centre,
+                   "marker:stroke_end")
+        time.sleep(0.15)
+        self._hold(pad, [("r2", self.MARKER_RT), ("cross", 0)] + centre,
+                   "marker:commit")
+        time.sleep(0.25)
+        self._hold(pad, [("r2", 0), ("cross", 0)] + centre, "marker:close")
+        # Let the drawing SETTLE before the next frame is judged. A grown
+        # branch keeps moving after the stroke ends - it bends, snaps and
+        # falls under its own weight - and a pillar finishes rising. Grabbing
+        # a frame immediately shows the mid-animation state, so the next
+        # cycle would react to a branch that has not landed yet.
+        time.sleep(max(0.35, float(settle)))
+
+    def _marker_destroy(self, pad: Any, node_x: float, node_y: float,
+                        aim_time: float, presses: int = 1) -> None:
+        """Hold RT -> aim at the drawing -> tap X (square) -> release RT."""
+        centre = [("lstick x", 0), ("lstick y", 0)]
+        self._hold(pad, [("r2", self.MARKER_RT)] + centre, "destroy:open")
+        time.sleep(0.45)
+        self._aim_cursor(pad, node_x, node_y, aim_time, "destroy:aim")
+        # Keep the aim applied: re-centring can let the cursor drift off the
+        # drawing before X registers.
+        for _ in range(max(1, min(5, int(presses)))):
+            self._hold(pad, [("r2", self.MARKER_RT), ("square", 1)],
+                       "destroy:x_down")
+            time.sleep(0.25)
+            self._hold(pad, [("r2", self.MARKER_RT), ("square", 0)],
+                       "destroy:x_up")
+            time.sleep(0.30)
+        self._hold(pad, [("r2", 0), ("square", 0)] + centre, "destroy:close")
+        time.sleep(0.35)
+
     def execute_action(self, act: GameplayAction) -> None:
         """Dispatch a high-level gameplay action through ConsolePad."""
         pad = self.hardware.pad()
@@ -206,22 +358,36 @@ class AutonomousPlayer:
             time.sleep(0.2)
 
         elif action_type == "magic_marker":
-            # Hold LT to open reticle
+            # HARDWARE-VERIFIED sequence - see MARKER_FINDINGS.md.
+            # The previous version was wrong in four separate ways:
+            #   * it opened the marker with LT ("l2"); the marker is RT ("r2")
+            #   * it used 255, but the trigger axis spans 0..32767, so 255 is
+            #     ~0.8% of a pull and the console sees an UNPRESSED trigger
+            #   * it treated RT as the "draw" button; drawing is A ("cross")
+            #   * it aimed and drew in separate calls, so no hold was ever
+            #     asserted at the same time as another
             print("  -> [MAGIC MARKER] Raising pillar / branch", flush=True)
-            pad._send_event("l2", 255, "marker:open")
-            time.sleep(0.25)
-            aim_dir = direction if direction in ("up", "down", "left", "right") else "up"
-            pad.stick("left_stick", direction=aim_dir, duration=min(duration, 0.8), strength=1.0)
-            time.sleep(0.1)
-            # Hold RT to draw / raise
-            pad._send_event("r2", 255, "marker:draw")
-            time.sleep(0.45)
-            pad._send_event("r2", 0, "marker:draw_done")
-            pad._send_event("l2", 0, "marker:close")
-            time.sleep(0.3)
+            self._marker_stroke(
+                pad,
+                node_x=getattr(act, "node_x", 0.0),
+                node_y=getattr(act, "node_y", 0.0),
+                aim_time=getattr(act, "aim_time", 0.4),
+                direction=direction,
+                duration=duration,
+                settle=getattr(act, "settle_after_draw", 1.5),
+            )
 
         elif action_type == "destroy_drawing":
-            pad.press("x", duration=0.2)
+            # A bare X press cannot erase: X only works while RT holds the
+            # marker OPEN, and the cursor must be steered onto the drawing
+            # first (there is no auto-snap when erasing).
+            print("  -> [DESTROY] Erasing a drawing", flush=True)
+            self._marker_destroy(
+                pad,
+                node_x=getattr(act, "node_x", 0.0),
+                node_y=getattr(act, "node_y", 0.0),
+                aim_time=getattr(act, "aim_time", 0.4),
+            )
 
         elif action_type == "interact":
             pad.press("b", duration=min(duration, 0.3))
@@ -296,8 +462,18 @@ class AutonomousPlayer:
                 from langchain_core.messages import HumanMessage
                 messages = [HumanMessage(content=[{"type": "text", "text": prompt}, *image_block])]
 
+                # A hung provider call would otherwise freeze the whole
+                # session with no output at all, holding the pad and the
+                # capture card. Bound it and move on to the next cycle.
+                print(f"[{step_idx:03d}] thinking ...", flush=True)
                 try:
-                    analysis: GameStateAnalysis = self.runnable.invoke(messages)
+                    analysis: GameStateAnalysis = self._invoke_with_timeout(
+                        messages, timeout=self.llm_timeout)
+                except TimeoutError:
+                    print(f"[{step_idx:03d}] Vision LLM did not answer within "
+                          f"{self.llm_timeout:.0f}s - skipping this cycle.",
+                          flush=True)
+                    continue
                 except Exception as exc:
                     print(f"[{step_idx:03d}] Vision LLM error: {exc}. Retrying in 1s...", flush=True)
                     time.sleep(1.0)
@@ -357,7 +533,13 @@ class AutonomousPlayer:
                 self.action_history.append({
                     "step": step_idx,
                     "action": action_desc,
-                    "observation": f"Delta {delta:.1f}, scene: {analysis.scene_state}",
+                    # Raw deltas were being misread as "steady progress": on
+                    # this rig an IDLE screen already measures 2-3 and walking
+                    # only reaches 2.7-4.2, so 3.5 means Max probably did NOT
+                    # move. Spell that out instead of leaving a bare number.
+                    "observation": (
+                        f"Delta {delta:.1f} ({self._delta_verdict(delta)}), "
+                        f"scene: {analysis.scene_state}"),
                 })
 
                 # 10. Checkpoint session
