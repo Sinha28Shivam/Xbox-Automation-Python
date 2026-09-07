@@ -45,11 +45,13 @@ class AutonomousPlayer:
         llm_factory: LLMFactory | None = None,
         game_name: str = "Max: The Curse of Brotherhood",
         session_id: str | None = None,
+        route_path: str | Path | None = None,
     ):
         self.settings = settings
         self.hardware = hardware or HardwareBridge(settings)
         self.llm_factory = llm_factory or LLMFactory(settings)
         self.game_name = game_name
+        self.route_context = self._load_route(route_path)
         self.session_id = session_id or f"play-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
         self.root_dir = Path(__file__).resolve().parent.parent
@@ -77,6 +79,9 @@ class AutonomousPlayer:
         self.last_frame: np.ndarray | None = None
         # Per-instance, so one session's repeats never leak into another.
         self._recent_actions = []
+        self._requested_actions = []
+        self._stuck_cycles = 0
+        self._stuck_breaks = 0
 
     def _build_model(self) -> Any:
         # Prefer claude-3-5-sonnet for spatial reasoning if available, or configured model
@@ -103,6 +108,49 @@ class AutonomousPlayer:
             pass
 
         return step_filename
+
+    # Route context is prepended to every prompt, so it is charged on every
+    # cycle. The per-frame notes at the end of ROUTE.md are the least useful
+    # part per token, so the file is trimmed rather than sent whole.
+    route_char_budget = 6000
+
+    def _load_route(self, route_path: str | Path | None) -> str:
+        """Load a human ROUTE.md to give the model the level's running order.
+
+        Accepts either the ROUTE.md itself or a walkthrough session directory
+        containing one. Missing or unreadable routes are NOT fatal: playing
+        without route context is the previous behaviour, so we warn and carry
+        on rather than refusing to start.
+        """
+        if not route_path:
+            return ""
+        p = Path(route_path)
+        if p.is_dir():
+            p = p / "ROUTE.md"
+        if not p.is_file():
+            print(f"  !! route file not found: {p} - playing without it.",
+                  flush=True)
+            return ""
+        try:
+            text = p.read_text(encoding="utf-8").strip()
+        except OSError as exc:
+            print(f"  !! could not read route {p}: {exc}", flush=True)
+            return ""
+        if not text:
+            return ""
+
+        # Drop the verbose per-frame tail if we are over budget; the route
+        # table and "what the level required" list carry the useful signal.
+        if len(text) > self.route_char_budget:
+            cut = text.find("## Per-frame notes")
+            if cut > 0:
+                text = text[:cut].rstrip()
+        if len(text) > self.route_char_budget:
+            text = text[:self.route_char_budget].rstrip() + "\n[...truncated]"
+
+        print(f"  route context loaded from {p} ({len(text)} chars)",
+              flush=True)
+        return text
 
     def _encode_frame(self, frame: np.ndarray) -> str:
         """Encode frame to base64 JPEG for model consumption."""
@@ -152,6 +200,52 @@ class AutonomousPlayer:
 
     # Rolling record of dispatched macros, for breaking repeat loops.
     _recent_actions: list[str] = []
+    # A delta at or below this is ambient noise (idle 2-3, walking 2.7-4.2).
+    ambient_delta = 4.5
+    # Consecutive ambient cycles before the marker is forced.
+    stuck_after = 3
+    _stuck_cycles = 0
+
+    def _break_stuck(self, acts: list[GameplayAction],
+                     stuck_cycles: int) -> list[GameplayAction]:
+        """Force a Magic Marker draw when nothing has moved for a while.
+
+        The per-action veto only catches the SAME macro repeated. Observed
+        live: the model cycled move -> running_jump -> push_pull -> jump ->
+        edge_jump_grab against the same wall for ten cycles, so no macro ever
+        repeated three times and the veto never fired - while a glowing node
+        sat right at Max's feet and was described as "no nodes visible".
+
+        Progress is measured by DELTA, not by variety of attempts. After
+        `stuck_after` ambient-only cycles, draw on the ground beside Max: in
+        this game the marker is nearly always the intended answer, and a
+        wrong pillar is cheap because it can be erased.
+        """
+        if stuck_cycles < self.stuck_after:
+            return acts
+        if any(a.action in ("magic_marker", "destroy_drawing") for a in acts):
+            return acts                      # already trying the marker
+
+        # Alternate the escape route. If a pillar has already been drawn,
+        # drawing another one does not help - the problem is more often that
+        # Max never gets ON it because every jump goes the wrong way. So on
+        # even attempts try climbing LEFT (pillars usually end up behind
+        # Max), and on odd attempts draw.
+        self._stuck_breaks = getattr(self, "_stuck_breaks", 0) + 1
+        if self._stuck_breaks % 2 == 0:
+            print(f"  !! {stuck_cycles} stuck cycles - trying a running jump "
+                  f"LEFT onto the pillar behind Max.", flush=True)
+            return [GameplayAction(action="running_jump", direction="left",
+                                   duration=0.9, run_before_jump=0.7,
+                                   air_time=0.9)]
+        print(f"  !! {stuck_cycles} cycles with no real movement and no "
+              f"marker attempt - forcing a pillar draw beside Max.",
+              flush=True)
+        # Aim just below screen centre: ground level next to Max, where an
+        # earth node sits. Riding it up also frees him if he is boxed in.
+        return [GameplayAction(action="magic_marker", direction="up",
+                               duration=2.0, node_x=0.15, node_y=0.55,
+                               aim_time=0.4, settle_after_draw=1.5)]
 
     def _veto_repeat(self, act: GameplayAction) -> GameplayAction:
         """Break out of a macro the model keeps repeating without effect.
@@ -181,11 +275,16 @@ class AutonomousPlayer:
                                   duration=0.9, run_before_jump=0.7,
                                   air_time=0.9)
         if act.action == "jump":
-            print("  !! a standing jump twice did nothing - too high. "
-                  "Running jump from the edge instead.", flush=True)
-            return GameplayAction(action="running_jump",
-                                  direction=act.direction if act.direction in
-                                  ("left", "right") else "right",
+            # Also FLIP the direction. Observed live: Max stood right of his
+            # own pillar and kept jumping "right" (i.e. away from it) because
+            # right is the level's travel direction, so he landed on empty
+            # sand every time. If jumping one way is not working, the target
+            # is almost certainly on the other side.
+            flipped = "left" if act.direction == "right" else "right"
+            print(f"  !! a standing jump {act.direction} twice did nothing - "
+                  f"too high, and the target may be behind Max. Running jump "
+                  f"{flipped} instead.", flush=True)
+            return GameplayAction(action="running_jump", direction=flipped,
                                   duration=0.9, run_before_jump=0.7,
                                   air_time=0.9)
         if act.action == "push_pull":
@@ -250,19 +349,217 @@ class AutonomousPlayer:
         time.sleep(aim_hold)
         return True
 
+    # ---- Ink gauge -------------------------------------------------------
+    # Holding RT near a node grows a bright ring around the cursor: that is
+    # the INK METER. Drawing drains it, and when it is empty the stroke stops
+    # regardless of how long the stick is held. So the stroke should not run
+    # for a fixed time - it should run until the ink is spent.
+    INK_MIN_HSV = (0, 0, 165)      # pale/bright ring pixels
+    INK_MAX_HSV = (180, 120, 255)
+    # Hardware-measured cursor rest position at 1920x1080 (MARKER_FINDINGS.md).
+    CURSOR_REST_X = 967.0
+    CURSOR_REST_Y = 534.0
+    # Half-width of the gauge search box, as a fraction of the frame. 0.16
+    # gives a ~614x346 window at 1080p - wide enough to hold the ring plus
+    # aim error, tight enough to keep sand and sky out.
+    INK_ROI_HALF = 0.16
+
+    def _cursor_estimate(self, node_x: float, node_y: float, aim_time: float,
+                         width: int, height: int) -> tuple[float, float]:
+        """Where the cursor should be after aiming, in pixels.
+
+        The cursor opens at its REST position (measured (967,534) at 1080p)
+        and travels at ~450 px/s at full deflection. The aim vector is
+        normalised the same way `_aim_cursor` normalises it, so this mirrors
+        the movement actually dispatched to the pad.
+        """
+        cx = width * (self.CURSOR_REST_X / 1920.0)
+        cy = height * (self.CURSOR_REST_Y / 1080.0)
+        hold = max(0.0, min(2.0, float(aim_time)))
+        if hold > 0.05 and (abs(node_x) >= 0.05 or abs(node_y) >= 0.05):
+            norm = max(abs(float(node_x)), abs(float(node_y))) or 1.0
+            travel = self.CURSOR_PX_PER_SEC * hold * (width / 1920.0)
+            cx += (float(node_x) / norm) * travel
+            cy += (float(node_y) / norm) * travel
+        return (max(0.0, min(float(width), cx)),
+                max(0.0, min(float(height), cy)))
+
+    def _ink_level(self, frame: Any,
+                   centre: tuple[float, float] | None = None) -> float | None:
+        """Fraction of the marker ring still filled, as a rough 0..1.
+
+        Measured by the area of the bright, desaturated ring/disc around the
+        cursor. Returns None when the marker is not open or the ring cannot
+        be found, so callers can fall back to a timed stroke.
+
+        `centre` is the expected cursor position in pixels. The gauge is drawn
+        AROUND THE CURSOR, and the cursor moves when we aim - so a fixed
+        central ROI loses it. Measured: aiming (+0.7,+0.7) for 0.8s (which the
+        prompt recommends for nodes near a screen edge) puts the cursor at
+        (1327,894), outside the old fixed box of x 653-1267, y 324-778. The
+        gauge then read as "gone" and the stroke was cut back to its minimum,
+        which is exactly the "it does not keep growing" symptom.
+        """
+        if frame is None:
+            return None
+        try:
+            import cv2
+            import numpy as np
+        except ImportError:
+            return None
+        # Search ONLY a box around WHERE THE CURSOR IS. Measured: an unbounded
+        # bright/pale search fired on 45 of 46 ordinary frames, locking onto
+        # sunlit sand and sky instead of the ring, so the ROI restriction is
+        # mandatory. But it must TRACK the cursor rather than sit at the rest
+        # position, or aiming walks the gauge out of the box.
+        height, width = frame.shape[:2]
+        cx, cy = centre if centre else (width * 0.5, height * 0.5)
+        half_w = width * self.INK_ROI_HALF
+        half_h = height * self.INK_ROI_HALF
+        x0 = int(max(0, min(width - 2, cx - half_w)))
+        x1 = int(max(x0 + 2, min(width, cx + half_w)))
+        y0 = int(max(0, min(height - 2, cy - half_h)))
+        y1 = int(max(y0 + 2, min(height, cy + half_h)))
+        roi = frame[y0:y1, x0:x1]
+        if roi.size == 0:
+            return None
+        hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(hsv, np.array(self.INK_MIN_HSV, dtype=np.uint8),
+                           np.array(self.INK_MAX_HSV, dtype=np.uint8))
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE,
+                                np.ones((7, 7), np.uint8))
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN,
+                                np.ones((5, 5), np.uint8))
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,
+                                       cv2.CHAIN_APPROX_SIMPLE)
+        best = 0.0
+        roi_area = float(roi.shape[0] * roi.shape[1])
+        for c in contours:
+            area = cv2.contourArea(c)
+            # The ring is a modest disc, never a huge wash of bright terrain.
+            if area < 900 or area > 40000 or area > roi_area * 0.25:
+                continue
+            x, y, w, h = cv2.boundingRect(c)
+            if h == 0 or not 0.7 < w / float(h) < 1.45:
+                continue                     # must be roughly circular
+            if area / float(w * h) < 0.55:
+                continue                     # and solidly filled
+            best = max(best, area)
+        return best if best > 0 else None
+
+    # Sampling cadence while drawing, and how many flat samples mean "empty".
+    ink_poll = 0.25
+    ink_flat_samples = 3
+    ink_max_hold = 8.0
+    # Ring area must fall by at least this many pixels between polls to count
+    # as "still draining". Below it, JPEG/compression jitter alone would look
+    # like progress and the stroke would never decide the ink was spent.
+    ink_drain_step = 150.0
+
+    def _draw_until_empty(self, cap_seconds: float,
+                          centre: tuple[float, float] | None = None) -> None:
+        """Hold the stroke until the INK runs out, not until a timer expires.
+
+        The stick is ALREADY deflected and A is already held by the caller -
+        this only decides WHEN TO STOP. The rule is: keep growing while the
+        gauge is still draining, and stop when it has stopped changing for
+        `ink_flat_samples` polls in a row (which also covers the ring
+        disappearing entirely once spent).
+
+        `cap_seconds` is only a FLOOR for the case where the gauge cannot be
+        seen at all. Once the gauge HAS been seen, the ink decides - a short
+        requested duration will not cut a stroke short while ink remains,
+        because "grow the earth until the ink ends" is the intended
+        behaviour. `ink_max_hold` remains as a safety ceiling so a mis-read
+        gauge can never hold the pad down forever.
+        """
+        floor = max(0.3, float(cap_seconds))
+        ceiling = max(floor, float(self.ink_max_hold))
+        started = time.time()
+        try:
+            cam = self.hardware.capture()
+        except Exception:
+            # No camera: fall back to the requested time. Honest degradation -
+            # without the gauge there is nothing to close the loop on.
+            time.sleep(floor)
+            return
+
+        best = None
+        flat = 0
+        samples = 0
+        seen = False               # have we ever located the gauge?
+        while True:
+            elapsed = time.time() - started
+            if elapsed >= ceiling:
+                print(f"     ink: hit the {ceiling:.1f}s safety cap "
+                      f"(gauge {'tracked' if seen else 'never seen'})",
+                      flush=True)
+                return
+            time.sleep(self.ink_poll)
+            elapsed = time.time() - started
+            level = self._ink_level(cam.grab(allow_blank=True), centre)
+
+            if level is None:
+                if seen:
+                    # We were tracking a ring and it has now gone: the tank is
+                    # empty. This is a real end-of-ink signal, so it does NOT
+                    # wait for the floor.
+                    print(f"     ink: gauge emptied after {elapsed:.2f}s "
+                          f"({samples} samples)", flush=True)
+                    return
+                # Never acquired the gauge. Do not guess it is empty - hold
+                # for the requested duration and let the caller proceed.
+                if elapsed >= floor:
+                    print(f"     ink: gauge not visible - held the requested "
+                          f"{floor:.2f}s instead", flush=True)
+                    return
+                continue
+
+            seen = True
+            samples += 1
+            if best is None or level < best - self.ink_drain_step:
+                best, flat = level, 0        # still draining
+            else:
+                flat += 1
+            if flat >= self.ink_flat_samples:
+                print(f"     ink: exhausted after {elapsed:.2f}s "
+                      f"({samples} samples, last area {level:.0f})",
+                      flush=True)
+                return
+
     def _marker_stroke(self, pad: Any, node_x: float, node_y: float,
                        aim_time: float, direction: str,
-                       duration: float, settle: float = 1.5) -> None:
-        """OPEN -> AIM -> ANCHOR -> STROKE -> COMMIT -> CLOSE -> SETTLE."""
+                       duration: float, settle: float = 1.5,
+                       until_empty: bool = True) -> None:
+        """OPEN -> AIM -> ANCHOR -> STROKE -> COMMIT -> CLOSE -> SETTLE.
+
+        With `until_empty` the stroke is not a fixed sleep: the ink ring is
+        sampled while drawing and the stick is held until the gauge stops
+        shrinking (ink exhausted) or `duration` is reached as a safety cap.
+        """
         centre = [("lstick x", 0), ("lstick y", 0)]
         stroke = {"up": (0, -32767), "down": (0, 32767),
                   "left": (-32767, 0), "right": (32767, 0)}
         sx, sy = stroke.get(direction, (0, -32767))
-        # Up to 6s: a tree branch has to grow far enough to become heavy and
-        # then physically FALL, which takes much longer than raising a short
-        # earth pillar. Cutting the stroke off early leaves a stub that never
-        # drops, so the route stays blocked.
+        # This is now a MINIMUM hold, not a fixed one: _draw_until_empty
+        # keeps drawing while the ink gauge is still draining, up to
+        # ink_max_hold. A branch needs to grow heavy enough to fall, and the
+        # real limit on any stroke is the ink, not a stopwatch.
         hold = max(0.3, min(6.0, float(duration)))
+
+        # Predict where the cursor will sit after aiming, so the ink gauge is
+        # looked for AROUND THE CURSOR rather than at the screen centre.
+        cursor = None
+        if until_empty:
+            try:
+                cam = self.hardware.capture()
+                probe = cam.grab(allow_blank=True)
+                if probe is not None:
+                    ph, pw = probe.shape[:2]
+                    cursor = self._cursor_estimate(node_x, node_y, aim_time,
+                                                   pw, ph)
+            except Exception:
+                cursor = None            # gauge falls back to frame centre
 
         self._hold(pad, [("r2", self.MARKER_RT)] + centre, "marker:open")
         time.sleep(0.45)
@@ -278,7 +575,12 @@ class AutonomousPlayer:
         time.sleep(0.35)
         self._hold(pad, [("r2", self.MARKER_RT), ("cross", 1),
                          ("lstick x", sx), ("lstick y", sy)], "marker:stroke")
-        time.sleep(hold)
+        if until_empty:
+            # Tell the gauge where the cursor ended up, so the search box
+            # follows the aim instead of sitting at the rest position.
+            self._draw_until_empty(hold, cursor)
+        else:
+            time.sleep(hold)
         self._hold(pad, [("r2", self.MARKER_RT), ("cross", 1)] + centre,
                    "marker:stroke_end")
         time.sleep(0.15)
@@ -477,6 +779,12 @@ class AutonomousPlayer:
                 delta = 0.0
                 if self.last_frame is not None:
                     delta = float(cv2.absdiff(self.last_frame, frame).mean())
+                    # Count consecutive cycles where nothing really moved, so
+                    # varied-but-useless attempts still register as stuck.
+                    if delta <= self.ambient_delta:
+                        self._stuck_cycles += 1
+                    else:
+                        self._stuck_cycles = 0
                     if delta < 1.0:
                         consecutive_static += 1
                     else:
@@ -493,8 +801,27 @@ class AutonomousPlayer:
                     ]
                     history_text = "\nRecent Action History:\n" + "\n".join(history_lines) + "\n"
 
+                # Route context from a human walkthrough, when supplied. It
+                # tells the model the ORDER of obstacles and where a drawing
+                # was needed - the part that is expensive to learn by trial
+                # and error. It is explicitly subordinate to the live frame.
+                route_text = ""
+                if self.route_context:
+                    route_text = (
+                        "\n=== ROUTE CONTEXT FROM A HUMAN WALKTHROUGH ===\n"
+                        f"{self.route_context}\n"
+                        "=== END ROUTE CONTEXT ===\n"
+                        "Use the route for WHAT this level requires and in "
+                        "WHAT ORDER. It contains no controller data, so aim "
+                        "and stick angles are still yours to solve. If the "
+                        "attached frame disagrees with the route, TRUST THE "
+                        "FRAME - you may be at a different point than the "
+                        "timings suggest.\n"
+                    )
+
                 prompt = (
                     f"{MAX_GAMEPLAY_SYSTEM_PROMPT}\n"
+                    f"{route_text}"
                     f"Current Step: {step_idx}/{max_steps}\n"
                     f"Deaths so far: {self.death_count}\n"
                     f"Consecutive Low Progress Steps: {consecutive_static}\n"
@@ -551,12 +878,32 @@ class AutonomousPlayer:
                     continue
 
                 if analysis.scene_state in ("cutscene_or_loading", "menu_or_prompt"):
-                    print(">> [PROMPT / CUTSCENE] Advancing screen...", flush=True)
-                    self.hardware.pad().press("a", duration=0.2)
+                    # NEVER blind-press A here. Observed live: a "Restart
+                    # Level - you will lose all progress" dialog appeared with
+                    # "Ok" focused. The model correctly decided to CANCEL, but
+                    # this branch pressed A regardless and wiped the level.
+                    # Honour whatever the model actually chose; only fall back
+                    # to A when it offered nothing.
+                    if analysis.actions:
+                        for act in analysis.actions[:2]:
+                            act = self._veto_repeat(act)
+                            print(f">> [PROMPT] {act.action.upper()} "
+                                  f"button={act.button or 'default'}",
+                                  flush=True)
+                            self.execute_action(act)
+                            self._recent_actions.append(act.action)
+                        chosen = ", ".join(
+                            f"{a.action}({a.button or a.direction})"
+                            for a in analysis.actions[:2])
+                    else:
+                        print(">> [PROMPT / CUTSCENE] Advancing screen...",
+                              flush=True)
+                        self.hardware.pad().press("a", duration=0.2)
+                        chosen = "press A to advance"
                     time.sleep(1.5)
                     self.action_history.append({
                         "step": step_idx,
-                        "action": "press A to advance",
+                        "action": chosen,
                         "observation": "Dismissed cutscene / prompt.",
                     })
                     continue
@@ -572,7 +919,11 @@ class AutonomousPlayer:
                     print("Action      : Default edge jump grab right", flush=True)
                     self.execute_action(GameplayAction(action="edge_jump_grab", direction="right", duration=0.8))
                 else:
-                    for act in analysis.actions:
+                    # Delta-based stuck breaker: catches the case where the
+                    # model keeps VARYING its attempts but nothing moves.
+                    chosen_acts = self._break_stuck(
+                        list(analysis.actions), self._stuck_cycles)
+                    for act in chosen_acts:
                         act = self._veto_repeat(act)
                         print(f"Action      : {act.action.upper()} dir={act.direction} dur={act.duration:.2f}s", flush=True)
                         self.execute_action(act)

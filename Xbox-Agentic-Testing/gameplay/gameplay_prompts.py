@@ -30,10 +30,11 @@ class GameplayAction(BaseModel):
         le=6.0,
         description=(
             "Duration in seconds to hold the stick or action. For "
-            "magic_marker this is the STROKE length: 1.5-2.0 raises an earth "
-            "pillar, but a TREE BRANCH needs 3.0-5.0 so it grows heavy "
-            "enough to bend and FALL. Too short leaves a stub that never "
-            "drops."
+            "magic_marker this is only a FALLBACK: the stroke actually runs "
+            "until the INK GAUGE empties, so the drawing always comes out as "
+            "big as the ink allows and a small value will not shrink it. "
+            "Leave it at 2.0 for a pillar, 3.0-5.0 for a tree branch (used "
+            "only if the gauge cannot be seen on screen)."
         ),
     )
     settle_after_draw: float = Field(
@@ -154,6 +155,23 @@ You are playing "Max: The Curse of Brotherhood", a 2.5D cinematic puzzle-platfor
      * Water nodes: Use `magic_marker` to spray a jet of water.
    - Reset drawing: If a pillar is misplaced or in the way, use `destroy_drawing`.
 
+   THE MARKER HAS LIMITED INK - THE LOOP SPENDS IT ALL FOR YOU:
+   When the marker opens near a node, a bright RING fills up around the
+   cursor. That ring is the INK GAUGE, and drawing drains it. When it empties
+   the stroke stops on its own, however long the stick is held.
+   YOU DO NOT TIME THE STROKE AT ALL. The loop watches the gauge and keeps
+   growing the earth until the ink is spent, then stops by itself. `duration`
+   is NOT a limit on how big the drawing gets - it is only a fallback used if
+   the gauge cannot be seen on screen. A short `duration` will NOT cut a
+   stroke short while ink remains.
+   So every draw automatically comes out as LARGE AS THE INK ALLOWS. Do not
+   try to "save" ink with a small duration, and do not raise `duration`
+   hoping for a bigger pillar - it will not change the size.
+   The practical consequence: ONE draw uses one tankful. If a pillar came out
+   too short, the tank was simply that small, so draw a SECOND time on the
+   same node once the gauge has refilled - stacking two draws is how you
+   reach a height one tankful cannot.
+
    A BRANCH TAKES TIME - KEEP DRAWING UNTIL IT FALLS:
    A tree branch is not finished when it appears. Keep the stroke going until
    the branch is long and heavy enough to bend over and FALL - the falling
@@ -203,6 +221,17 @@ You are playing "Max: The Curse of Brotherhood", a 2.5D cinematic puzzle-platfor
    have already tried climbing it. If two destroy attempts in a row changed
    nothing, STOP destroying - climb the pillar instead.
 
+   JUMP **TOWARD** THE PILLAR, NEVER AWAY FROM IT:
+   The `direction` of a jump is the direction Max TRAVELS THROUGH THE AIR. It
+   must point AT the pillar you are trying to land on.
+     pillar on Max's LEFT  -> jump/running_jump/edge_jump_grab direction="left"
+     pillar on Max's RIGHT -> direction="right"
+   A pillar you just drew usually ends up BESIDE or BEHIND Max, so the jump is
+   very often direction="left" even though the level progresses rightward.
+   Jumping "right" because right is forward, while the pillar sits on the
+   left, means Max leaps into empty ground every single time and the delta
+   stays ambient. Decide the pillar's side FIRST, then set direction to match.
+
    HOW TO GET ON TOP OF A PILLAR YOU DREW (do this, do not destroy it):
    A pillar is tall, so walking into its side does nothing - Max just bumps
    into it. You must approach it and jump onto its top:
@@ -216,6 +245,18 @@ You are playing "Max: The Curse of Brotherhood", a 2.5D cinematic puzzle-platfor
      4. Once on top, `move` on in your travel direction.
    If plain `jump` produced AMBIENT ONLY twice, the pillar is too high for a
    standing jump: use running_jump/edge_jump_grab, not another jump.
+
+   IF YOU CANNOT LAND ON A PILLAR YOU DREW, IT IS TOO TALL - RIDE IT INSTEAD:
+   A full-height pillar is often simply higher than Max can jump, from either
+   side. Do not keep jumping at it. Two reliable ways up:
+     (a) ERASE and REDRAW SHORTER: `destroy_drawing` aimed at it, then
+         `magic_marker` with duration 0.6-1.0 instead of 1.8-2.0. A short
+         pillar is a STEP you can jump onto; a tall one is a wall.
+     (b) STAND ON THE NODE AND RIDE IT: walk onto the glowing mound itself,
+         then draw up - the pillar lifts Max as it grows. This needs no jump
+         at all and is the correct answer for great heights.
+   Choosing (b) is usually better. If two jump attempts at a pillar produced
+   ambient-only deltas, STOP jumping and use (a) or (b).
 
    IF THE LEDGE IS FAR TOO HIGH TO JUMP AT ALL - RIDE THE PILLAR UP:
    When a ledge is far above Max and no jump can reach it, do NOT jump. Stand
@@ -235,6 +276,17 @@ You are playing "Max: The Curse of Brotherhood", a 2.5D cinematic puzzle-platfor
 
 3. Pushing & Pulling Objects (`push_pull`):
    - Large stone blocks, carts, or fallen trees can be gripped with 'B' and pushed/pulled to bridge gaps or provide elevation.
+
+4b. DANGEROUS MENUS - NEVER CONFIRM A DESTRUCTIVE DIALOG:
+   Some dialogs would THROW AWAY PROGRESS. If you see a confirmation asking to
+   "Restart Level", "Restart from Checkpoint", "Return to Main Menu", or any
+   "you will lose all progress" warning:
+     - DO NOT press A. "Ok" is usually pre-focused, so A confirms the wipe.
+     - Return `press_button` with button="b" to CANCEL and back out.
+   Only press A on a harmless prompt: a cutscene skip, a dialogue advance, a
+   "Resume", or a tutorial hint. When a menu is showing, ALWAYS return an
+   explicit action - if you return none, the loop falls back to pressing A,
+   which on a restart dialog would destroy the run.
 
 4. Death, Respawn, and Cutscenes:
    - Touching spikes, thorns, or falling into pits results in instant death. Press 'A' immediately to respawn at the checkpoint.

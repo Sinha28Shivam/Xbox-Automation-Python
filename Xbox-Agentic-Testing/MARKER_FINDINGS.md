@@ -241,3 +241,85 @@ The reticle was only observed at its rest position: frames were captured
 **after** the stick was re-centred, so the stick→cursor gain (px/s per unit
 deflection) is still unmeasured. Calibration must sample **while the
 deflection is held**.
+
+## 13. The ink ROI must FOLLOW the cursor, or the stroke self-truncates
+
+The ink gauge is drawn **around the cursor**, and the cursor **moves when we
+aim**. The first implementation searched a fixed central box
+(x 0.34-0.66, y 0.30-0.72 of the frame = x 653-1267, y 324-778 at 1080p).
+
+Derived from the two hardware-measured constants - rest `(967, 534)` and
+`~450 px/s` at full deflection - the cursor ends up:
+
+| aim | aim_time | cursor lands | inside the old box? |
+|---|---|---|---|
+| `(0.0,+1.0)` | 0.4 s | (967, 714) | yes |
+| `(+0.7,+0.7)` | 0.4 s | (1147, 714) | yes |
+| `(+0.7,+0.7)` | **0.8 s** | **(1327, 894)** | **NO** |
+| `(0.0,+1.0)` | **0.8 s** | **(967, 894)** | **NO** |
+
+`aim_time 0.8` is exactly what the prompt recommends for a node near a screen
+edge. In that case `_ink_level` returned `None`, the old code treated "gauge
+gone" as "ink exhausted", and the stroke collapsed back to the requested
+minimum - so the pillar stopped growing early precisely when the node was far
+from centre. The ROI now tracks the predicted cursor position.
+
+### "Gauge gone" is only end-of-ink if the gauge was ever SEEN
+
+The old code could not tell "the tank is empty" from "I am looking in the
+wrong place", and assumed the former. Now the two are distinguished:
+
+- gauge tracked, then vanishes -> **ink spent**, stop immediately.
+- gauge never acquired -> do not guess; hold the requested `duration` and say
+  so (`ink: gauge not visible`).
+
+### `duration` is a fallback, not a limit
+
+Growth is bounded by ink, not by the stopwatch, so `duration` no longer caps
+the stroke once the gauge is visible - it is only used when the gauge cannot
+be found. `ink_max_hold` (8 s) stays as a safety ceiling so a mis-read gauge
+can never hold the pad down forever; the measured real tank is ~2.04 s.
+`ink_drain_step` (150 px of ring area) is the threshold for "still draining",
+which keeps compression jitter from reading as progress.
+
+## 12. Marker mode does NOT desaturate the frame (walkthrough review)
+
+`walkthrough_video.py` treated "mean saturation < 62" as "marker open", on the
+theory that marker mode slows time and washes out the palette. **That is wrong
+on this capture path.**
+
+Measured over the whole 51 s `sea-of-sand` recording (205 frames):
+
+| statistic | value |
+|---|---|
+| min mean saturation | **78.4** |
+| max mean saturation | 155.5 |
+| average | 129.5 |
+| frames below the 62 threshold | **0** |
+
+So the detector could never fire, and the tool reported **"0 Magic Marker
+uses"** for a run in which the marker was opened at least **8** times. Ground
+truth: at t=8.0 s and t=19.5 s a freshly drawn pillar is plainly visible
+carrying the blue erasable `X` badge.
+
+### The pale-disc replacement was also rejected
+
+Searching the full frame for a large, round, pale blob scored:
+
+| what it was | area |
+|---|---|
+| hazy sky at t=38.0 s (false positive) | 82,177 px |
+| pale wooden debris at t=12.2 s (false positive) | 17,297 px |
+| **the real cursor at t=30.0 s** | **10,300 px** |
+
+The false positives are *larger* than the true target, so no area or
+roundness threshold can separate them. This is the same failure as the amber
+glow detector (section 9): bright/pale CV detectors lock onto sand and sky.
+
+### Conclusion
+
+Marker events in recorded video are read by the **vision model**
+(`tools/route_review.py`), not by pixel statistics - the same choice already
+made for node detection during live play. Hand-tuned thresholds are reserved
+for the cases where they were actually validated: the ink gauge (ROI-gated)
+and frame-delta scene changes.

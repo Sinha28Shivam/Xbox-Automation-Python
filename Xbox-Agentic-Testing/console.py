@@ -299,7 +299,8 @@ def cmd_play(args: argparse.Namespace) -> int:
 
     configs = Config.load_all(args.config_dir or (_ROOT / "config"), {"settings": "settings.yaml"}, base=_ROOT)
     settings = configs["settings"]
-    player = AutonomousPlayer(settings=settings, game_name=args.game)
+    player = AutonomousPlayer(settings=settings, game_name=args.game,
+                              route_path=args.route)
     player.play(max_steps=args.max_steps, cycle_delay=args.delay)
     return 0
 
@@ -322,6 +323,7 @@ examples:
   python console.py run --requirement-file requirements/open-guide.yaml
   python console.py run "Open the guide" --dry-run
   python console.py play --game "Max: The Curse of Brotherhood" --max-steps 50
+  python console.py play --route artifacts/walkthroughs/sea-of-sand
   python console.py interactive
 
 exit codes:
@@ -351,6 +353,10 @@ exit codes:
                         help="number of gameplay thinking/action cycles")
     p_play.add_argument("--delay", type=float, default=0.4,
                         help="delay in seconds between action cycles")
+    p_play.add_argument("--route", default=None,
+                        help="path to a human ROUTE.md (or the walkthrough "
+                             "session directory holding it) to use as route "
+                             "context; produced by tools/route_review.py")
 
     sub.add_parser("health", help="check the rig and exit")
 

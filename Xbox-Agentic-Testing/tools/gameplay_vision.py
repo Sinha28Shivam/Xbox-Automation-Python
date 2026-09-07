@@ -82,7 +82,10 @@ class GameplayMove(BaseModel):
 
     duration: float = Field(
         default=0.8, ge=0.1, le=6.0,
-        description="Seconds to hold the stick or the drawing stroke. For "
+        description="Seconds to hold the stick. For draw_marker this is only "
+                    "a FALLBACK - the stroke runs until the INK GAUGE empties, "
+                    "so the drawing is always as big as the ink allows and a "
+                    "small value will not shrink it. Original guidance: "
                     "draw_marker: 1.5-2.0 raises an earth pillar, but a TREE "
                     "BRANCH needs 3.0-5.0 so it grows heavy enough to bend "
                     "and FALL. Too short leaves a stub that never drops.")
@@ -296,6 +299,18 @@ HOW TO DECIDE WHERE AND HOW TO DRAW
   edge_jump_grab or running_jump (run_before_jump 0.5-0.8). A standing jump
   is usually too weak for a pillar's full height.
 
+  JUMP **TOWARD** THE PILLAR, NEVER AWAY FROM IT:
+  A jump's `direction` is where Max travels through the air, so it must point
+  AT the pillar. A pillar you just drew usually sits BESIDE or BEHIND Max, so
+  the jump is often direction="left" even though the level advances rightward.
+  Jumping "right" while the pillar is on the left lands Max on empty ground
+  every time. Decide the pillar's side first, then match the direction.
+
+  IF YOU CANNOT LAND ON IT, IT IS TOO TALL:
+  Either destroy_drawing it and redraw SHORTER (duration 0.6-1.0 makes a step
+  rather than a wall), or stand ON the node and draw up so the pillar carries
+  Max - no jump needed. After two ambient-only jump attempts, stop jumping.
+
   A LEDGE TOO HIGH FOR ANY JUMP - RIDE THE PILLAR UP:
   Stand ON the glowing node and draw upward so the pillar carries Max with it,
   then step off at the top. This also works while already standing on a pillar
@@ -425,6 +440,140 @@ def _hold(pad: Any, events: list[tuple[str, int]], label: str) -> bool:
     return okay
 
 
+# ---- Ink gauge -----------------------------------------------------------
+# Holding RT near a node grows a bright ring around the cursor: that is the
+# INK METER, and drawing drains it. When it empties the stroke stops whatever
+# the stick is doing, so a stroke should run until the ink is spent rather
+# than for a fixed time. Mirrors AutonomousPlayer._ink_level.
+INK_MIN_HSV = (0, 0, 165)
+INK_MAX_HSV = (180, 120, 255)
+CURSOR_REST_X = 967.0          # hardware-measured at 1920x1080
+CURSOR_REST_Y = 534.0
+CURSOR_PX_PER_SEC = 450.0      # at FULL deflection
+INK_ROI_HALF = 0.16
+INK_POLL = 0.25
+INK_FLAT_SAMPLES = 3
+INK_MAX_HOLD = 8.0
+INK_DRAIN_STEP = 150.0
+
+
+def _cursor_estimate(node_x: float, node_y: float, aim_time: float,
+                     width: int, height: int) -> tuple[float, float]:
+    """Where the cursor should be after aiming, in pixels."""
+    cx = width * (CURSOR_REST_X / 1920.0)
+    cy = height * (CURSOR_REST_Y / 1080.0)
+    hold = max(0.0, min(2.0, float(aim_time)))
+    if hold > 0.05 and (abs(node_x) >= 0.05 or abs(node_y) >= 0.05):
+        norm = max(abs(float(node_x)), abs(float(node_y))) or 1.0
+        travel = CURSOR_PX_PER_SEC * hold * (width / 1920.0)
+        cx += (float(node_x) / norm) * travel
+        cy += (float(node_y) / norm) * travel
+    return (max(0.0, min(float(width), cx)),
+            max(0.0, min(float(height), cy)))
+
+
+def _ink_level(frame: Any,
+               centre: tuple[float, float] | None = None) -> float | None:
+    """Area of the bright ink ring around the cursor, or None if not found.
+
+    The ROI must TRACK the cursor: the gauge is drawn around it, and aiming
+    (+0.7,+0.7) for 0.8s moves it to ~(1327,894) at 1080p - well outside a
+    fixed central box. An unbounded search is not an option either; measured,
+    it fired on 45 of 46 ordinary frames by locking onto sunlit sand and sky.
+    """
+    if frame is None:
+        return None
+    try:
+        import cv2
+        import numpy as np
+    except ImportError:
+        return None
+    height, width = frame.shape[:2]
+    cx, cy = centre if centre else (width * 0.5, height * 0.5)
+    half_w, half_h = width * INK_ROI_HALF, height * INK_ROI_HALF
+    x0 = int(max(0, min(width - 2, cx - half_w)))
+    x1 = int(max(x0 + 2, min(width, cx + half_w)))
+    y0 = int(max(0, min(height - 2, cy - half_h)))
+    y1 = int(max(y0 + 2, min(height, cy + half_h)))
+    roi = frame[y0:y1, x0:x1]
+    if roi.size == 0:
+        return None
+    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsv, np.array(INK_MIN_HSV, dtype=np.uint8),
+                       np.array(INK_MAX_HSV, dtype=np.uint8))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,
+                                   cv2.CHAIN_APPROX_SIMPLE)
+    best = 0.0
+    roi_area = float(roi.shape[0] * roi.shape[1])
+    for c in contours:
+        area = cv2.contourArea(c)
+        if area < 900 or area > 40000 or area > roi_area * 0.25:
+            continue
+        x, y, w, h = cv2.boundingRect(c)
+        if h == 0 or not 0.7 < w / float(h) < 1.45:
+            continue                     # must be roughly circular
+        if area / float(w * h) < 0.55:
+            continue                     # and solidly filled
+        best = max(best, area)
+    return best if best > 0 else None
+
+
+def _draw_until_empty(ctx: ToolContext, floor_seconds: float,
+                      centre: tuple[float, float] | None = None) -> dict:
+    """Hold the stroke until the ink runs out. Returns why it stopped.
+
+    The caller already holds RT + A with the stick deflected; this only
+    decides WHEN TO STOP. While the gauge keeps shrinking the earth keeps
+    growing, so a short requested duration must not cut it short.
+    """
+    floor = max(0.3, float(floor_seconds))
+    ceiling = max(floor, INK_MAX_HOLD)
+    started = time.time()
+    try:
+        cam = ctx.hardware.capture()
+    except Exception:
+        time.sleep(floor)
+        return {"ink_stop": "no_capture", "ink_seconds": round(floor, 2)}
+
+    best, flat, samples, seen = None, 0, 0, False
+    while True:
+        if time.time() - started >= ceiling:
+            return {"ink_stop": "safety_cap",
+                    "ink_seconds": round(time.time() - started, 2),
+                    "ink_samples": samples}
+        time.sleep(INK_POLL)
+        elapsed = time.time() - started
+        try:
+            level = _ink_level(cam.grab(allow_blank=True), centre)
+        except Exception:
+            level = None
+
+        if level is None:
+            if seen:                     # tracked, then vanished = spent
+                return {"ink_stop": "emptied",
+                        "ink_seconds": round(elapsed, 2),
+                        "ink_samples": samples}
+            if elapsed >= floor:         # never acquired - honour the request
+                return {"ink_stop": "gauge_not_visible",
+                        "ink_seconds": round(elapsed, 2),
+                        "ink_samples": samples}
+            continue
+
+        seen = True
+        samples += 1
+        if best is None or level < best - INK_DRAIN_STEP:
+            best, flat = level, 0        # still draining
+        else:
+            flat += 1
+        if flat >= INK_FLAT_SAMPLES:
+            return {"ink_stop": "exhausted",
+                    "ink_seconds": round(elapsed, 2),
+                    "ink_samples": samples,
+                    "ink_last_area": int(level)}
+
+
 def draw_marker_stroke(ctx: ToolContext, aim_x: float = 0.0, aim_y: float = -1.0,
                        duration: float = 1.2, node_x: float = 0.0,
                        node_y: float = 0.0, aim_time: float = 0.4,
@@ -463,6 +612,17 @@ def draw_marker_stroke(ctx: ToolContext, aim_x: float = 0.0, aim_y: float = -1.0
     settle = max(0.35, min(6.0, float(settle_after_draw)))
     centre = [(x_axis, 0), (y_axis, 0)]
 
+    # Predict where the cursor lands after aiming so the ink gauge is searched
+    # AROUND THE CURSOR, not at the screen centre.
+    cursor = None
+    try:
+        probe = ctx.hardware.capture().grab(allow_blank=True)
+        if probe is not None:
+            ph, pw = probe.shape[:2]
+            cursor = _cursor_estimate(node_x, node_y, aim_hold, pw, ph)
+    except Exception:
+        cursor = None
+
     # 1. Open the marker. RT spans 0..32767; anything under ~1023 does nothing.
     dispatched = _hold(pad, [(rt_control, rt_value)] + centre, "marker:open")
     time.sleep(0.45)
@@ -490,7 +650,11 @@ def draw_marker_stroke(ctx: ToolContext, aim_x: float = 0.0, aim_y: float = -1.0
     time.sleep(0.35)
     _hold(pad, [(rt_control, rt_value), (a_control, 1),
                 (x_axis, x_value), (y_axis, y_value)], "marker:stroke")
-    time.sleep(hold)
+    # Grow until the INK ends, not until a stopwatch does. `hold` is only the
+    # floor used when the gauge cannot be located at all.
+    ink = _draw_until_empty(ctx, hold, cursor)
+    print(f"  -> [MARKER] ink {ink.get('ink_stop')} after "
+          f"{ink.get('ink_seconds')}s", flush=True)
 
     # 5. Commit, then close. A is 1/0 - never 255.
     _hold(pad, [(rt_control, rt_value), (a_control, 1)] + centre,
@@ -515,8 +679,11 @@ def draw_marker_stroke(ctx: ToolContext, aim_x: float = 0.0, aim_y: float = -1.0
         "node_y": round(float(node_y), 3),
         "aim_time": aim_hold,
         "cursor_aimed": aimed,
+        # `duration` was the REQUESTED floor; ink_seconds is what actually
+        # ran, so a report can show when the ink, not the timer, ended it.
         "duration": hold,
         "dispatched": bool(dispatched),
+        **ink,
     }
 
 
