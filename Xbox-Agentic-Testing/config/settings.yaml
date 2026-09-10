@@ -85,6 +85,43 @@ runtime:
   frame_format: "png"
   dead_input_streak: 3
 
+# ---------------------------------------------------------------------------
+# GAMEPLAY / MENU NAVIGATION
+# Used by gameplay/menu_navigator.py for vision-guided launching.
+# ---------------------------------------------------------------------------
+gameplay:
+  menu:
+    # Menu screens per navigation: dashboard -> logo -> title -> main menu ->
+    # SELECT LEVEL -> chapter list -> level -> loading is ~8, and a few get
+    # spent on vetoed confirms and animation waits.
+    max_cycles: "${MENU_MAX_CYCLES:25}"
+    # Seconds to let a menu finish animating before the next screenshot.
+    # Too small and the model reads a half-drawn transition.
+    settle_seconds: 1.5
+    # A hung provider call would otherwise freeze the launch silently.
+    llm_timeout_seconds: 90.0
+    press_duration: 0.2
+    # After a CONFIRM, wait for the pixels to prove the screen actually moved
+    # before deciding anything else. Without this the next cycle reads the
+    # OLD screen and confirms the same item twice - which launched the wrong
+    # level (a second A fell through onto the level list).
+    confirm_timeout: 8.0
+    change_poll: 0.3
+    change_delta: 6.0
+    # A d-pad HIGHLIGHT MOVE is verified the same way, but measured
+    # differently: one menu row is a tiny fraction of the frame, so a mean
+    # delta averages it away into noise. Count strongly-changed pixels
+    # instead. Not verifying moves is what made the launcher press down twice
+    # (CONTINUE -> SELECT LEVEL -> OPTIONS) and then confirm Options.
+    move_timeout: 2.5
+    move_pixel_fraction: 0.0015
+    move_pixel_delta: 30
+  report:
+    # Frame pairs the AI audits per mechanic. Each pair is one vision call
+    # with two images, so 6 mechanics x 2 is the cost ceiling per report.
+    # Raising it gives a mechanic more chances to be confirmed.
+    max_pairs: "${REPORT_MAX_PAIRS:2}"
+
 verification:
   screen_change_threshold: 0.5
   stability_timeout: 10.0
@@ -96,7 +133,12 @@ verification:
     min_confidence: 0.4
 
 reporting:
-  formats: ["json", "markdown", "html", "junit"]
+  # The four step-by-step writers (json/markdown/html/junit) were deleted.
+  # "mechanics" is now the only report: a per-mechanic PASS / FAILED /
+  # NOT TESTED / INCONCLUSIVE verdict with screenshots and an AI audit.
+  # It emits its own markdown, html and json. Empty this list to disable
+  # reporting entirely.
+  formats: ["mechanics"]
   include_frames: true
   include_action_log: true
   include_transcript: true

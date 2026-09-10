@@ -187,6 +187,25 @@ health ──healthy──> scenario_validator ──> planner ──> executor
 | supervisor | Dynamic routing (optional) |
 | recovery | Bounded remediation (optional) |
 
+### How it executes
+
+The runtime path is:
+
+`console.py` -> `graph/runner.py::TestRunner` -> `graph/builder.py` -> compiled LangGraph workflow -> agent nodes -> `reporter`
+
+What each piece does:
+
+- `console.py` only parses CLI commands and prints results.
+- `graph/runner.py` assembles the system and starts the run.
+- `graph/builder.py` builds the workflow from YAML config.
+- `graph/routing.py` decides branch transitions between agents.
+- `agents/planner_agent.py` plans.
+- `agents/executor_agent.py` is the only module that performs hardware work.
+- `agents/verifier_agent.py` decides whether evidence passed, failed, or needs replanning.
+
+So this is best described as a graph-orchestrated multi-agent pipeline. It has
+planning and execution phases, but it is not only a planner/executor pair.
+
 ```bash
 cd Xbox-Agentic-Testing
 

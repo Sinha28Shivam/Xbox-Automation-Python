@@ -285,26 +285,32 @@ class ReporterAgent(BaseAgent):
 
     # -- writing -----------------------------------------------------------
     def _write(self, payload: dict[str, Any]) -> dict[str, str]:
-        """Write every configured format, tolerating individual failures.
+        """Write the game-mechanics report.
 
-        One broken writer must not cost the whole report - losing the Markdown
-        because the JUnit writer choked would be a poor trade.
+        ONE report now. The four step-by-step writers (json / markdown / html
+        / junit) and their ~800 lines of templates were deleted, so the loop
+        below has a single entry - kept as a loop only so reporting.formats
+        can still switch it off entirely.
         """
         writers = {
-            "json": ("write_json_report", "report.json"),
-            "markdown": ("write_markdown_report", "report.md"),
-            "html": ("write_html_report", "report.html"),
-            "junit": ("write_junit_report", "junit.xml"),
+            "mechanics": ("write_mechanics_report", ""),
+
+
+
         }
         written: dict[str, str] = {}
         for fmt in self.context.settings.list_of("reporting.formats"):
             entry = writers.get(str(fmt))
             if entry is None:
                 continue
-            tool_name, filename = entry
-            result = self.call_tool(tool_name, report=payload, filename=filename)
+            tool_name, _ = entry
+            # The mechanics writer needs no payload: it reads the session's
+            # own trace.json and frames, so the report is reproducible from
+            # artifacts alone rather than from this agent's in-memory state.
+            # It also returns ALL its formats in one call.
+            result = self.call_tool(tool_name)
             if result.get("ok"):
-                written[str(fmt)] = result["path"]
+                written.update(result.get("written") or {})
             else:
                 self.context.artifacts.append_log(
                     "reporter.log",

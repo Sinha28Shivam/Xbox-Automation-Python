@@ -301,6 +301,21 @@ def cmd_play(args: argparse.Namespace) -> int:
     settings = configs["settings"]
     player = AutonomousPlayer(settings=settings, game_name=args.game,
                               route_path=args.route)
+
+    player._use_vision_menus = args.vision_launch
+    player._write_report = args.report
+
+    if args.from_dashboard:
+        launched = player.launch_from_dashboard(
+            level=args.level, launch_wait=args.launch_wait,
+            use_vision=args.vision_launch)
+        if not launched.get("ok"):
+            # Exit code 2 = BLOCKED. We never reached gameplay, so this is not
+            # a gameplay failure and must not be reported as one.
+            print(f"\nLAUNCH BLOCKED: {launched.get('error')}")
+            player.hardware.close()
+            return 2
+
     player.play(max_steps=args.max_steps, cycle_delay=args.delay)
     return 0
 
@@ -324,6 +339,7 @@ examples:
   python console.py run "Open the guide" --dry-run
   python console.py play --game "Max: The Curse of Brotherhood" --max-steps 50
   python console.py play --route artifacts/walkthroughs/sea-of-sand
+  python console.py play --from-dashboard --route artifacts/walkthroughs/sea-of-sand
   python console.py interactive
 
 exit codes:
@@ -357,6 +373,26 @@ exit codes:
                         help="path to a human ROUTE.md (or the walkthrough "
                              "session directory holding it) to use as route "
                              "context; produced by tools/route_review.py")
+    p_play.add_argument("--from-dashboard", action="store_true",
+                        help="start on the Xbox dashboard: locate the game, "
+                             "launch it, pick the level, then play")
+    p_play.add_argument("--level", default="",
+                        help="level to select after launch; defaults to the "
+                             "name of the --route directory "
+                             "(sea-of-sand -> 'Sea of Sand')")
+    p_play.add_argument("--launch-wait", type=float, default=25.0,
+                        help="seconds to wait for the game to start after A")
+    p_play.add_argument("--vision-launch", action="store_true", default=True,
+                        help="navigate the game's menus with the vision model "
+                             "instead of OCR keywords (default)")
+    p_play.add_argument("--no-vision-launch", dest="vision_launch",
+                        action="store_false",
+                        help="use the OCR keyword path for menus instead")
+    p_play.add_argument("--report", action="store_true", default=True,
+                        help="write the game-mechanics report at the end "
+                             "(default)")
+    p_play.add_argument("--no-report", dest="report", action="store_false",
+                        help="skip the mechanics report")
 
     sub.add_parser("health", help="check the rig and exit")
 

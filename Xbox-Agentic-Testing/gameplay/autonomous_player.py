@@ -52,6 +52,23 @@ class AutonomousPlayer:
         self.llm_factory = llm_factory or LLMFactory(settings)
         self.game_name = game_name
         self.route_context = self._load_route(route_path)
+        # Remembered so the level name can be derived from the route directory
+        # name ("sea-of-sand" -> "Sea of Sand") instead of being typed twice.
+        self._route_name = Path(route_path).name if route_path else ""
+        # The level this session is meant to be playing. Set by
+        # launch_from_dashboard, and used by the play loop to recover via
+        # SELECT LEVEL instead of resuming the wrong save from CONTINUE.
+        self._target_level = self._level_from_route()
+        # Vision-guided menus, on by default. Turned off by --no-vision-launch
+        # so the OCR keyword path can still be demonstrated or compared.
+        self._use_vision_menus = True
+        self._navigator: Any | None = None
+        # Per-step evidence, persisted to trace.json for the mechanics report.
+        self._trace: list[dict[str, Any]] = []
+        # Generate the mechanics report at session end. Off via --no-report.
+        self._write_report = True
+        # Per-screen launch evidence, filled by _vision_navigate_to_level.
+        self._launch_trace: dict[str, Any] | None = None
         self.session_id = session_id or f"play-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
         self.root_dir = Path(__file__).resolve().parent.parent
@@ -596,23 +613,392 @@ class AutonomousPlayer:
         time.sleep(max(0.35, float(settle)))
 
     def _marker_destroy(self, pad: Any, node_x: float, node_y: float,
-                        aim_time: float, presses: int = 1) -> None:
-        """Hold RT -> aim at the drawing -> tap X (square) -> release RT."""
+                        aim_time: float, presses: int = 1,
+                        settle: float = 1.5) -> None:
+        """Hold RT -> aim at the drawing -> tap X (square) -> release RT.
+
+        WHY THE STICK MUST BE RE-CENTRED BEFORE X
+        GIMX axis state is STICKY: an axis holds its last value until it is
+        explicitly told otherwise. `_aim_cursor` deflects the stick FULLY and
+        returns WITHOUT re-centring it, so any later `_hold` that omits the
+        stick leaves it pinned - and the cursor keeps travelling at ~450px/s
+        for the whole X sequence.
+
+        Measured on the real trace (aim_time 0.4s, one press): aiming puts the
+        cursor on the pillar at ~(1147,714), but the 0.55s of X taps then drag
+        it a further ~248px to ~(1394,962) - well off the pillar - so X erased
+        empty ground. All three destroys in play-20260907-200600 left the
+        pillar's mean colour unchanged (BGR 32.7/69.8/88.7 -> 34.2/71.0/89.5),
+        i.e. nothing was ever erased.
+
+        `_marker_draw` never hit this because every one of its holds appends
+        `centre`, which re-asserts the stick at 0 and parks the cursor. The
+        proven manual gesture does the same: the CONFIRMED WORKING destroy in
+        _manual_marker.py runs WITHOUT `--hold-aim`, so its X press sends
+        ZERO on the aim axes. Mirroring that here is the fix.
+
+        `settle` stays at drawing's 1.5s because an erase is ANIMATED - the
+        pillar crumbles and sinks, and the camera re-frames once it is gone.
+        Grabbing the "after" frame too early catches it mid-collapse.
+        """
         centre = [("lstick x", 0), ("lstick y", 0)]
         self._hold(pad, [("r2", self.MARKER_RT)] + centre, "destroy:open")
         time.sleep(0.45)
         self._aim_cursor(pad, node_x, node_y, aim_time, "destroy:aim")
-        # Keep the aim applied: re-centring can let the cursor drift off the
-        # drawing before X registers.
+        # STOP the cursor on the drawing before tapping X. Without this the
+        # stick stays deflected from the aim and the cursor slides off target
+        # while X is being pressed. This matches both `_marker_draw` and the
+        # hardware-verified manual destroy.
+        self._hold(pad, [("r2", self.MARKER_RT)] + centre, "destroy:aim_settle")
+        time.sleep(0.20)
         for _ in range(max(1, min(5, int(presses)))):
-            self._hold(pad, [("r2", self.MARKER_RT), ("square", 1)],
+            self._hold(pad, [("r2", self.MARKER_RT), ("square", 1)] + centre,
                        "destroy:x_down")
             time.sleep(0.25)
-            self._hold(pad, [("r2", self.MARKER_RT), ("square", 0)],
+            self._hold(pad, [("r2", self.MARKER_RT), ("square", 0)] + centre,
                        "destroy:x_up")
             time.sleep(0.30)
         self._hold(pad, [("r2", 0), ("square", 0)] + centre, "destroy:close")
-        time.sleep(0.35)
+        time.sleep(max(0.35, float(settle)))
+
+    # ---- Dashboard -> game -> level, then hand over to play() -------------
+    # TEMPORARY DEMO PATH. The agentic `run` pipeline is the proper home for
+    # launching (it has the planner's prove-focus-before-confirm discipline,
+    # the verifier and a real report). This exists so a single command can
+    # show the whole journey - dashboard to gameplay - end to end.
+
+    # OCR fragments that mean "we are at Max's LEVEL/CHAPTER PICKER" - actual
+    # level names, never the word "chapter" on its own and never "select
+    # level", both of which also appear on the MAIN MENU.
+    LEVEL_SELECT_SIGNS = ("anotherland", "black rock canyon", "sea of sand",
+                          "prologue", "the great fall", "mustacho")
+
+    # The MAIN MENU. Identified by options that exist ONLY there - not by
+    # "continue" or "select level", because those are the very items we have
+    # to navigate BETWEEN. Two or more of these must be present.
+    MAIN_MENU_SIGNS = ("achievements", "options", "help", "extras")
+
+    # "A title/splash screen is waiting for a button."
+    #
+    # "continue" is DELIBERATELY ABSENT. Observed live: Max's main menu shows
+    # CONTINUE as its first, pre-focused item, so treating that word as a
+    # title-screen prompt made this helper press A on CONTINUE - which
+    # resumed the last save at "Chapter 4-2: The Great Fall" instead of
+    # starting Sea of Sand. The main menu is handled by _enter_select_level.
+    TITLE_SIGNS = ("press a", "press start", "loading")
+
+    # How far SELECT LEVEL sits below CONTINUE on the main menu.
+    SELECT_LEVEL_OFFSET = 1
+
+    def _tool_context(self) -> Any:
+        """A ToolContext so the existing game_tools can be reused as-is."""
+        from artifacts import ArtifactStore
+        from registry import ToolContext
+
+        store = ArtifactStore(
+            root=self.settings.resolve_path("paths.artifacts_dir", "./artifacts"),
+            run_id=self.session_id,
+            frame_format=self.settings.get("runtime.frame_format", "png"),
+            enabled=self.settings.get("runtime.save_frames", True),
+        )
+        return ToolContext(hardware=self.hardware, artifacts=store,
+                           settings=self.settings, dry_run=False)
+
+    def _level_from_route(self) -> str:
+        """Derive 'Sea of Sand' from artifacts/walkthroughs/sea-of-sand.
+
+        The route directory already names the level, so the demo command does
+        not need it spelled out a second time.
+        """
+        name = getattr(self, "_route_name", "")
+        if not name:
+            return ""
+        return " ".join(part.capitalize() for part in name.split("-"))
+
+    @staticmethod
+    def _is_main_menu(text: str) -> bool:
+        """Is this Max's MAIN MENU rather than the level picker?
+
+        Requires TWO of the menu-only options. One word is not enough:
+        "options" alone could be a pause overlay, and the level picker also
+        carries a stray word or two once OCR gets hold of the chapter art.
+        """
+        hits = sum(1 for sign in AutonomousPlayer.MAIN_MENU_SIGNS
+                   if sign in text)
+        return hits >= 2
+
+    def _enter_select_level(self, ctx: Any, attempts: int = 5,
+                            wait: float = 2.0) -> dict[str, Any]:
+        """From the main menu, move to SELECT LEVEL and confirm it.
+
+        CONTINUE is pre-focused and sits directly above SELECT LEVEL. Pressing
+        A on the pre-focused item resumes the LAST SAVE - observed live, that
+        dropped the run into "Chapter 4-2: The Great Fall" instead of the
+        requested level. So we must step DOWN off CONTINUE first.
+
+        After each attempt the screen is re-read: if a level name appears we
+        are in the picker and done, and if we are still on the main menu we
+        step down again rather than pressing A a second time.
+        """
+        from game_tools import _observe
+
+        for attempt in range(1, attempts + 1):
+            print(f"  [launch] main menu: stepping DOWN off CONTINUE onto "
+                  f"SELECT LEVEL (attempt {attempt}/{attempts})", flush=True)
+            for _ in range(self.SELECT_LEVEL_OFFSET):
+                self.hardware.pad().press("down", duration=0.15)
+                time.sleep(0.4)
+
+            self.hardware.pad().press("a", duration=0.2)
+            time.sleep(wait)
+
+            obs = _observe(ctx, f"launch-select-level-{attempt}")
+            text = str(obs.get("text", "")).lower()
+            print(f"  [launch] after SELECT LEVEL: "
+                  f"{text[:100] or '(no text)'}", flush=True)
+
+            if any(sign in text for sign in self.LEVEL_SELECT_SIGNS):
+                return {"ok": True, "attempt": attempt,
+                        "frame_path": obs.get("frame_path"), "text": text}
+            if not self._is_main_menu(text):
+                # Left the menu but no level name read yet - most likely the
+                # picker is still animating in. Let the caller re-check.
+                return {"ok": True, "attempt": attempt, "unconfirmed": True,
+                        "frame_path": obs.get("frame_path"), "text": text}
+
+        return {"ok": False,
+                "error": (f"Could not reach the level picker from the main "
+                          f"menu after {attempts} attempts.")}
+
+    def _advance_to_level_select(self, ctx: Any, attempts: int = 10,
+                                 wait: float = 3.0) -> dict[str, Any]:
+        """Walk logos/splash/title screens and the MAIN MENU to the picker.
+
+        Bounded and OBSERVED rather than a fixed run of blind A presses: Max
+        shows a publisher logo, a title card and sometimes a save-slot prompt,
+        and how many there are depends on load time. So the screen is read
+        between presses, and A is only sent when something is plausibly
+        waiting for input.
+
+        The MAIN MENU is treated as its own case. Pressing A there would take
+        the pre-focused CONTINUE and resume the last save, which is exactly
+        the bug this exists to avoid - we need SELECT LEVEL instead.
+        """
+        from game_tools import _observe
+
+        for attempt in range(1, attempts + 1):
+            obs = _observe(ctx, f"launch-title-{attempt}")
+            text = str(obs.get("text", "")).lower()
+            print(f"  [launch] screen {attempt}/{attempts}: "
+                  f"{text[:100] or '(no text)'}", flush=True)
+
+            # 1. Already in the picker - a real level name is on screen.
+            if any(sign in text for sign in self.LEVEL_SELECT_SIGNS):
+                return {"ok": True, "attempt": attempt,
+                        "frame_path": obs.get("frame_path"), "text": text}
+
+            # 2. The main menu. Navigate to SELECT LEVEL; never press A on
+            #    the pre-focused CONTINUE.
+            if self._is_main_menu(text):
+                entered = self._enter_select_level(ctx)
+                if entered.get("ok") and not entered.get("unconfirmed"):
+                    return entered
+                # Unconfirmed or failed: fall through and re-read the screen
+                # on the next pass rather than assuming either way.
+                time.sleep(wait)
+                continue
+
+            # 3. A blank OCR result is usually a logo or a black transition
+            #    frame, which still needs a press to move on.
+            if any(sign in text for sign in self.TITLE_SIGNS) or not text.strip():
+                self.hardware.pad().press("a", duration=0.2)
+            time.sleep(wait)
+
+        return {"ok": False,
+                "error": (f"The level picker was not seen after {attempts} "
+                          f"screens. The game may still be loading, or it "
+                          f"resumed straight into gameplay.")}
+
+    def _resume_via_select_level(self) -> dict[str, Any]:
+        """Mid-play recovery: main menu -> SELECT LEVEL -> the target level.
+
+        The play loop can land back on the main menu after a death, a quit or
+        a chapter boundary. Pressing A there resumes the last save, so this
+        drives the same SELECT LEVEL route the launch step uses.
+        """
+        from game_tools import select_level_impl
+
+        # Vision first - it can see which row is highlighted, so it will not
+        # confirm CONTINUE by accident the way the keyword path could.
+        if self._use_vision_menus:
+            result = self._vision_navigate_to_level(self._target_level)
+            if result.get("ok"):
+                time.sleep(10.0)
+                return result
+            print("  [menu] vision recovery did not finish - falling back to "
+                  "the OCR keyword path.", flush=True)
+
+        ctx = self._tool_context()
+        entered = self._enter_select_level(ctx)
+        if not entered.get("ok"):
+            print(f"  !! {entered.get('error')}", flush=True)
+            return entered
+
+        selected = select_level_impl(ctx, target_level=self._target_level,
+                                     chapter="Chapter 1", max_attempts=8)
+        print(f"  [menu] level select: matched={selected.get('matched')} "
+              f"-> {selected.get('selected_level')}", flush=True)
+        # Loading a level takes a while; without this the next cycle judges a
+        # loading screen and burns a decision on it.
+        time.sleep(10.0)
+        return selected
+
+    def _save_trace(self) -> None:
+        """Persist the per-step trace. Never fatal - it is evidence, not state."""
+        try:
+            (self.session_dir / "trace.json").write_text(
+                json.dumps({
+                    "session_id": self.session_id,
+                    "game_name": self.game_name,
+                    "level": self._target_level,
+                    "route": getattr(self, "_route_name", ""),
+                    "launch": getattr(self, "_launch_trace", None),
+                    "steps": self._trace,
+                }, indent=2, default=str),
+                encoding="utf-8")
+        except Exception as exc:
+            print(f"  [trace] could not be written: {exc}", flush=True)
+
+    def _menu_navigator(self) -> Any:
+        """The vision-guided menu walker, built lazily and reused."""
+        from gameplay.menu_navigator import MenuNavigator
+
+        if getattr(self, "_navigator", None) is None:
+            self._navigator = MenuNavigator(
+                hardware=self.hardware, settings=self.settings,
+                artifacts=self._tool_context().artifacts,
+                llm_factory=self.llm_factory)
+        return self._navigator
+
+    def _vision_navigate_to_level(self, target: str) -> dict[str, Any]:
+        """Use the vision navigator to get from wherever we are into `target`.
+
+        The goal is stated in plain English rather than as a screen sequence,
+        because the number of logos/title cards varies and the model can see
+        which one it is actually looking at.
+        """
+        goal = (
+            f"Start playing the level '{target}' in "
+            f"'{self.game_name}'. Get past any publisher logo or title "
+            f"screen, then from the game's main menu choose SELECT LEVEL "
+            f"(never CONTINUE, which would resume a different save), then "
+            f"pick Chapter 1 if a chapter list appears, then choose "
+            f"'{target}' and confirm it so the level starts."
+        )
+        try:
+            nav = self._menu_navigator()
+            result = nav.navigate_to(goal=goal, target=target,
+                                     label="launch-menu")
+            # Keep the per-screen launch evidence so the report can show the
+            # whole journey - dashboard, logos, main menu, level picker - not
+            # just the gameplay that followed it.
+            self._launch_trace = {
+                "goal": goal,
+                "target": target,
+                "ok": bool(result.get("ok")),
+                "reason": result.get("reason", ""),
+                "cycles": result.get("cycles"),
+                "target_confirmed": bool(result.get("target_confirmed")),
+                "steps": list(getattr(nav, "steps", [])),
+            }
+            self._save_trace()
+            return result
+        except Exception as exc:
+            # A navigator failure must not kill the demo; the caller falls
+            # back to the OCR path.
+            print(f"  !! vision navigation unavailable: {exc}", flush=True)
+            return {"ok": False, "reason": str(exc)}
+
+    def launch_from_dashboard(self, level: str = "", launch_wait: float = 25.0,
+                              settle_after_level: float = 12.0,
+                              use_vision: bool = True) -> dict[str, Any]:
+        """Dashboard -> locate the game -> launch -> pick the level -> play.
+
+        Reuses tools/game_tools.py rather than re-deriving any of it: the OCR
+        title matching, the Store-redirect guard, the "account needs
+        attention" bypass and the chapter search are all hardware-verified
+        there, and a second implementation here would drift from it.
+        """
+        from game_tools import _launch_game, select_level_impl
+
+        target = level or self._level_from_route() or "Sea of Sand"
+        # Remembered so the play loop's main-menu guard recovers to the SAME
+        # level, including when --level overrode the route directory name.
+        self._target_level = target
+        ctx = self._tool_context()
+
+        print("\n" + "=" * 72, flush=True)
+        print(f"  LAUNCH FROM DASHBOARD: {self.game_name}", flush=True)
+        print(f"  Target level : {target}", flush=True)
+        print("=" * 72, flush=True)
+
+        # 1. Locate the tile and launch it. This helper refuses to press A on
+        #    an unidentified tile, and reports a Store/purchase redirect as a
+        #    FAILURE rather than as a launched game.
+        tool = _launch_game(ctx)
+        launched = getattr(tool, "func", tool)(
+            game_name=self.game_name, max_tiles=2, launch_wait=launch_wait)
+        if not launched.get("ok"):
+            print(f"  !! launch failed: {launched.get('error')}", flush=True)
+            return {"ok": False, "stage": "launch", **launched}
+
+        if launched.get("already_running"):
+            print("  [launch] the game was already on screen - the dashboard "
+                  "step was skipped.", flush=True)
+
+        # 2. Walk logos -> title -> main menu -> SELECT LEVEL -> the level.
+        #    Vision first: the keyword classifier below cannot tell the main
+        #    menu from the level picker (both say "chapter"/"select level"),
+        #    and it cannot see WHICH row is highlighted, which is the only
+        #    thing that makes pressing A safe.
+        if use_vision:
+            reached = self._vision_navigate_to_level(target)
+            if reached.get("aborted"):
+                return {"ok": False, "stage": "menu", **reached}
+            if not reached.get("ok"):
+                print("  [launch] vision navigation did not finish - falling "
+                      "back to the OCR keyword path.", flush=True)
+                reached = self._advance_to_level_select(ctx)
+            else:
+                # Vision drives all the way into the level, so the OCR-based
+                # select_level_impl below must not run and re-confirm.
+                self.session.metadata["launched_from_dashboard"] = True
+                self.session.metadata["launch_target_level"] = target
+                self.session.metadata["launch_mode"] = "vision"
+                self.session.save(self.session_dir / "session.json")
+                return {"ok": True, "target_level": target,
+                        "launch": launched, "menu": reached}
+        else:
+            reached = self._advance_to_level_select(ctx)
+        if not reached.get("ok"):
+            # NOT fatal. A Quick-Resume console drops straight back into
+            # gameplay, which is a perfectly good place to start playing - so
+            # say what happened and carry on rather than refusing to run.
+            print(f"  !! {reached.get('error')}", flush=True)
+            print("  [launch] continuing into gameplay anyway - the play loop "
+                  "handles menus and cutscenes itself.", flush=True)
+        else:
+            # 3. OCR-search the chapters for the level and confirm it.
+            selected = select_level_impl(ctx, target_level=target,
+                                         chapter="Chapter 1", max_attempts=8)
+            print(f"  [launch] level select: matched={selected.get('matched')} "
+                  f"-> {selected.get('selected_level')}", flush=True)
+            time.sleep(max(0.0, float(settle_after_level)))
+
+        self.session.metadata["launched_from_dashboard"] = True
+        self.session.metadata["launch_target_level"] = target
+        self.session.save(self.session_dir / "session.json")
+        return {"ok": True, "target_level": target, "launch": launched}
 
     def execute_action(self, act: GameplayAction) -> None:
         """Dispatch a high-level gameplay action through ConsolePad."""
@@ -737,6 +1123,10 @@ class AutonomousPlayer:
                 node_x=getattr(act, "node_x", 0.0),
                 node_y=getattr(act, "node_y", 0.0),
                 aim_time=getattr(act, "aim_time", 0.4),
+                # Same settle the draw path gets. The crumble animation needs
+                # to finish before the next frame is captured, or the erase
+                # is invisible in the evidence.
+                settle=getattr(act, "settle_after_draw", 1.5),
             )
 
         elif action_type == "interact":
@@ -884,6 +1274,31 @@ class AutonomousPlayer:
                     # this branch pressed A regardless and wiped the level.
                     # Honour whatever the model actually chose; only fall back
                     # to A when it offered nothing.
+                    # Max's MAIN MENU is not a harmless prompt. CONTINUE is
+                    # pre-focused, so pressing A resumes the LAST SAVE -
+                    # observed live at cycles 10-11, that jumped the run into
+                    # "Chapter 4-2: The Great Fall" instead of the requested
+                    # level, and the route context then described a level we
+                    # were no longer in. Route through SELECT LEVEL instead.
+                    menu_text = " ".join([
+                        str(analysis.interactive_elements or ""),
+                        str(analysis.player_location or ""),
+                    ]).lower()
+                    if self._is_main_menu(menu_text) and self._target_level:
+                        print(">> [MAIN MENU] CONTINUE is pre-focused and "
+                              "would resume the wrong level - going to "
+                              "SELECT LEVEL instead.", flush=True)
+                        self._resume_via_select_level()
+                        self.action_history.append({
+                            "step": step_idx,
+                            "action": "select_level",
+                            "observation": (
+                                f"Main menu detected. Navigated to SELECT "
+                                f"LEVEL for '{self._target_level}' rather "
+                                f"than pressing A on CONTINUE."),
+                        })
+                        continue
+
                     if analysis.actions:
                         for act in analysis.actions[:2]:
                             act = self._veto_repeat(act)
@@ -914,10 +1329,18 @@ class AutonomousPlayer:
                     break
 
                 # 8. Execute action sequence
+                # Collect what ACTUALLY ran, not what was proposed: both
+                # _break_stuck and _veto_repeat can substitute a different
+                # macro, and a report built from the proposal would claim a
+                # mechanic was exercised when a different one was.
+                executed: list[GameplayAction] = []
                 if not analysis.actions:
                     # Default: exploratory edge jump grab right
                     print("Action      : Default edge jump grab right", flush=True)
-                    self.execute_action(GameplayAction(action="edge_jump_grab", direction="right", duration=0.8))
+                    fallback = GameplayAction(action="edge_jump_grab",
+                                              direction="right", duration=0.8)
+                    self.execute_action(fallback)
+                    executed.append(fallback)
                 else:
                     # Delta-based stuck breaker: catches the case where the
                     # model keeps VARYING its attempts but nothing moves.
@@ -928,9 +1351,47 @@ class AutonomousPlayer:
                         print(f"Action      : {act.action.upper()} dir={act.direction} dur={act.duration:.2f}s", flush=True)
                         self.execute_action(act)
                         self._recent_actions.append(act.action)
+                        executed.append(act)
 
                 # 9. Record history
                 action_desc = ", ".join(f"{a.action}({a.direction})" for a in analysis.actions) or "edge_jump_grab(right)"
+                # A machine-readable trace, written every cycle. The in-memory
+                # action_history below is a one-line summary for the next
+                # prompt; it dies with the process and carries no scene or
+                # marker detail, so it cannot support a mechanics report.
+                # This does, and it survives Ctrl+C via the finally block.
+                self._trace.append({
+                    "step": step_idx,
+                    "actions": [
+                        {
+                            "action": a.action,
+                            "direction": a.direction,
+                            "duration": round(float(a.duration), 2),
+                            "node_x": round(float(a.node_x), 2),
+                            "node_y": round(float(a.node_y), 2),
+                            "aim_time": round(float(a.aim_time), 2),
+                            "button": a.button,
+                        }
+                        for a in executed
+                    ],
+                    "scene_state": analysis.scene_state,
+                    "player_detected": bool(analysis.player_detected),
+                    "player_location": analysis.player_location,
+                    "hazards_observed": analysis.hazards_observed,
+                    "interactive_elements": analysis.interactive_elements,
+                    "tactical_reasoning": analysis.tactical_reasoning,
+                    "delta": None if delta is None else round(float(delta), 2),
+                    "delta_verdict": self._delta_verdict(delta),
+                    "frame": str(frame_path),
+                    # Filled in on the NEXT cycle: _save_live_frame runs before
+                    # the action, so this step's after-state IS the next
+                    # step's before-frame. Proving a mechanic needs the pair.
+                    "frame_after": None,
+                })
+                if len(self._trace) >= 2:
+                    self._trace[-2]["frame_after"] = str(frame_path)
+                self._save_trace()
+
                 self.action_history.append({
                     "step": step_idx,
                     "action": action_desc,
@@ -960,6 +1421,23 @@ class AutonomousPlayer:
             self.session.metadata["total_steps"] = len(self.action_history)
             self.session.metadata["deaths"] = self.death_count
             self.session.save(self.session_dir / "session.json")
+            self._save_trace()
+
+            # The mechanics report is generated BEFORE the capture device is
+            # released, but it only reads saved frames - so an interrupted
+            # session still produces a report of what it did prove.
+            if self._write_report:
+                try:
+                    from gameplay.mechanics_report import build_report
+                    written = build_report(self.session_dir,
+                                           settings=self.settings,
+                                           llm_factory=self.llm_factory)
+                    for fmt, path in (written or {}).items():
+                        print(f"  report ({fmt}): {path}", flush=True)
+                except Exception as exc:
+                    print(f"  [report] could not be generated: {exc}",
+                          flush=True)
+
             self.hardware.close()
 
         print("\n" + "=" * 72)

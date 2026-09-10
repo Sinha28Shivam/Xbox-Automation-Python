@@ -42,11 +42,15 @@ class GameplayAction(BaseModel):
         ge=0.0,
         le=6.0,
         description=(
-            "magic_marker only: seconds to WAIT after the stroke so the "
-            "drawing finishes animating. A grown branch keeps bending, snaps "
-            "and falls under its own weight after you stop drawing - use "
-            "2.5-4.0 when you are waiting for a branch to fall, 1.0-1.5 for "
-            "an earth pillar."
+            "Seconds to WAIT after a marker action so the animation finishes. "
+            "A grown branch keeps bending, snaps and falls under its own "
+            "weight after you stop drawing - use 2.5-4.0 when you are waiting "
+            "for a branch to fall, 1.0-1.5 for an earth pillar. "
+            "FOR destroy_drawing THIS ALSO APPLIES: erasing is animated, the "
+            "pillar CRUMBLES and sinks away over roughly 1.5-2.5s, and the "
+            "camera often re-frames afterwards. Use 2.0-2.5 for a destroy - "
+            "too short and the next frame still shows the pillar mid-collapse, "
+            "which looks exactly like the erase having failed."
         ),
     )
     button: str = Field(
