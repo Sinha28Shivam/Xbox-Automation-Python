@@ -91,8 +91,12 @@ class ExecutorAgent(BaseAgent):
 
         text = (last_with_ocr.ocr_text or "").lower()
 
-        # 1. Store / Purchase screen
-        store_phrases = ["buy $", "$14.99", "$11.99", "game details", "choose a plan",
+        # 1. Store / Purchase screen. "game details" and "choose a plan" were
+        # removed from this list: an installed title's details page (with its
+        # own Play button, reached by a single "a" press before the real
+        # launch) legitimately contains both phrases and is not a purchase
+        # wall - only phrases that unambiguously mean "you must pay" belong here.
+        store_phrases = ["buy $", "$14.99", "$11.99",
                          "join game pass", "session limits apply", "ad-supported streaming"]
         hit_store = next((p for p in store_phrases if p in text), None)
         if hit_store:

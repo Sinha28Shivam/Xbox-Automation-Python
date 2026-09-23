@@ -1,0 +1,236 @@
+{
+  "scenario_id": "launch-minecraft-from-search",
+  "revision": 1,
+  "replan_reason": null,
+  "rationale": "Pinned route mirroring the hardware-verified sequence from temp_code_test/agentic/minecraft_launch_sequence_test.py: open search, type minecraft, launch it, create a new world, then prove movement/mining/camera/hotbar/inventory controls. Skips LLM planning entirely for this scenario.",
+  "assumptions": [
+    "The Xbox dashboard is the active screen before step 0.",
+    "Minecraft is installed or cloud-launchable and appears in search results within the top results row.",
+    "The Play button is the first focused item on the Minecraft main menu, and Create New World is directly below it."
+  ],
+  "estimated_duration_seconds": 180,
+  "steps": [
+    {
+      "index": 0,
+      "action": "press_button",
+      "arguments": { "button": "guide" },
+      "intent": "Open the Xbox Guide overlay as the entry point into search.",
+      "expected_observation": "The Xbox Guide overlay appears over the current screen.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1
+    },
+    {
+      "index": 1,
+      "action": "press_button",
+      "arguments": { "button": "b" },
+      "intent": "Dismiss the Guide overlay before opening search directly.",
+      "expected_observation": "The Guide overlay closes and the previous screen is visible again.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1
+    },
+    {
+      "index": 2,
+      "action": "press_button",
+      "arguments": { "button": "y" },
+      "intent": "Open the Xbox global search overlay.",
+      "expected_observation": "The search overlay is open with the on-screen keyboard visible.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1
+    },
+    {
+      "index": 3,
+      "action": "type_text",
+      "arguments": { "text": "minecraft" },
+      "intent": "Type the search query using the OCR-verified on-screen keyboard.",
+      "expected_observation": "The search field contains the text 'minecraft'.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1
+    },
+    {
+      "index": 4,
+      "action": "press_button",
+      "arguments": { "button": "b" },
+      "intent": "Leave the active search text field so the results list can be navigated with the d-pad.",
+      "expected_observation": "Focus leaves the search text field while the results list remains visible.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1
+    },
+    {
+      "index": 5,
+      "action": "press_button",
+      "arguments": { "button": "down", "expected_label": "Minecraft" },
+      "intent": "Move focus down from the search field toward the results row.",
+      "expected_observation": "The highlighted focus has moved down by one row in the search results.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1
+    },
+    {
+      "index": 6,
+      "action": "press_button",
+      "arguments": { "button": "down", "expected_label": "Minecraft" },
+      "intent": "Move focus down again to reach the Minecraft result tile.",
+      "expected_observation": "The Minecraft result tile is highlighted or is the active launch surface.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1
+    },
+    {
+      "index": 7,
+      "action": "press_button",
+      "arguments": { "button": "a" },
+      "intent": "Select the highlighted Minecraft result.",
+      "expected_observation": "The screen begins transitioning away from the search results toward Minecraft.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1
+    },
+    {
+      "index": 8,
+      "action": "press_button",
+      "arguments": { "button": "a" },
+      "intent": "Confirm launch if a second confirmation prompt appears.",
+      "expected_observation": "Minecraft begins launching; a splash or loading screen becomes visible.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1
+    },
+    {
+      "index": 9,
+      "action": "wait_for_stable_screen",
+      "arguments": { "timeout": 90, "label": "minecraft-main-menu", "min_elapsed_seconds": 20 },
+      "intent": "Wait out cloud sync and the Minecraft loading screen instead of a fixed sleep, until the main menu settles. min_elapsed_seconds prevents settling on the static Mojang splash screen, which is stable for a few seconds before the real main menu loads.",
+      "expected_observation": "The Minecraft main menu is visible and no longer animating, with the Play button visible.",
+      "verify": true,
+      "optional": true,
+      "retry_limit": 1
+    },
+    {
+      "index": 10,
+      "action": "press_button",
+      "arguments": { "button": "a" },
+      "intent": "Press Play on the Minecraft main menu.",
+      "expected_observation": "The world selection / play menu becomes visible.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1
+    },
+    {
+      "index": 11,
+      "action": "press_button",
+      "arguments": { "button": "down", "expected_label": "Create New World" },
+      "intent": "Move focus down to the Create New World option.",
+      "expected_observation": "The Create New World option is highlighted.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1
+    },
+    {
+      "index": 12,
+      "action": "press_button",
+      "arguments": { "button": "a" },
+      "intent": "Select Create New World.",
+      "expected_observation": "A world creation confirmation or naming screen becomes visible.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1
+    },
+    {
+      "index": 13,
+      "action": "press_button",
+      "arguments": { "button": "a" },
+      "intent": "Confirm world creation, reaching the CREATE NEW WORLD settings screen (world name, game mode, difficulty).",
+      "expected_observation": "The CREATE NEW WORLD settings screen is visible, with the green CREATE button focused.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1
+    },
+    {
+      "index": 14,
+      "action": "press_button",
+      "arguments": { "button": "a" },
+      "intent": "Press the focused CREATE button on the settings screen to actually create the world and load into it. This is a separate press from step 13, which only reaches the settings screen - pressing A here is what starts world generation.",
+      "expected_observation": "The CREATE NEW WORLD settings screen closes and the screen begins transitioning to the new world's loading screen.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1
+    },
+    {
+      "index": 15,
+      "action": "wait_for_stable_screen",
+      "arguments": { "timeout": 90, "label": "new-world-loaded", "min_elapsed_seconds": 15 },
+      "intent": "Wait out the new world's own loading screen instead of a fixed sleep, until gameplay settles. min_elapsed_seconds guards against settling on an early static frame of the loading screen.",
+      "expected_observation": "The Minecraft world has finished loading; the player's hotbar and crosshair are visible.",
+      "verify": true,
+      "optional": true,
+      "retry_limit": 1,
+      "stage": "closed_loop_play",
+      "stage_goal": "Prove the new world loaded into interactive gameplay."
+    },
+    {
+      "index": 16,
+      "action": "move_stick",
+      "arguments": { "stick": "left_stick", "direction": "up", "duration": 1.5 },
+      "intent": "Walk the player forward to prove basic movement.",
+      "expected_observation": "The player's view has moved, indicating forward movement occurred.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1,
+      "stage": "closed_loop_play",
+      "stage_goal": "Prove movement and mining controls work in the new world."
+    },
+    {
+      "index": 17,
+      "action": "hold_button",
+      "arguments": { "button": "rt", "seconds": 1.5 },
+      "intent": "Hold the right trigger to start breaking a block in front of the player.",
+      "expected_observation": "A block-breaking animation or a broken block is visible.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1,
+      "stage": "closed_loop_play",
+      "stage_goal": "Prove movement and mining controls work in the new world."
+    },
+    {
+      "index": 18,
+      "action": "move_stick",
+      "arguments": { "stick": "right_stick", "direction": "right", "duration": 0.4, "strength": 0.5 },
+      "intent": "Nudge the camera right with a partial-strength stick throw, the same mechanism a human uses to look around.",
+      "expected_observation": "The player's viewing direction has rotated slightly to the right.",
+      "verify": true,
+      "optional": true,
+      "retry_limit": 1,
+      "stage": "closed_loop_play",
+      "stage_goal": "Prove camera control works in the new world."
+    },
+    {
+      "index": 19,
+      "action": "press_button",
+      "arguments": { "button": "rb" },
+      "intent": "Cycle the hotbar selection by one slot.",
+      "expected_observation": "The highlighted hotbar slot has moved.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1,
+      "stage": "closed_loop_play",
+      "stage_goal": "Prove hotbar and inventory controls work in the new world."
+    },
+    {
+      "index": 20,
+      "action": "press_button",
+      "arguments": { "button": "x" },
+      "intent": "Open the inventory screen.",
+      "expected_observation": "The Minecraft inventory/crafting screen is visible.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1,
+      "stage": "closed_loop_play",
+      "stage_goal": "Prove hotbar and inventory controls work in the new world."
+    }
+  ]
+}

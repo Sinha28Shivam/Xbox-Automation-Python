@@ -1,8 +1,8 @@
 id: launch-minecraft-from-search
-title: Launch Minecraft from Xbox search
-description: Open Xbox search, type Minecraft, back out of the active search field, move into the results list, select the Minecraft result, and launch it
-goal: Open search, find Minecraft in the results list, and launch it
-expected_outcome: Minecraft launches and its main screen becomes visible
+title: Launch Minecraft from Xbox search and play in a new world
+description: Open Xbox search, type Minecraft, back out of the active search field, move into the results list, select the Minecraft result, launch it, create a new world, and prove basic movement/mining/inventory controls work
+goal: Open search, find Minecraft in the results list, launch it, create a new world, and prove basic gameplay controls work
+expected_outcome: Minecraft launches, a new world loads, and the player can move, mine a block, cycle the hotbar, and open the inventory
 preconditions:
   - The console is on and awake
   - The GIMX session is authenticated
@@ -13,9 +13,10 @@ tags:
   - search
   - launch
   - minecraft
+  - gameplay
 console: xbox_one
 priority: p1
-max_steps: 20
+max_steps: 40
 success_criteria:
   - description: The search field contains the word minecraft
     check_type: text_present
@@ -33,3 +34,15 @@ success_criteria:
     check_type: vision_judgement
     parameters:
       expected_visual: Minecraft splash screen, loading screen, or main menu is visible
+  - description: A new world is created and loads into interactive gameplay
+    check_type: vision_judgement
+    parameters:
+      expected_visual: The Minecraft world has finished loading and the player's hotbar and crosshair are visible on screen
+  - description: The player moves and breaks a block using the left stick and right trigger
+    check_type: vision_judgement
+    parameters:
+      expected_visual: The player's view has changed position after moving, and a block-breaking animation or result is visible after holding RT
+  - description: The inventory screen opens after cycling the hotbar and pressing X
+    check_type: vision_judgement
+    parameters:
+      expected_visual: The Minecraft inventory/crafting screen is visible after pressing X

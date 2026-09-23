@@ -228,18 +228,32 @@ def _capture_frame(ctx: ToolContext) -> Any:
 
 def _wait_for_stable_screen(ctx: ToolContext) -> Any:
     def run(timeout: float | None = None,
-            label: str = "stable") -> dict[str, Any]:
+            label: str = "stable",
+            min_elapsed_seconds: float = 0.0) -> dict[str, Any]:
         try:
             cam = _capture(ctx)
         except Exception as exc:
             return fail(f"Capture unavailable: {exc}")
 
         started = time.time()
+        timeout_seconds = float(timeout or ctx.threshold("stability_timeout", 10.0))
+        settle = ctx.threshold("stability_settle", 0.4)
+        threshold = ctx.threshold("screen_change_threshold", 0.5)
         frame = cam.wait_for_stable_screen(
-            timeout=float(timeout or ctx.threshold("stability_timeout", 10.0)),
-            settle=ctx.threshold("stability_settle", 0.4),
-            threshold=ctx.threshold("screen_change_threshold", 0.5),
-        )
+            timeout=timeout_seconds, settle=settle, threshold=threshold)
+
+        # A static splash/logo screen can satisfy "stable" well before the
+        # real destination loads. min_elapsed_seconds forces re-checks past
+        # that point instead of trusting the first stable frame seen.
+        remaining = float(min_elapsed_seconds) - (time.time() - started)
+        while frame is not None and remaining > 0:
+            retry_timeout = min(remaining, timeout_seconds - (time.time() - started))
+            if retry_timeout <= 0:
+                break
+            frame = cam.wait_for_stable_screen(
+                timeout=retry_timeout, settle=settle, threshold=threshold)
+            remaining = float(min_elapsed_seconds) - (time.time() - started)
+
         if frame is None:
             return fail("No frame while waiting for the screen to settle.")
 
@@ -251,7 +265,9 @@ def _wait_for_stable_screen(ctx: ToolContext) -> Any:
         run, "wait_for_stable_screen",
         "Block until consecutive frames stop differing - i.e. the UI animation "
         "has finished - then return that frame. Always prefer this to a fixed "
-        "sleep: it adapts to how long the console actually took.")
+        "sleep: it adapts to how long the console actually took. Use "
+        "min_elapsed_seconds to guard against returning too early on a static "
+        "splash/logo screen that precedes the real destination.")
 
 
 # ===========================================================================
