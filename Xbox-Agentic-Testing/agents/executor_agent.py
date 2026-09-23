@@ -19,15 +19,17 @@ at all - the separation is structural, not a matter of instruction.
 
 EARLY ABORT
 -----------
-If several consecutive steps produce zero screen change, execution stops. That
-pattern almost always means input is not reaching the console (an
-unauthenticated GIMX session being the classic cause), and hammering forty more
-buttons at a console that is not listening wastes minutes and muddies the RCA
-timeline. Stopping early with a clear signal is more useful than finishing.
+If several consecutive INPUT steps produce zero meaningful evidence of change,
+execution stops. That pattern almost always means input is not reaching the
+console (an unauthenticated GIMX session being the classic cause), and
+hammering forty more buttons at a console that is not listening wastes minutes
+and muddies the RCA timeline. Observational steps like capture/wait must not be
+counted toward that streak.
 """
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any
 
@@ -37,9 +39,25 @@ from schemas import (
     EvidenceKind,
     ExecutionResult,
     PlannedStep,
+    ScenarioStage,
+    StageResult,
+    StageStatus,
+    StageTransition,
     StepResult,
 )
 from state import AgenticState, note
+
+
+_INGAME_STAGES = frozenset({
+    "menu_detection",
+    "level_navigation",
+    "level_launch",
+    "closed_loop_play",
+    "pause_checkpoint",
+    "main_menu_return",
+    "level_select_replay",
+    "achievements_review",
+})
 
 
 class ExecutorAgent(BaseAgent):
@@ -47,6 +65,63 @@ class ExecutorAgent(BaseAgent):
 
     role = "executor"
     uses_llm = False
+
+    @staticmethod
+    def _is_ingame_stage(step: PlannedStep) -> bool:
+        if step.stage is None:
+            return False
+        val = step.stage.value if hasattr(step.stage, "value") else str(step.stage)
+        return val in _INGAME_STAGES
+
+    @staticmethod
+    def _guard_ingame_screen(prior_results: list[StepResult]) -> dict[str, Any]:
+        """Verify console is in an active game state before dispatching in-game actions.
+
+        If the console was redirected to the Microsoft Store / Game Hub, an account error
+        dialog, or remained stuck on the Xbox Dashboard, dispatching gameplay buttons
+        (like navigating or pressing A) would be blind tapping. This guard halts execution
+        immediately.
+        """
+        if not prior_results:
+            return {"ok": True}
+
+        last_with_ocr = next((r for r in reversed(prior_results) if r.ocr_text), None)
+        if last_with_ocr is None:
+            return {"ok": True}
+
+        text = (last_with_ocr.ocr_text or "").lower()
+
+        # 1. Store / Purchase screen
+        store_phrases = ["buy $", "$14.99", "$11.99", "game details", "choose a plan",
+                         "join game pass", "session limits apply", "ad-supported streaming"]
+        hit_store = next((p for p in store_phrases if p in text), None)
+        if hit_store:
+            return {
+                "ok": False,
+                "error": f"Blind tapping prevented: Console is displaying Microsoft Store / Game Hub ('{hit_store}') instead of the running game. Account may lack active entitlement.",
+                "observation": "Refused to dispatch gameplay controls on Microsoft Store screen.",
+            }
+
+        # 2. Account attention / Ownership prompt (Bypassed per user override request)
+        error_phrases = ["your account needs attention", "sign in with the account",
+                         "do you own this game", "give it another try"]
+        hit_error = next((p for p in error_phrases if p in text), None)
+        if hit_error:
+            print(f"  [guard] Account attention prompt ('{hit_error}') detected - bypassing warning and continuing execution per override request.", flush=True)
+
+        # 3. Dashboard screen (without game running)
+        dash_phrases = ["my games & apps", "add to play later", "sponsored"]
+        hit_dash = next((p for p in dash_phrases if p in text), None)
+        game_sigs = ["curse of brotherhood", "brotherhood", "anotherland", "press a to start", "select level"]
+        has_game_sig = any(sig in text for sig in game_sigs)
+        if hit_dash and not has_game_sig:
+            return {
+                "ok": False,
+                "error": f"Blind tapping prevented: Console is on the Xbox Dashboard Home ('{hit_dash}') instead of the running game.",
+                "observation": "Refused to dispatch gameplay controls on dashboard home screen.",
+            }
+
+        return {"ok": True}
 
     def run(self, state: AgenticState) -> dict[str, Any]:
         plan = state.get("plan")
@@ -66,23 +141,106 @@ class ExecutorAgent(BaseAgent):
         abort_reason: str | None = None
         unchanged_streak = 0
         started = time.time()
+        focus_unproven = False
+        stage_state: dict[ScenarioStage, StageResult] = {}
+        transitions: list[StageTransition] = []
+        current_stage: ScenarioStage | None = None
+        last_proven_stage: ScenarioStage | None = None
 
         for step in plan.steps[:max_steps]:
             if time.time() > run_deadline:
                 aborted, abort_reason = True, (
                     f"Run timeout exceeded after {len(results)} steps.")
+                print(f"\n{'!' * 72}", flush=True)
+                print(f"[TIMEOUT EXCEEDED at Step {len(results)}/{len(plan.steps)}]", flush=True)
+                print(f"Reason: {abort_reason}", flush=True)
+                print(f"{'!' * 72}\n", flush=True)
+                break
+
+            # Rich real-time terminal log header
+            stage_name = step.stage.value if hasattr(step.stage, "value") else str(step.stage or "unspecified")
+            print(f"\n" + "-" * 72, flush=True)
+            print(f"[Step {step.index + 1}/{len(plan.steps)}] [{stage_name.upper()}] Action: {step.action}", flush=True)
+            if step.arguments:
+                print(f"  Arguments: {step.arguments}", flush=True)
+            if step.intent:
+                print(f"  Intent:    {step.intent}", flush=True)
+            if step.expected_observation:
+                print(f"  Expected:  {step.expected_observation}", flush=True)
+
+            # In-game active screen guard: prevent blind tapping on dashboard or store
+            if not dry_run and self._is_ingame_stage(step):
+                screen_guard = self._guard_ingame_screen(results)
+                if not screen_guard["ok"]:
+                    blocked = StepResult(
+                        index=step.index,
+                        action=step.action,
+                        arguments=dict(step.arguments),
+                        stage=step.stage,
+                        dispatched=False,
+                        error=screen_guard["error"],
+                        observation=screen_guard["observation"],
+                    )
+                    results.append(blocked)
+                    aborted = True
+                    abort_reason = blocked.error
+                    notes.append(abort_reason)
+                    print(f"\n{'!' * 72}", flush=True)
+                    print(f"[BLIND TAPPING PREVENTED at Step {step.index + 1}]", flush=True)
+                    print(f"Reason: {abort_reason}", flush=True)
+                    print(f"{'!' * 72}\n", flush=True)
+                    break
+
+            if focus_unproven and self._is_confirm_after_focus_move(step):
+                blocked = StepResult(
+                    index=step.index,
+                    action=step.action,
+                    arguments=dict(step.arguments),
+                    dispatched=False,
+                    error=("Selection blocked: the previous focus-navigation step "
+                           "did not prove which tile/menu item was selected."),
+                    observation=("Refused to press confirm because focus on the "
+                                 "intended target was not visually proven."),
+                )
+                results.append(blocked)
+                aborted = True
+                abort_reason = blocked.error
+                notes.append(abort_reason)
+                print(f"\n{'!' * 72}", flush=True)
+                print(f"[SELECTION BLOCKED at Step {step.index + 1}]", flush=True)
+                print(f"Reason: {abort_reason}", flush=True)
+                print(f"{'!' * 72}\n", flush=True)
                 break
 
             result = self._execute_step(step, dry_run)
             results.append(result)
+            current_stage, last_proven_stage = self._update_stage_tracking(
+                step, result, stage_state, transitions, current_stage, last_proven_stage)
+            focus_unproven = (
+                self._is_focus_navigation_step(step)
+                and bool(result.error)
+                and "focus" in (result.error or "").lower()
+            ) or self._is_unproven_focus_check(step, result)
+
+            status_label = f"FAILED: {result.error}" if result.error else "OK"
+            print(f"  Result:    {status_label} ({result.duration_seconds:.2f}s)", flush=True)
+            if result.screen_delta is not None:
+                print(f"  Delta:     {result.screen_delta:.3f}", flush=True)
+            if result.ocr_text:
+                first_lines = [l.strip() for l in result.ocr_text.splitlines() if l.strip()][:3]
+                print(f"  OCR Text:  {' | '.join(first_lines)[:120]}", flush=True)
+            if result.observation:
+                print(f"  Observe:   {result.observation[:120]}", flush=True)
 
             # Only a HARD failure aborts. A step that merely observed nothing
-            # useful is recorded and the run continues - previously a single
-            # bad argument name killed a 6-step plan at step 2, throwing away
-            # the remaining evidence and leaving the console mid-transition.
+            # useful is recorded and the run continues.
             if result.error and not step.optional and self._is_fatal(result):
                 aborted, abort_reason = True, (
-                    f"Step {step.index} ({step.action}) failed: {result.error}")
+                    f"Step {step.index + 1} ({step.action}) failed: {result.error}")
+                print(f"\n{'!' * 72}", flush=True)
+                print(f"[FATAL STEP FAILURE at Step {step.index + 1}]", flush=True)
+                print(f"Reason: {abort_reason}", flush=True)
+                print(f"{'!' * 72}\n", flush=True)
                 break
 
             if result.error:
@@ -90,25 +248,37 @@ class ExecutorAgent(BaseAgent):
                     f"Step {step.index} ({step.action}) reported an error but "
                     f"the run continued: {result.error}")
 
-            # Track consecutive no-change steps. A single one is normal (a
-            # deliberate wait, a press on an already-selected item); three in a
-            # row means nothing is getting through.
-            if result.screen_delta is not None:
-                threshold = self.context.settings.get(
-                    "verification.screen_change_threshold", 0.5)
-                unchanged_streak = (0 if result.screen_delta >= threshold
-                                    else unchanged_streak + 1)
+            # Only actionable input steps count toward the "dead input" abort.
+            if self._counts_toward_dead_input(step):
+                if self._shows_positive_progress(step, result):
+                    unchanged_streak = 0
+                else:
+                    unchanged_streak += 1
+            else:
+                unchanged_streak = 0
 
             if unchanged_streak >= 3 and not dry_run:
                 aborted = True
                 abort_reason = (
-                    f"The screen did not change across {unchanged_streak} "
-                    f"consecutive actions. Input is almost certainly not "
+                    f"{unchanged_streak} consecutive input actions produced no "
+                    f"meaningful visual progress. Input is likely not "
                     f"reaching the console - the usual cause is a GIMX session "
                     f"that was never authenticated with the Guide button. "
                     f"Stopping rather than sending more input into a void.")
                 notes.append(abort_reason)
+                print(f"\n{'!' * 72}", flush=True)
+                print(f"[DEAD INPUT ABORT at Step {step.index + 1}]", flush=True)
+                print(f"Reason: {abort_reason}", flush=True)
+                print(f"{'!' * 72}\n", flush=True)
                 break
+
+        if aborted:
+            print(f"\n{'!' * 72}", flush=True)
+            print(f"[EXECUTOR ABORTED at Step {len(results)}/{len(plan.steps)}]", flush=True)
+            print(f"Reason: {abort_reason}", flush=True)
+            print(f"{'!' * 72}\n", flush=True)
+        else:
+            print(f"\n[EXECUTOR COMPLETED] {len(results)}/{len(plan.steps)} steps executed in {round(time.time() - started, 2)}s\n", flush=True)
 
         execution = ExecutionResult(
             scenario_id=scenario.id,
@@ -121,6 +291,10 @@ class ExecutorAgent(BaseAgent):
             duration_seconds=round(time.time() - started, 2),
             action_log=self._action_log(),
             notes=notes,
+            current_stage=current_stage,
+            last_proven_stage=last_proven_stage,
+            stage_transitions=transitions,
+            stage_summary=list(stage_state.values()),
         )
 
         self.context.artifacts.save_json(
@@ -149,7 +323,16 @@ class ExecutorAgent(BaseAgent):
     def _execute_step(self, step: PlannedStep, dry_run: bool) -> StepResult:
         started = time.time()
         result = StepResult(index=step.index, action=step.action,
-                            arguments=dict(step.arguments))
+                            arguments=dict(step.arguments),
+                            stage=step.stage,
+                            stage_goal=step.stage_goal,
+                            progress_signal=step.progress_signal,
+                            replan_on=list(step.replan_on),
+                            stage_status=(
+                                StageStatus.IN_PROGRESS
+                                if step.stage is not None else
+                                StageStatus.NOT_STARTED
+                            ))
 
         before_path = self._capture(f"{step.index}-before-{step.action}",
                                     step.index, dry_run)
@@ -180,24 +363,90 @@ class ExecutorAgent(BaseAgent):
         if step.verify and not dry_run:
             self._observe(step, result)
             self._read_text(result)
+        if result.error:
+            result.stage_status = (
+                StageStatus.FAILED if step.stage is not None else result.stage_status)
+        elif step.stage is not None and self._step_proved_stage_progress(step, result):
+            result.stage_status = StageStatus.PROVEN
 
         result.duration_seconds = round(time.time() - started, 2)
         return result
+
+    @staticmethod
+    def _step_proved_stage_progress(step: PlannedStep, result: StepResult) -> bool:
+        if step.stage is None or result.error:
+            return False
+        proof_seen = any(e.is_proof for e in result.evidence)
+        if step.action == "detect_focus_highlight" and not result.error:
+            return proof_seen
+        if step.progress_signal:
+            return bool(result.frame_after and proof_seen)
+        return bool(result.frame_after and proof_seen)
+
+    @staticmethod
+    def _update_stage_tracking(
+        step: PlannedStep,
+        result: StepResult,
+        stage_state: dict[ScenarioStage, StageResult],
+        transitions: list[StageTransition],
+        current_stage: ScenarioStage | None,
+        last_proven_stage: ScenarioStage | None,
+    ) -> tuple[ScenarioStage | None, ScenarioStage | None]:
+        stage = step.stage
+        if stage is None:
+            return current_stage, last_proven_stage
+
+        if stage not in stage_state:
+            stage_state[stage] = StageResult(
+                stage=stage,
+                status=StageStatus.NOT_STARTED,
+                summary=step.stage_goal or step.intent,
+            )
+
+        stage_result = stage_state[stage]
+        if current_stage != stage:
+            current_stage = stage
+
+        stage_result.status = result.stage_status
+        stage_result.summary = result.observation or step.expected_observation
+        if result.frame_after:
+            stage_result.evidence = list(dict.fromkeys(
+                [*stage_result.evidence, result.frame_after]))
+
+        if result.stage_status == StageStatus.PROVEN:
+            transitions.append(StageTransition(
+                from_stage=last_proven_stage,
+                to_stage=stage,
+                evidence=[
+                    path for path in [result.frame_after]
+                    if path
+                ],
+            ))
+            last_proven_stage = stage
+        return current_stage, last_proven_stage
 
     @staticmethod
     def _is_fatal(result: StepResult) -> bool:
         """Should this error stop the whole run?
 
         Fatal: the hardware layer is gone (capture device lost, controller
-        unavailable). Continuing would produce nothing but more errors.
-
-        Not fatal: an unknown tool, a bad argument, a failed OCR read. Those
-        cost one step's evidence, not the run's. Aborting on them discards the
-        frames we already captured - which are often enough to reach a verdict.
+        unavailable), or core scenario lifecycle steps failed (game launch failed,
+        game not found on dashboard, store/purchase redirect, account error).
+        Continuing past a failed launch results in blind input sent to the dashboard/store.
         """
         text = (result.error or "").lower()
-        fatal_signs = ("capture unavailable", "controller unavailable",
-                       "adapter", "device may have been taken")
+        fatal_signs = (
+            "capture unavailable",
+            "controller unavailable",
+            "adapter",
+            "device may have been taken",
+            "game launch failed",
+            "not visually identified",
+            "unrecovered_error_dialog",
+            "refused to press confirm",
+            "selection blocked",
+            "blind tapping prevented",
+        )
         return any(sign in text for sign in fatal_signs)
 
     def _read_text(self, result: StepResult) -> None:
@@ -236,6 +485,12 @@ class ExecutorAgent(BaseAgent):
             confidence=0.75,
             source_tool="read_screen_text",
         ))
+        if lines:
+            txt_summary = " | ".join(lines[:3])[:100]
+            if result.observation:
+                result.observation += f" [OCR: {txt_summary}]"
+            else:
+                result.observation = f"[OCR: {txt_summary}]"
 
     def _dispatch(self, step: PlannedStep, dry_run: bool) -> dict[str, Any]:
         if dry_run:
@@ -272,7 +527,8 @@ class ExecutorAgent(BaseAgent):
         comparison = self.call_tool(
             "verify_screen_changed",
             before_path=result.frame_before,
-            after_path=after_path)
+            after_path=after_path,
+            threshold=self._screen_change_threshold(step))
 
         if not comparison.get("ok"):
             result.observation = f"Comparison failed: {comparison.get('error')}"
@@ -281,9 +537,42 @@ class ExecutorAgent(BaseAgent):
         delta = float(comparison.get("delta", 0.0))
         changed = bool(comparison.get("changed"))
         result.screen_delta = delta
-        result.observation = (
-            f"Screen {'changed' if changed else 'did NOT change'} "
-            f"(delta {delta:.3f}). Expected: {step.expected_observation}")
+        if self._is_focus_navigation_step(step):
+            focus_check = self._verify_focus_target(step, after_path)
+            if focus_check is not None:
+                result.evidence.append(focus_check["evidence"])
+                is_matched = bool(focus_check.get("matched", focus_check.get("ok", False)))
+                if is_matched:
+                    result.observation = (
+                        f"Focus highlight matched target '{focus_check['target']}'. "
+                        f"Expected: {step.expected_observation}")
+                    result.error = None
+                else:
+                    result.observation = (
+                        f"Focus movement not proven. Expected target "
+                        f"'{focus_check['target']}', observed "
+                        f"'{focus_check['observed']}'.")
+                    result.error = (
+                        result.error or
+                        "Focus movement could not be proven on the intended target.")
+            elif (not changed):
+                result.observation = (
+                    f"Low-motion focus transition was not proven by whole-screen "
+                    f"diff (delta {delta:.3f}). Expected: {step.expected_observation}")
+                result.error = (
+                    result.error or
+                    "Focus movement could not be proven on a low-motion screen.")
+            else:
+                result.observation = (
+                    f"Screen changed (delta {delta:.3f}), but no target label was "
+                    f"available to prove focus. Expected: {step.expected_observation}")
+                result.error = (
+                    result.error or
+                    "Focus movement changed the screen but did not prove the selected target.")
+        else:
+            result.observation = (
+                f"Screen {'changed' if changed else 'did NOT change'} "
+                f"(delta {delta:.3f}). Expected: {step.expected_observation}")
 
         # Only recorded as SCREEN_DIFF proof when the screen genuinely moved.
         # A no-change result is logged as a frame statistic instead, so it can
@@ -295,6 +584,161 @@ class ExecutorAgent(BaseAgent):
             frame_path=after_path,
             source_tool="verify_screen_changed",
         ))
+
+    @staticmethod
+    def _counts_toward_dead_input(step: PlannedStep) -> bool:
+        return step.action in {
+            "press_button",
+            "hold_button",
+            "run_sequence",
+            "type_text",
+            "move_stick",
+            "pull_trigger",
+        }
+
+    def _shows_positive_progress(self, step: PlannedStep, result: StepResult) -> bool:
+        threshold = self._screen_change_threshold(step)
+        if self._is_focus_navigation_step(step) and not result.error:
+            return True
+        if result.screen_delta is not None and result.screen_delta >= threshold:
+            return True
+        if step.action == "type_text" and result.dispatched and not result.error:
+            return True
+        if self._is_low_motion_focus_step(step):
+            haystack = " ".join(filter(None, [
+                result.observation or "",
+                result.ocr_text or "",
+                step.expected_observation or "",
+            ])).lower()
+            progress_markers = (
+                "top results",
+                "installed",
+                "games",
+                "people",
+                "apps",
+                "settings",
+                "minecraft",
+                "result tile",
+            )
+            if any(marker in haystack for marker in progress_markers):
+                return True
+        return False
+
+    @staticmethod
+    def _is_low_motion_focus_step(step: PlannedStep) -> bool:
+        if step.action != "press_button":
+            return False
+        button = str(step.arguments.get("button", "")).lower()
+        if button not in {"up", "down", "left", "right"}:
+            return False
+        text = " ".join([
+            str(step.intent or ""),
+            str(step.expected_observation or ""),
+        ]).lower()
+        markers = (
+            "focus moves",
+            "highlight",
+            "result tile",
+            "results list",
+            "search field",
+            "first result",
+        )
+        return any(marker in text for marker in markers)
+
+    def _is_focus_navigation_step(self, step: PlannedStep) -> bool:
+        if not self._is_low_motion_focus_step(step):
+            return False
+        return bool(self._extract_expected_focus_label(step))
+
+    @staticmethod
+    def _is_confirm_after_focus_move(step: PlannedStep) -> bool:
+        return (
+            step.action == "press_button"
+            and str(step.arguments.get("button", "")).lower() in {"a", "cross"}
+        )
+
+    @staticmethod
+    def _is_unproven_focus_check(step: PlannedStep, result: StepResult) -> bool:
+        if step.action != "detect_focus_highlight" or not result.error:
+            return False
+
+        error = (result.error or "").lower()
+        no_target_phrases = (
+            "no expected label", "expected_label is empty",
+            "no target", "nothing to match", "no label supplied",
+            "no green-highlight region was detected",
+            "in-game",
+        )
+        if any(phrase in error for phrase in no_target_phrases):
+            return False
+        return True
+
+    def _verify_focus_target(self, step: PlannedStep,
+                             after_path: str) -> dict[str, Any] | None:
+        target = self._extract_expected_focus_label(step)
+        if not target:
+            return None
+        detection = self.call_tool(
+            "detect_focus_highlight",
+            frame_path=after_path,
+            expected_label=target,
+        )
+        observed = (
+            detection.get("selected_label")
+            or detection.get("observed_text")
+            or ""
+        )
+        detail = _jsonable(detection)
+        detail["expected_label"] = target
+        evidence = Evidence(
+            kind=EvidenceKind.VISION_MODEL if detection.get("ok") else EvidenceKind.FRAME_STATS,
+            summary=(
+                f"Focus highlight {'matched' if detection.get('ok') else 'did not match'} "
+                f"expected '{target}' (observed '{observed}')."
+            ),
+            detail=detail,
+            frame_path=after_path,
+            confidence=0.85 if detection.get("ok") else 0.4,
+            source_tool="detect_focus_highlight",
+        )
+        return {
+            "ok": bool(detection.get("ok", False)),
+            "matched": bool(detection.get("ok", False) and detection.get("matched", True)),
+            "target": target,
+            "observed": observed[:200],
+            "evidence": evidence,
+        }
+
+    @staticmethod
+    def _extract_expected_focus_label(step: PlannedStep) -> str:
+        for key in ("expected_label", "target", "label", "text"):
+            value = str(step.arguments.get(key, "") or "").strip()
+            if value and not value.startswith("stage-"):
+                return value
+
+        text = " ".join([
+            str(step.intent or ""),
+            str(step.expected_observation or ""),
+        ])
+        quoted = re.findall(r"['\"]([^'\"]{2,80})['\"]", text)
+        if quoted:
+            return quoted[-1].strip()
+
+        match = re.search(
+            r"(?:highlight(?:ed)?|focus(?:ed)?|target)\s+(?:is|on|to)?\s*([A-Za-z0-9 &/+-]{3,60})",
+            text,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            return match.group(1).strip(" .")
+        return ""
+
+    def _screen_change_threshold(self, step: PlannedStep) -> float:
+        default = float(
+            self.context.settings.get("verification.screen_change_threshold", 0.5))
+        if self._is_low_motion_focus_step(step):
+            return min(default, 0.1)
+        return default
 
     # -- helpers -----------------------------------------------------------
     def _capture(self, label: str, step: int, dry_run: bool) -> str | None:

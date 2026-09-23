@@ -184,6 +184,7 @@ class BaseAgent:
     def __call__(self, state: AgenticState) -> dict[str, Any]:
         """LangGraph entry point. Never raises."""
         started = time.time()
+        print(f"\n>>> [AGENT: {self.role.upper()}] Starting ...", flush=True)
         try:
             update = self.run(state)
         except Exception as exc:
@@ -198,6 +199,7 @@ class BaseAgent:
         update["agent_outputs"] = outputs
         update.setdefault("messages", []).append(
             note(self.role, f"completed in {elapsed}s"))
+        print(f"<<< [AGENT: {self.role.upper()}] Completed in {elapsed}s", flush=True)
         return update
 
     def run(self, state: AgenticState) -> dict[str, Any]:
@@ -207,6 +209,7 @@ class BaseAgent:
     def _handle_error(self, state: AgenticState, exc: Exception,
                       elapsed: float) -> dict[str, Any]:
         detail = f"{exc.__class__.__name__}: {exc}"
+        print(f"\n!!! [AGENT: {self.role.upper()}] FAILED ({elapsed:.2f}s): {detail}\n", flush=True)
         self.context.artifacts.append_log(
             "agent-errors.log",
             f"[{self.role}] {detail}\n{traceback.format_exc()}")

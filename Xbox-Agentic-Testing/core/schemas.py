@@ -101,6 +101,52 @@ class FailureClass(str, Enum):
     UNKNOWN = "unknown"
 
 
+class ScenarioStage(str, Enum):
+    PREFLIGHT = "preflight"
+    GAME_DISCOVERY = "game_discovery"
+    GAME_LAUNCH = "game_launch"
+    MENU_DETECTION = "menu_detection"
+    LEVEL_NAVIGATION = "level_navigation"
+    LEVEL_LAUNCH = "level_launch"
+    CLOSED_LOOP_PLAY = "closed_loop_play"
+    # --- extended journey stages -------------------------------------------
+    # These exist so a multi-scenario journey (play -> pause -> checkpoint ->
+    # main menu -> replay a level -> achievements -> exit) can be declared as
+    # ONE forward-moving pipeline. Adding stages is deliberately preferred
+    # over relaxing _validate_stage_sequence: repeats stay forbidden, so the
+    # guard that stops a planner looping the same stage forever is untouched.
+    PAUSE_CHECKPOINT = "pause_checkpoint"
+    MAIN_MENU_RETURN = "main_menu_return"
+    LEVEL_SELECT_REPLAY = "level_select_replay"
+    ACHIEVEMENTS_REVIEW = "achievements_review"
+    EXIT_TO_DASHBOARD = "exit_to_dashboard"
+    FAILURE_POLICY = "failure_policy"
+
+
+class StageStatus(str, Enum):
+    NOT_STARTED = "not_started"
+    IN_PROGRESS = "in_progress"
+    PROVEN = "proven"
+    FAILED = "failed"
+    BLOCKED = "blocked"
+
+
+STAGE_ORDER: tuple[ScenarioStage, ...] = (
+    ScenarioStage.PREFLIGHT,
+    ScenarioStage.GAME_DISCOVERY,
+    ScenarioStage.GAME_LAUNCH,
+    ScenarioStage.MENU_DETECTION,
+    ScenarioStage.LEVEL_NAVIGATION,
+    ScenarioStage.LEVEL_LAUNCH,
+    ScenarioStage.CLOSED_LOOP_PLAY,
+    ScenarioStage.PAUSE_CHECKPOINT,
+    ScenarioStage.MAIN_MENU_RETURN,
+    ScenarioStage.LEVEL_SELECT_REPLAY,
+    ScenarioStage.ACHIEVEMENTS_REVIEW,
+    ScenarioStage.EXIT_TO_DASHBOARD,
+)
+
+
 # ===========================================================================
 # Evidence
 # ===========================================================================
@@ -120,6 +166,26 @@ class Evidence(BaseModel):
     def is_proof(self) -> bool:
         """True if this observation may support a PASS."""
         return self.kind in PROOF_KINDS
+
+    @field_validator("detail", mode="before")
+    @classmethod
+    def _coerce_detail_to_dict(cls, v: Any) -> dict[str, Any]:
+        if v is None:
+            return {}
+        if isinstance(v, dict):
+            return v
+        if isinstance(v, str):
+            v_str = v.strip()
+            if v_str.startswith("{") and v_str.endswith("}"):
+                try:
+                    import json
+                    parsed = json.loads(v_str)
+                    if isinstance(parsed, dict):
+                        return parsed
+                except Exception:
+                    pass
+            return {"info": v_str}
+        return {"value": v}
 
 
 # ===========================================================================
@@ -178,6 +244,28 @@ class SuccessCriterion(BaseModel):
         return v
 
 
+class StageDefinition(BaseModel):
+    id: ScenarioStage
+    objective: str
+    required_evidence: list[str] = Field(default_factory=list)
+    allowed_actions: list[str] = Field(default_factory=list)
+    stop_conditions: list[str] = Field(default_factory=list)
+    replan_conditions: list[str] = Field(default_factory=list)
+
+    @field_validator("objective")
+    @classmethod
+    def _objective_required(cls, v: str) -> str:
+        if not str(v).strip():
+            raise ValueError("A stage objective cannot be empty")
+        return str(v).strip()
+
+    @field_validator("required_evidence", "allowed_actions",
+                     "stop_conditions", "replan_conditions")
+    @classmethod
+    def _clean_string_lists(cls, value: list[str]) -> list[str]:
+        return [str(item).strip() for item in value if str(item).strip()]
+
+
 class ValidatedScenario(BaseModel):
     """A scenario normalised into something executable."""
 
@@ -192,6 +280,11 @@ class ValidatedScenario(BaseModel):
     tags: list[str] = Field(default_factory=list)
     timeout_seconds: float | None = None
     max_steps: int | None = None
+    stages: list[StageDefinition] = Field(default_factory=list)
+    progress_signals: list[str] = Field(default_factory=list)
+    death_signals: list[str] = Field(default_factory=list)
+    stuck_policy: dict[str, Any] = Field(default_factory=dict)
+    recovery_policy: dict[str, Any] = Field(default_factory=dict)
 
     valid: bool = True
     issues: list[str] = Field(default_factory=list)
@@ -212,6 +305,11 @@ class ValidatedScenario(BaseModel):
                 "No success criteria: this test could never fail, so it "
                 "cannot pass either.")
         return self
+
+    @field_validator("progress_signals", "death_signals")
+    @classmethod
+    def _clean_signal_lists(cls, value: list[str]) -> list[str]:
+        return [str(item).strip() for item in value if str(item).strip()]
 
 
 # ===========================================================================
@@ -256,6 +354,10 @@ class PlannedStep(BaseModel):
         default=False, description="Failure here does not fail the run")
     timeout_seconds: float | None = None
     retry_limit: int = 1
+    stage: ScenarioStage | None = None
+    stage_goal: str = ""
+    replan_on: list[str] = Field(default_factory=list)
+    progress_signal: str = ""
 
     @field_validator("expected_observation")
     @classmethod
@@ -265,6 +367,11 @@ class PlannedStep(BaseModel):
                 "expected_observation is required: an unverifiable step is how "
                 "false passes get in.")
         return v
+
+    @field_validator("replan_on")
+    @classmethod
+    def _clean_replan_signals(cls, value: list[str]) -> list[str]:
+        return [str(item).strip() for item in value if str(item).strip()]
 
 
 class TestPlan(BaseModel):
@@ -292,6 +399,11 @@ class StepResult(BaseModel):
     observation: str = Field(
         default="", description="What was actually seen afterwards")
     evidence: list[Evidence] = Field(default_factory=list)
+    stage: ScenarioStage | None = None
+    stage_goal: str = ""
+    stage_status: StageStatus = StageStatus.NOT_STARTED
+    progress_signal: str = ""
+    replan_on: list[str] = Field(default_factory=list)
     frame_before: str | None = None
     frame_after: str | None = None
     screen_delta: float | None = Field(
@@ -321,6 +433,10 @@ class ExecutionResult(BaseModel):
     duration_seconds: float = 0.0
     action_log: list[dict[str, Any]] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
+    current_stage: ScenarioStage | None = None
+    last_proven_stage: ScenarioStage | None = None
+    stage_transitions: list["StageTransition"] = Field(default_factory=list)
+    stage_summary: list["StageResult"] = Field(default_factory=list)
 
     @property
     def observed_any_change(self) -> bool:
@@ -329,6 +445,20 @@ class ExecutionResult(BaseModel):
             (s.screen_delta or 0) > 0 or
             any(e.is_proof for e in s.evidence)
             for s in self.steps)
+
+
+class StageTransition(BaseModel):
+    from_stage: ScenarioStage | None = None
+    to_stage: ScenarioStage
+    evidence: list[str] = Field(default_factory=list)
+    timestamp: str = Field(default_factory=_utc_now)
+
+
+class StageResult(BaseModel):
+    stage: ScenarioStage
+    status: StageStatus = StageStatus.NOT_STARTED
+    summary: str = ""
+    evidence: list[str] = Field(default_factory=list)
 
 
 # ===========================================================================
@@ -359,6 +489,8 @@ class VerificationResult(BaseModel):
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     should_replan: bool = False
     replan_hint: str | None = None
+    stage_status: dict[str, StageStatus] = Field(default_factory=dict)
+    last_proven_stage: ScenarioStage | None = None
 
     @model_validator(mode="after")
     def _no_pass_without_proof(self) -> "VerificationResult":
@@ -417,17 +549,33 @@ class RootCauseAnalysis(BaseModel):
 
 
 # ===========================================================================
-# 7. Report
+# 7. Executive summary
+# ===========================================================================
+class ExecutiveSummary(BaseModel):
+    """Human-facing narrative summary. Must not override the verdict."""
+
+    what_was_requested: str = ""
+    what_was_attempted: str = ""
+    verdict_statement: str = ""
+    strongest_evidence: str = ""
+    rca_summary: str = ""
+    recommended_next_action: str = ""
+
+
+# ===========================================================================
+# 8. Report
 # ===========================================================================
 class TestReport(BaseModel):
     run_id: str
     scenario_id: str
     scenario_title: str = ""
+    console_profile: str = ""
     requirement_id: str | None = None
     requirement_title: str = ""
     requirement_goal: str = ""
     verdict: Verdict
     summary: str = ""
+    executive_summary: ExecutiveSummary | None = None
     started_at: str = ""
     finished_at: str = Field(default_factory=_utc_now)
     duration_seconds: float = 0.0
@@ -445,10 +593,12 @@ class TestReport(BaseModel):
         default_factory=list,
         description="Limits of this result - what it does NOT prove")
     metrics: dict[str, Any] = Field(default_factory=dict)
+    stage_summary: list[StageResult] = Field(default_factory=list)
+    stage_transitions: list[StageTransition] = Field(default_factory=list)
 
 
 # ===========================================================================
-# 8. Control-flow schemas
+# 9. Control-flow schemas
 # ===========================================================================
 class RoutingDecision(BaseModel):
     """Supervisor output when route_mode is 'supervised'."""

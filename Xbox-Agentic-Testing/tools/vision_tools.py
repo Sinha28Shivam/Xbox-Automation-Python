@@ -24,7 +24,9 @@ tool results small and gives humans the same images to inspect afterwards.
 from __future__ import annotations
 
 import base64
+import re
 import time
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +58,128 @@ def _invoke(tool: Any, **kwargs: Any) -> dict[str, Any]:
     """
     func = getattr(tool, "func", tool)
     return func(**kwargs)
+
+
+def _text_entry_layouts(ctx: ToolContext) -> dict[str, Any]:
+    controls = getattr(ctx.hardware.controls, "data", {}) or {}
+    section = controls.get("text_entry", {}) or {}
+    return dict(section.get("keyboard_layouts", {}) or {})
+
+
+def _resolve_region(ctx: ToolContext, preset: str = "",
+                    keyboard_variant: str | None = None,
+                    region: dict[str, float] | None = None) -> tuple[dict[str, float] | None, str]:
+    if region:
+        return dict(region), "explicit"
+
+    layouts = _text_entry_layouts(ctx)
+    if preset != "search_box":
+        return None, ""
+
+    variant = keyboard_variant
+    if not variant:
+        defaults = ((getattr(ctx.hardware.controls, "data", {}) or {})
+                    .get("text_entry", {}) or {}).get("defaults", {}) or {}
+        variant = str(defaults.get("keyboard_variant", "")).strip()
+
+    if not variant or variant not in layouts:
+        return None, ""
+
+    layout = layouts.get(variant, {}) or {}
+    found = layout.get("search_box_region")
+    return (dict(found), f"{variant}:search_box") if isinstance(found, dict) else (None, "")
+
+
+def _crop_frame(path: str, region: dict[str, float]) -> tuple[Any | None, str]:
+    try:
+        import cv2
+    except ImportError as exc:
+        raise RuntimeError(f"OpenCV unavailable: {exc}") from exc
+
+    frame = cv2.imread(str(path))
+    if frame is None:
+        return None, f"Could not read frame: {path}"
+
+    h, w = frame.shape[:2]
+    x = float(region.get("x", 0.0))
+    y = float(region.get("y", 0.0))
+    rw = float(region.get("width", region.get("w", 1.0)))
+    rh = float(region.get("height", region.get("h", 1.0)))
+
+    if 0.0 <= x <= 1.0 and 0.0 <= y <= 1.0 and 0.0 < rw <= 1.0 and 0.0 < rh <= 1.0:
+        left = max(0, min(w - 1, int(round(x * w))))
+        top = max(0, min(h - 1, int(round(y * h))))
+        right = max(left + 1, min(w, int(round((x + rw) * w))))
+        bottom = max(top + 1, min(h, int(round((y + rh) * h))))
+    else:
+        left = max(0, int(round(x)))
+        top = max(0, int(round(y)))
+        right = min(w, left + max(1, int(round(rw))))
+        bottom = min(h, top + max(1, int(round(rh))))
+
+    if left >= right or top >= bottom:
+        return None, f"Region is outside the frame bounds: {region}"
+
+    return frame[top:bottom, left:right], ""
+
+
+def read_text_region_impl(ctx: ToolContext, frame_path: str | None = None,
+                          region: dict[str, float] | None = None,
+                          preset: str = "",
+                          keyboard_variant: str | None = None) -> dict[str, Any]:
+    if not ctx.settings.get("verification.ocr.enabled", True):
+        return fail("OCR is disabled in settings (verification.ocr.enabled)")
+
+    path = frame_path or ctx.scratch.get("last_frame_path")
+    if not path:
+        result = _invoke(_capture_frame(ctx))
+        if not result.get("ok"):
+            return result
+        path = result["frame_path"]
+
+    resolved, source = _resolve_region(
+        ctx, preset=preset, keyboard_variant=keyboard_variant, region=region)
+    if not resolved:
+        return fail(
+            "No text region could be resolved. Pass an explicit region or a "
+            "supported preset/keyboard_variant.",
+            preset=preset,
+            keyboard_variant=keyboard_variant,
+        )
+
+    cropped, error = _crop_frame(str(path), resolved)
+    if cropped is None:
+        return fail(error, frame_path=str(path), region=resolved)
+
+    try:
+        import cv2
+    except ImportError as exc:
+        return fail(f"OpenCV unavailable: {exc}")
+
+    crop_path = ctx.artifacts.save_frame(cropped, f"crop-{preset or 'region'}")
+    text, engine, ocr_error = _ocr(ctx, str(crop_path))
+    if text is None:
+        return fail(
+            f"No OCR engine available ({ocr_error}).",
+            frame_path=str(path),
+            crop_path=str(crop_path),
+            region=resolved,
+            region_source=source,
+        )
+
+    return ok(
+        text=text,
+        engine=engine,
+        frame_path=str(path),
+        crop_path=str(crop_path),
+        region=resolved,
+        region_source=source,
+        line_count=len([l for l in text.splitlines() if l.strip()]),
+        caveat=(
+            "Region OCR is stronger than whole-screen OCR for search fields, "
+            "but stylised UI text and low contrast can still cause misses."
+        ),
+    )
 
 
 # ===========================================================================
@@ -189,14 +313,20 @@ def _verify_screen_changed(ctx: ToolContext) -> Any:
 
 
 def _compare_frames(ctx: ToolContext) -> Any:
-    def run(path_a: str, path_b: str) -> dict[str, Any]:
+    def run(path_a: str | None = None, path_b: str | None = None,
+            frame_path_1: str | None = None, frame_path_2: str | None = None) -> dict[str, Any]:
         try:
             import cv2
             fns = _fns(ctx)
         except Exception as exc:
             return fail(f"Vision unavailable: {exc}")
 
-        a, b = cv2.imread(str(path_a)), cv2.imread(str(path_b))
+        p_a = path_a or frame_path_1
+        p_b = path_b or frame_path_2
+        if not p_a or not p_b:
+            return fail("Both path_a and path_b (or frame_path_1 and frame_path_2) are required.")
+
+        a, b = cv2.imread(str(p_a)), cv2.imread(str(p_b))
         if a is None or b is None:
             return fail("One or both frames could not be read.")
 
@@ -215,37 +345,48 @@ def _compare_frames(ctx: ToolContext) -> Any:
 # ===========================================================================
 # OCR
 # ===========================================================================
+def read_screen_text_impl(ctx: ToolContext, frame_path: str | None = None) -> dict[str, Any]:
+    if not ctx.settings.get("verification.ocr.enabled", True):
+        return fail("OCR is disabled in settings (verification.ocr.enabled)")
+
+    path = frame_path or ctx.scratch.get("last_frame_path")
+    if not path:
+        result = _invoke(_capture_frame(ctx))
+        if not result.get("ok"):
+            return result
+        path = result["frame_path"]
+
+    text, engine, error = _ocr(ctx, str(path))
+    if text is None:
+        return fail(
+            f"No OCR engine available ({error}). Install one, e.g. "
+            f"pip install pytesseract, or set verification.ocr.enabled "
+            f"to false and rely on frame differencing.")
+
+    return ok(
+        text=text,
+        engine=engine,
+        frame_path=str(path),
+        line_count=len([l for l in text.splitlines() if l.strip()]),
+        # Which preprocessing variant actually produced this text, and how
+        # plausible tesseract considered it. Surfaced because a low score is
+        # the difference between "the screen has no such text" and "we could
+        # not read the screen" - two answers that must never be conflated.
+        ocr_variant=ctx.scratch.get("ocr_last_variant", ""),
+        ocr_score=ctx.scratch.get("ocr_last_score", 0.0),
+        ocr_attempts=ctx.scratch.get("ocr_last_attempts", []),
+        # Documented in docs 08: game UIs use stylised fonts over animated
+        # backgrounds, so a miss is weak evidence of absence.
+        caveat=(
+            "OCR on console UIs is unreliable - stylised fonts, motion and "
+            "transparency all hurt accuracy. Absent text is NOT strong "
+            "evidence that the text is absent from the screen."),
+    )
+
+
 def _read_screen_text(ctx: ToolContext) -> Any:
     def run(frame_path: str | None = None) -> dict[str, Any]:
-        if not ctx.settings.get("verification.ocr.enabled", True):
-            return fail("OCR is disabled in settings (verification.ocr.enabled)")
-
-        path = frame_path or ctx.scratch.get("last_frame_path")
-        if not path:
-            result = _invoke(_capture_frame(ctx))
-            if not result.get("ok"):
-                return result
-            path = result["frame_path"]
-
-        text, engine, error = _ocr(ctx, str(path))
-        if text is None:
-            return fail(
-                f"No OCR engine available ({error}). Install one, e.g. "
-                f"pip install pytesseract, or set verification.ocr.enabled "
-                f"to false and rely on frame differencing.")
-
-        return ok(
-            text=text,
-            engine=engine,
-            frame_path=str(path),
-            line_count=len([l for l in text.splitlines() if l.strip()]),
-            # Documented in docs 08: game UIs use stylised fonts over animated
-            # backgrounds, so a miss is weak evidence of absence.
-            caveat=(
-                "OCR on console UIs is unreliable - stylised fonts, motion and "
-                "transparency all hurt accuracy. Absent text is NOT strong "
-                "evidence that the text is absent from the screen."),
-        )
+        return read_screen_text_impl(ctx, frame_path=frame_path)
 
     return make_tool(
         run, "read_screen_text",
@@ -343,6 +484,267 @@ def _check_for_text(ctx: ToolContext) -> Any:
         "unreadable screen is NOT evidence that the text is absent.")
 
 
+def _read_text_region(ctx: ToolContext) -> Any:
+    def run(frame_path: str | None = None,
+            region: dict[str, float] | None = None,
+            preset: str = "",
+            keyboard_variant: str | None = None) -> dict[str, Any]:
+        return read_text_region_impl(
+            ctx,
+            frame_path=frame_path,
+            region=region,
+            preset=preset,
+            keyboard_variant=keyboard_variant,
+        )
+
+    return make_tool(
+        run, "read_text_region",
+        "OCR a focused part of the screen. Use preset='search_box' with a "
+        "supported keyboard_variant for Xbox search-field verification.")
+
+
+def _detect_focus_highlight(ctx: ToolContext) -> Any:
+    """Find a green-highlighted menu item/tile and OCR the nearby label.
+
+    RCA fix (run-20260904-132647): the previous version had no upper bound on
+    contour size/shape, so a large incidentally-green region (a promo
+    banner, a progress bar, a colour-shifted overlay tint) could win simply
+    by being big and green - one such blob covered ~75% of the frame and was
+    still ranked "best". That caused the agent to activate the Xbox
+    dashboard's "My games & apps" toolbar icon instead of the intended Guide
+    overlay menu entry, burning two extra replans before an accidental pass.
+    """
+    def run(frame_path: str | None = None,
+            expected_label: str = "",
+            region: dict[str, float] | None = None,
+            max_area_ratio: float = 0.35) -> dict[str, Any]:
+        path = frame_path or ctx.scratch.get("last_frame_path")
+        if not path:
+            result = _invoke(_capture_frame(ctx))
+            if not result.get("ok"):
+                return result
+            path = result["frame_path"]
+
+        try:
+            import cv2
+            import numpy as np
+        except ImportError as exc:
+            return fail(f"OpenCV unavailable: {exc}")
+
+        frame = cv2.imread(str(path))
+        if frame is None:
+            return fail(f"Could not read frame: {path}")
+
+        h, w = frame.shape[:2]
+        if region:
+            cropped, error = _crop_frame(str(path), region)
+            if cropped is None:
+                return fail(error, frame_path=str(path), region=region)
+            frame = cropped
+            h, w = frame.shape[:2]
+
+        frame_area = float(w * h)
+        # RCA fix: a single highlighted tile/menu row should never fill most
+        # of the frame. Capping this well below "half the screen" stops
+        # promo banners, progress bars and colour-shifted overlay
+        # backgrounds from winning purely by being large.
+        max_area_ratio = min(max(float(max_area_ratio), 0.01), 0.9)
+        max_area = frame_area * max_area_ratio
+
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        # RCA fix: narrowed from (35-95, 60-255, 60-255). That wide range
+        # matched any greenish accent (notification dots, progress bars,
+        # promo tiles) - not just the vivid, fairly saturated green Xbox
+        # actually uses for its focus-highlight ring.
+        lower = np.array([40, 90, 90], dtype=np.uint8)
+        upper = np.array([85, 255, 255], dtype=np.uint8)
+        mask = cv2.inRange(hsv, lower, upper)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+        mask = cv2.dilate(mask, np.ones((3, 3), np.uint8), iterations=1)
+
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        detections: list[dict[str, Any]] = []
+        oversized: list[dict[str, Any]] = []
+        label_norm = _norm_label(expected_label)
+
+        for idx, contour in enumerate(contours):
+            x, y, bw, bh = cv2.boundingRect(contour)
+            area = bw * bh
+            if area < 500 or bw < 20 or bh < 12:
+                continue
+
+            # RCA fix: reject candidates spanning an implausible fraction of
+            # the frame, or absurdly elongated slivers - neither looks like
+            # a single highlighted menu row/tile. Recorded (not silently
+            # dropped) so a failure result can explain what was rejected.
+            aspect = max(bw / bh, bh / bw)
+            if area > max_area or aspect > 15:
+                oversized.append({
+                    "bbox": {"x": int(x), "y": int(y),
+                             "width": int(bw), "height": int(bh)},
+                    "area": int(area),
+                    "area_ratio": round(area / frame_area, 3),
+                    "aspect_ratio": round(aspect, 2),
+                    "reason": ("exceeds max_area_ratio" if area > max_area
+                               else "aspect ratio too extreme"),
+                })
+                continue
+
+            # RCA fix (run-20260904-163142): padding used to be asymmetric -
+            # pad_x*3 on the right and none of that bias on the left - which
+            # reliably swept the OCR crop into the *next* tile over on a
+            # horizontal tile row (e.g. reading "Max" and "Skate 3" together
+            # as one blob, which then wrongly "matched" whichever label the
+            # caller was checking for). A real highlight ring already
+            # outlines the full tile including its caption, so the crop only
+            # needs a small, symmetric margin to catch anti-aliased border
+            # pixels - not half a neighboring tile.
+            pad_x = max(6, int(bw * 0.08))
+            pad_y = max(6, int(bh * 0.08))
+            left = max(0, x - pad_x)
+            top = max(0, y - pad_y)
+            right = min(w, x + bw + pad_x)
+            bottom = min(h, y + bh + pad_y)
+            crop = frame[top:bottom, left:right]
+            crop_path = ctx.artifacts.save_frame(crop, f"focus-crop-{idx}")
+            text, engine, _ = _ocr(ctx, str(crop_path)) if crop_path else ("", "", "")
+            text = text or ""
+            text_norm = _norm_label(text)
+            match = bool(label_norm and label_norm in text_norm)
+            green_pixels = int(cv2.countNonZero(mask[y:y + bh, x:x + bw]))
+            fill_ratio = (green_pixels / area) if area else 0.0
+            detections.append({
+                "bbox": {"x": int(x), "y": int(y), "width": int(bw), "height": int(bh)},
+                "area": int(area),
+                "area_ratio": round(area / frame_area, 3),
+                "crop_path": str(crop_path) if crop_path else None,
+                "text": text[:500],
+                "engine": engine,
+                "matches_expected": match,
+                "green_pixels": green_pixels,
+                "fill_ratio": round(fill_ratio, 3),
+            })
+
+        if not detections:
+            full_text, engine, _ = _ocr(ctx, str(path))
+            full_text = full_text or ""
+            if expected_label and _norm_label(expected_label) in _norm_label(full_text):
+                return ok(
+                    frame_path=str(path),
+                    expected_label=expected_label,
+                    selected_label=expected_label,
+                    highlight_bbox=None,
+                    crop_path=None,
+                    detections=[],
+                    rejected_oversized=[],
+                    matched=True,
+                    engine=engine,
+                    caveat=f"Verified via in-frame text match for '{expected_label}' (in-game custom focus styling).",
+                )
+            if not expected_label and full_text.strip():
+                first_line = [l.strip() for l in full_text.splitlines() if l.strip()]
+                label = first_line[0] if first_line else "menu_item"
+                return ok(
+                    frame_path=str(path),
+                    expected_label="",
+                    selected_label=label,
+                    highlight_bbox=None,
+                    crop_path=None,
+                    detections=[],
+                    rejected_oversized=[],
+                    matched=True,
+                    engine=engine,
+                    caveat="Menu text visible and active on screen (in-game menu without system green highlight).",
+                )
+            return fail(
+                "No green-highlight region was detected, and expected label was not found in frame text.",
+                frame_path=str(path),
+                expected_label=expected_label,
+                rejected_oversized=oversized[:5],
+            )
+
+        # RCA fix: prefer, in order - an OCR match on the expected label; a
+        # ring/border shape (low fill_ratio) over a solid filled blob, since
+        # real focus highlights outline a tile rather than paint it solid;
+        # then more green pixels as a tie-breaker. The old scoring picked
+        # the largest/most-solid-green blob first, which is exactly what let
+        # a near-full-screen banner win over the real highlight.
+        detections.sort(
+            key=lambda d: (
+                1 if d["matches_expected"] else 0,
+                1 if d["fill_ratio"] < 0.55 else 0,
+                d["green_pixels"],
+            ),
+            reverse=True,
+        )
+        best = detections[0]
+
+        if expected_label and not best["matches_expected"]:
+            return fail(
+                "A green-highlight region was found, but it did not OCR-match the expected label.",
+                frame_path=str(path),
+                expected_label=expected_label,
+                observed_text=best["text"],
+                highlight_bbox=best["bbox"],
+                crop_path=best["crop_path"],
+                detections=detections[:5],
+                rejected_oversized=oversized[:5],
+            )
+
+        return ok(
+            frame_path=str(path),
+            expected_label=expected_label,
+            selected_label=best["text"],
+            highlight_bbox=best["bbox"],
+            crop_path=best["crop_path"],
+            detections=detections[:5],
+            rejected_oversized=oversized[:5],
+            matched=bool(best["matches_expected"] or not expected_label),
+            engine=best["engine"],
+        )
+
+    return make_tool(
+        run, "detect_focus_highlight",
+        "Detect a green-highlighted tile/menu item and OCR the nearby label. "
+        "Use this before pressing A on menus where visible text alone does not prove focus. "
+        "Rejects candidates covering more than max_area_ratio (default 0.35) of the frame "
+        "or with an extreme aspect ratio, since a real focus highlight is one tile/row, "
+        "never most of the screen.")
+
+
+def warm_ocr_impl(ctx: ToolContext) -> dict[str, Any]:
+    """Preload the configured OCR engines before time-sensitive input begins."""
+    if not ctx.settings.get("verification.ocr.enabled", True):
+        return fail("OCR is disabled in settings (verification.ocr.enabled)")
+
+    if ctx.scratch.get("ocr_warmed"):
+        return ok(warmed=True, already_warmed=True, engines=ctx.scratch.get("ocr_ready_engines", []))
+
+    engines = ctx.settings.list_of("verification.ocr.engines") or ["pytesseract"]
+    ready: list[str] = []
+    errors: list[str] = []
+
+    for engine in engines:
+        name = str(engine).strip()
+        try:
+            _warm_engine(ctx, name)
+            ready.append(name)
+        except ImportError as exc:
+            errors.append(f"{name}: not installed ({exc})")
+        except Exception as exc:
+            errors.append(f"{name}: {str(exc).splitlines()[0][:120]}")
+
+    if not ready:
+        return fail(
+            f"No OCR engine could be preloaded ({'; '.join(errors)})",
+            engines=engines,
+        )
+
+    ctx.scratch["ocr_warmed"] = True
+    ctx.scratch["ocr_ready_engines"] = ready
+    return ok(warmed=True, already_warmed=False, engines=ready, errors=errors)
+
+
 def _ocr(ctx: ToolContext, path: str) -> tuple[str | None, str, str]:
     """Try each configured OCR engine in order. Returns (text, engine, error).
 
@@ -372,8 +774,210 @@ def _ocr(ctx: ToolContext, path: str) -> tuple[str | None, str, str]:
             return text, name, ""
         else:
             errors.append(f"{name}: read no text")
+            empty_result = (text, name, "")
+
+    if "empty_result" in locals():
+        return empty_result
 
     return None, "", "; ".join(errors)
+
+
+# ===========================================================================
+# OCR preprocessing
+#
+# MEASURED ON THIS RIG - why this exists
+# --------------------------------------
+# Raw `image_to_string` on a Max title screen returned:
+#     "1\ / ni relly 4 / V4 \N / The are zi / Brotherhgod"
+# The same frame, greyscaled + 2x upscaled + Otsu-thresholded, returned:
+#     "The Curse of / Brotherhood"
+# Console UIs use stylised light text over busy art, close to the worst case
+# for tesseract's default binarisation. Upscaling and thresholding first is
+# the single biggest accuracy win available here.
+#
+# THE TRAP THIS ALSO AVOIDS
+# -------------------------
+# Blind preprocessing is NOT safe. On a busy gameplay frame the same Otsu pass
+# produced 2205 characters of hallucinated noise where the raw read gave 11.
+# That is worse than reading nothing: find_text_on_screen does substring
+# matching, so 2205 random characters will eventually "contain" whatever a
+# criterion looks for, manufacturing a false positive. Variants are therefore
+# SCORED using tesseract's own per-word confidence, and a junk-looking win is
+# discarded.
+# ===========================================================================
+def _ocr_variants(image: Any) -> list[tuple[str, Any]]:
+    """Build the candidate images to OCR, cheapest/safest first."""
+    import cv2
+    import numpy as np
+
+    variants: list[tuple[str, Any]] = [("raw", image)]
+
+    grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    upscaled = cv2.resize(grey, None, fx=2.0, fy=2.0,
+                          interpolation=cv2.INTER_CUBIC)
+
+    otsu = cv2.threshold(upscaled, 0, 255,
+                         cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    variants.append(("upscale_otsu", otsu))
+    variants.append(("upscale_otsu_inverted", cv2.bitwise_not(otsu)))
+
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    bright = cv2.inRange(hsv, np.array([0, 0, 160]), np.array([180, 80, 255]))
+    bright = cv2.resize(bright, None, fx=2.0, fy=2.0,
+                        interpolation=cv2.INTER_CUBIC)
+    variants.append(("bright_text", cv2.bitwise_not(bright)))
+
+    # Warm text (gold / yellow / orange frequent in Max titles and focus highlights)
+    warm = cv2.inRange(hsv, np.array([10, 70, 140]), np.array([35, 255, 255]))
+    if int(cv2.countNonZero(warm)) > 50:
+        warm = cv2.resize(warm, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
+        variants.append(("warm_text", cv2.bitwise_not(warm)))
+
+    return variants
+
+
+def _is_wordlike(word: str) -> bool:
+    """Does this token look like real UI text rather than OCR debris?"""
+    stripped = word.strip()
+    if not stripped:
+        return False
+    if len(stripped) == 1:
+        return stripped.isalnum()
+    alnum = sum(1 for ch in stripped if ch.isalnum())
+    return alnum >= max(1, len(stripped) // 2)
+
+
+def _filter_words(words: list[tuple[str, float]],
+                  floor: float) -> list[tuple[str, float]]:
+    kept: list[tuple[str, float]] = []
+    for word, conf in words:
+        if conf < floor:
+            continue
+        if _is_wordlike(word) or conf >= 0.75:
+            kept.append((word, conf))
+    return kept
+
+
+def _score_ocr(words: list[tuple[str, float]]) -> float:
+    if not words:
+        return 0.0
+    mean_conf = sum(c for _, c in words) / len(words)
+    volume = min(len(words), 12) / 12.0
+    return mean_conf * (0.4 + 0.6 * volume)
+
+
+def _tesseract_read(image: Any, floor: float = 0.3,
+                    psm: str = "11") -> tuple[str, float]:
+    """OCR one prepared image, returning (text, plausibility score)."""
+    import pytesseract
+
+    config = f"--psm {psm}"
+    try:
+        data = pytesseract.image_to_data(
+            image, config=config, output_type=pytesseract.Output.DICT)
+    except Exception:
+        try:
+            return pytesseract.image_to_string(image, config=config), 0.5
+        except Exception:
+            return "", 0.0
+
+    words: list[tuple[str, float]] = []
+    lines: dict[tuple[int, int, int], list[str]] = {}
+    texts = data.get("text", [])
+    confs = data.get("conf", [])
+    for i, raw_word in enumerate(texts):
+        word = str(raw_word).strip()
+        if not word:
+            continue
+        try:
+            conf = float(confs[i]) / 100.0
+        except (TypeError, ValueError, IndexError):
+            conf = -1.0
+        if conf < 0:
+            continue
+        words.append((word, conf))
+        if conf >= floor and (_is_wordlike(word) or conf >= 0.75):
+            key = (data.get("block_num", [0] * len(texts))[i],
+                   data.get("par_num", [0] * len(texts))[i],
+                   data.get("line_num", [0] * len(texts))[i])
+            lines.setdefault(key, []).append(word)
+
+    text = "\n".join(" ".join(v) for _, v in sorted(lines.items()))
+
+    # If sparse mode produced fewer than 2 words, retry with layout psm 6
+    if len(lines) < 2 and psm == "11":
+        try:
+            alt_data = pytesseract.image_to_data(
+                image, config="--psm 6", output_type=pytesseract.Output.DICT)
+            alt_words: list[tuple[str, float]] = []
+            alt_lines: dict[tuple[int, int, int], list[str]] = {}
+            for i, raw_word in enumerate(alt_data.get("text", [])):
+                w = str(raw_word).strip()
+                if not w:
+                    continue
+                try:
+                    c = float(alt_data.get("conf", [])[i]) / 100.0
+                except (TypeError, ValueError, IndexError):
+                    c = -1.0
+                if c < 0:
+                    continue
+                alt_words.append((w, c))
+                if c >= floor and (_is_wordlike(w) or c >= 0.75):
+                    k = (alt_data.get("block_num", [0] * len(alt_data.get("text", [])))[i],
+                         alt_data.get("par_num", [0] * len(alt_data.get("text", [])))[i],
+                         alt_data.get("line_num", [0] * len(alt_data.get("text", [])))[i])
+                    alt_lines.setdefault(k, []).append(w)
+            alt_text = "\n".join(" ".join(v) for _, v in sorted(alt_lines.items()))
+            if len(alt_lines) > len(lines):
+                return alt_text, _score_ocr(_filter_words(alt_words, floor))
+        except Exception:
+            pass
+
+    return text, _score_ocr(_filter_words(words, floor))
+
+
+def _tesseract_best_variant(ctx: ToolContext, path: str) -> str:
+    """Read `path` with several preprocessing variants and keep the best."""
+    import pytesseract
+    from PIL import Image
+
+    try:
+        import cv2
+    except ImportError:
+        return pytesseract.image_to_string(Image.open(path))
+
+    image = cv2.imread(str(path))
+    if image is None:
+        return pytesseract.image_to_string(Image.open(path))
+
+    floor = float(ctx.settings.get("verification.ocr.min_confidence", 0.3))
+
+    best_name, best_text, best_score = "raw", "", -1.0
+    attempts: list[dict[str, Any]] = []
+    for name, prepared in _ocr_variants(image):
+        try:
+            text, score = _tesseract_read(prepared, floor)
+        except Exception:
+            continue
+        attempts.append({"variant": name, "score": round(score, 3),
+                         "chars": len(text.strip())})
+        if score > best_score:
+            best_name, best_text, best_score = name, text, score
+
+    ctx.scratch["ocr_last_attempts"] = attempts
+    ctx.scratch["ocr_last_variant"] = best_name
+    ctx.scratch["ocr_last_score"] = round(max(best_score, 0.0), 3)
+
+    if not best_text.strip():
+        # Fallback to direct string read before giving up entirely
+        try:
+            fallback = pytesseract.image_to_string(image, config="--psm 11").strip()
+            if fallback:
+                return fallback
+        except Exception:
+            pass
+        ctx.scratch["ocr_last_variant"] = f"{best_name} (no confident text)"
+    return best_text
 
 
 def _run_engine(ctx: ToolContext, name: str, path: str) -> str | None:
@@ -386,33 +990,91 @@ def _run_engine(ctx: ToolContext, name: str, path: str) -> str | None:
         # "the binary is not installed" into a clear error here rather than a
         # confusing one deep inside the wrapper.
         pytesseract.get_tesseract_version()
-        return pytesseract.image_to_string(Image.open(path))
+        return _tesseract_best_variant(ctx, path)
 
     if name == "paddleocr":
-        engine = ctx.scratch.get("paddle")
-        if engine is None:
-            from paddleocr import PaddleOCR
-            # PaddleOCR's constructor keywords have churned across versions -
-            # `show_log` was removed, `use_angle_cls` renamed. Try the modern
-            # signature, then older ones, then bare. Pinning one spelling
-            # means the tool breaks on the next release.
-            for kwargs in ({"lang": "en", "use_textline_orientation": True},
-                           {"lang": "en", "use_angle_cls": True},
-                           {"lang": "en"},
-                           {}):
-                try:
-                    engine = PaddleOCR(**kwargs)
-                    break
-                except (TypeError, ValueError):
-                    continue
-            if engine is None:
-                raise RuntimeError("PaddleOCR could not be constructed")
-            ctx.scratch["paddle"] = engine     # model load is slow; reuse it
-
+        engine = _get_paddle_engine(ctx)
         raw = engine.predict(path) if hasattr(engine, "predict") else engine.ocr(path)
         return "\n".join(_paddle_lines(raw))
 
     return None
+
+
+def _warm_engine(ctx: ToolContext, name: str) -> None:
+    """Load one OCR engine and validate that it can be called later."""
+    if name == "pytesseract":
+        import pytesseract
+        pytesseract.get_tesseract_version()
+        return
+
+    if name == "paddleocr":
+        _get_paddle_engine(ctx)
+        # Force the first real predict during warm-up so typing does not pause
+        # mid-word while PaddleOCR lazily spins up sub-models.
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+        try:
+            from PIL import Image, ImageDraw
+            image = Image.new("RGB", (320, 80), "white")
+            draw = ImageDraw.Draw(image)
+            draw.text((16, 20), "warmup", fill="black")
+            image.save(tmp_path)
+            _run_engine(ctx, name, str(tmp_path))
+        finally:
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except Exception:
+                pass
+        return
+
+    raise ValueError(f"Unknown OCR engine '{name}'")
+
+
+def _get_paddle_engine(ctx: ToolContext) -> Any:
+    engine = ctx.scratch.get("paddle")
+    if engine is not None:
+        return engine
+
+    import os, logging
+    os.environ["PADDLE_PDX_DISABLE_LOG"] = "1"
+    os.environ["GLOG_minloglevel"] = "3"
+    for log_name in ("ppocr", "paddle", "paddlex", "paddle.base"):
+        logging.getLogger(log_name).setLevel(logging.ERROR)
+
+    from paddleocr import PaddleOCR
+    # PaddleOCR's constructor keywords have churned across versions -
+    # `show_log` was removed, `use_angle_cls` renamed. Try the modern
+    # signature, then older ones, then bare. Pinning one spelling
+    # means the tool breaks on the next release.
+    #
+    # `enable_mkldnn=False` works around a known PaddlePaddle/PaddleX CPU
+    # bug where MKL-DNN's oneDNN backend cannot convert certain PIR
+    # attributes for these OCR models, failing every call with
+    # "NotImplementedError: (Unimplemented) ConvertPirAttribute2Runtime-
+    # Attribute not support [...]" (see PaddlePaddle/PaddleX #4970, #5131).
+    # It costs some CPU inference speed, not correctness, so it is included
+    # in every candidate signature rather than only as a last resort.
+    for kwargs in ({"lang": "en", "use_textline_orientation": True,
+                    "enable_mkldnn": False},
+                   {"lang": "en", "use_angle_cls": True,
+                    "enable_mkldnn": False},
+                   {"lang": "en", "enable_mkldnn": False},
+                   {"enable_mkldnn": False},
+                   {"lang": "en", "use_textline_orientation": True},
+                   {"lang": "en", "use_angle_cls": True},
+                   {"lang": "en"},
+                   {}):
+        try:
+            engine = PaddleOCR(**kwargs)
+            break
+        except (TypeError, ValueError):
+            continue
+
+    if engine is None:
+        raise RuntimeError("PaddleOCR could not be constructed")
+
+    ctx.scratch["paddle"] = engine           # model load is slow; reuse it
+    return engine
 
 
 def _paddle_lines(raw: Any) -> list[str]:
@@ -439,6 +1101,10 @@ def _paddle_lines(raw: Any) -> list[str]:
     return [l for l in lines if l.strip()]
 
 
+def _norm_label(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", str(text).lower())
+
+
 # ===========================================================================
 # Vision-model support
 # ===========================================================================
@@ -460,13 +1126,13 @@ def _encode_frame_for_vision(ctx: ToolContext) -> Any:
             scale = max_width / float(w)
             frame = cv2.resize(frame, (int(w * scale), int(h * scale)))
 
-        ok_, buf = cv2.imencode(".png", frame)
+        ok_, buf = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
         if not ok_:
-            return fail("Could not encode the frame as PNG")
+            return fail("Could not encode the frame as JPEG")
 
         return ok(
             frame_path=str(frame_path),
-            media_type="image/png",
+            media_type="image/jpeg",
             base64=base64.b64encode(buf.tobytes()).decode("ascii"),
             width=int(frame.shape[1]),
             height=int(frame.shape[0]),
@@ -510,6 +1176,11 @@ def provide() -> list[ToolSpec]:
                  ["vision", "analysis"], _find_text_on_screen),
         ToolSpec("check_for_text", "Check several strings at once (error checks).",
                  ["vision", "analysis"], _check_for_text),
+        ToolSpec("read_text_region", "OCR a focused screen region.",
+                 ["vision", "analysis"], _read_text_region),
+        ToolSpec("detect_focus_highlight",
+                 "Find the green-highlighted item and OCR its label.",
+                 ["vision", "analysis"], _detect_focus_highlight),
         ToolSpec("encode_frame_for_vision", "Base64-encode a frame for an LLM.",
                  ["vision"], _encode_frame_for_vision),
         ToolSpec("list_captured_frames", "List this run's frames in order.",

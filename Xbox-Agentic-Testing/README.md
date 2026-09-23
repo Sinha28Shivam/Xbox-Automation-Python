@@ -86,6 +86,31 @@ and their edges healed automatically.
 
 ---
 
+## How Execution Actually Works
+
+This is not just a simple `mapper -> planner -> executor` program.
+
+- `console.py` is the CLI only.
+- `graph/runner.py` is the runtime entrypoint. `TestRunner` loads config, builds the hardware bridge, tool registry, prompt library, agents, and compiled workflow, then invokes the run.
+- `graph/builder.py` is the workflow constructor. It reads `config/graph.yaml` and `config/agents.yaml`, imports the agent classes by dotted path, and compiles the LangGraph state machine.
+- `graph/routing.py` is the branching logic. It decides what comes next after `health`, `planner`, `executor`, `verifier`, and `rca`.
+- `core/state.py` is the shared blackboard. Each node gets the same state dict and returns only a partial update; LangGraph merges those updates.
+
+The modules that actually do the work are:
+
+- `agents/health_agent.py` checks whether the rig is usable
+- `agents/scenario_agent.py` turns text or YAML into a validated scenario
+- `agents/planner_agent.py` creates the step plan
+- `agents/executor_agent.py` performs the real hardware actions
+- `agents/verifier_agent.py` judges evidence and may request replanning
+- `agents/rca_agent.py` explains failures
+- `agents/reporter_agent.py` writes the final report
+
+So yes, the project does orchestration, but the orchestration is graph-based
+and config-driven. The "orchestrator" is really the combination of
+`graph/runner.py`, `graph/builder.py`, `graph/routing.py`, and
+`config/graph.yaml`, rather than one single module.
+
 ## Verdicts
 
 | Verdict | Exit | Meaning |

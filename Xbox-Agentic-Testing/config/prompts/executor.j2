@@ -53,9 +53,11 @@ evidence. Your job is an accurate record, not a favourable one.
 
 # When to stop early
 
-If three consecutive actions produce no screen change, stop. Input is almost
-certainly not reaching the console, and sending more of it just wastes time and
-clutters the diagnosis. Report the abort with that reasoning.
+If three consecutive INPUT actions produce no meaningful visual progress, stop.
+Do not count observational steps like `capture_frame` or `wait_for_stable_screen`
+toward that streak. Low-motion focus transitions may need gentler evidence than
+whole-screen diff alone, so do not jump to a dead-input diagnosis after a
+single subtle navigation step.
 
 # Output
 

@@ -1,0 +1,236 @@
+# ===========================================================================
+# Scenario: Max: The Curse of Brotherhood - staged Anotherland run
+# ===========================================================================
+# Run from Xbox-Agentic-Testing:
+#   python console.py run --file scenarios/max-curse-of-brotherhood-inplay.yaml
+# ===========================================================================
+
+id: max-curse-of-brotherhood-inplay
+title: "Max: The Curse of Brotherhood - launch, select Anotherland, and play"
+description: >
+  Start from the Xbox dashboard, identify Max: The Curse of Brotherhood on
+  tile 1 or tile 2, launch it, reach the level-selection menu, focus Chapter
+  1: Anotherland, launch that level, and then play in a closed loop until
+  visible progress is proven.
+
+console: xbox_one
+goal: >
+  Prove that Max: The Curse of Brotherhood can be discovered, launched,
+  navigated to Chapter 1: Anotherland, and progressed in gameplay using only
+  observable evidence.
+
+preconditions:
+  - The console/device is powered on and awake.
+  - The GIMX session is authenticated and connected.
+  - The capture adapter shows the live Xbox display.
+  - The user is signed in.
+  - The Xbox dashboard is visible before execution.
+  - "Max: The Curse of Brotherhood is available on dashboard tile 1 or tile 2."
+
+tags:
+  - xbox
+  - staged
+  - max
+  - gameplay
+
+game_controls:
+  left_stick: "Move Max (normal) / Move magic Marker to draw (when LT is held)"
+  a: "Jump / interact / confirm"
+  b: "Context action / cancel"
+  x: "To destroy the drawing"
+  y: "Contextual action"
+  lt: "Holds to opens magic Marker and holds to use it"
+  dpad: "Menu navigation / selection"
+  menu: "Pause"
+  
+
+timeout_seconds: 3600
+max_steps: 250
+
+stages:
+  - id: preflight
+    objective: "Confirm the automation rig is usable before gameplay begins."
+    required_evidence:
+      - healthy_rig
+    allowed_actions:
+      - capture_frame
+    stop_conditions:
+      - rig_blocked
+    replan_conditions:
+      - none
+
+  - id: game_discovery
+    objective: "Identify Max: The Curse of Brotherhood on the focused dashboard tile."
+    required_evidence:
+      - focused_tile
+      - focused_tile_title_match
+    allowed_actions:
+      - launch_game
+      - capture_frame
+      - read_screen_text
+      - detect_focus_highlight
+    stop_conditions:
+      - wrong_game_detected
+      - game_not_found
+    replan_conditions:
+      - focused_tile_not_proven
+
+  - id: game_launch
+    objective: "Launch Max and prove the game actually started."
+    required_evidence:
+      - screen_change
+      - game_screen
+    allowed_actions:
+      - launch_game
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - check_for_text
+    stop_conditions:
+      - launch_failed
+      - unrecovered_error_dialog
+    replan_conditions:
+      - launch_unproven
+
+  - id: menu_detection
+    objective: "Reach a visible Max level-selection menu."
+    required_evidence:
+      - level_selection_menu
+    allowed_actions:
+      - press_button
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - detect_focus_highlight
+      - check_for_text
+    stop_conditions:
+      - menu_unreachable
+      - unrecovered_error_dialog
+    replan_conditions:
+      - menu_not_proven
+
+  - id: level_navigation
+    objective: "Focus Chapter 1: Anotherland without guessing."
+    required_evidence:
+      - focused_menu_item
+      - target_text_match
+    allowed_actions:
+      - press_button
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - detect_focus_highlight
+    stop_conditions:
+      - target_not_visible
+    replan_conditions:
+      - focus_not_proven
+      - menu_changed_unexpectedly
+
+  - id: level_launch
+    objective: "Launch Anotherland and prove interactive gameplay begins."
+    required_evidence:
+      - screen_change
+      - interactive_gameplay
+    allowed_actions:
+      - press_button
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - check_for_text
+    stop_conditions:
+      - level_launch_failed
+      - unrecovered_error_dialog
+    replan_conditions:
+      - level_launch_unproven
+
+  - id: closed_loop_play
+    objective: "Play Anotherland in a closed loop until a visible progress signal is proven."
+    required_evidence:
+      - progress_signal
+    allowed_actions:
+      - move_stick
+      - press_button
+      - pull_trigger
+      - wait_for_stable_screen
+      - capture_frame
+      - read_screen_text
+      - check_for_text
+      - detect_focus_highlight
+    stop_conditions:
+      - unrecovered_error_dialog
+      - stuck_without_progress
+    replan_conditions:
+      - death_recovery_failed
+      - gameplay_stuck
+
+progress_signals:
+  - checkpoint_reached
+  - room_transition
+  - level_progress
+  - puzzle_progress
+
+death_signals:
+  - death_screen
+  - respawn_screen
+  - restart_from_checkpoint
+
+stuck_policy:
+  no_visible_change_retries: 3
+  action_change_required: true
+  require_observation_between_actions: true
+
+recovery_policy:
+  recover_from_death: true
+  preserve_checkpoint_evidence: true
+  no_blind_repeat_sequences: true
+
+success_criteria:
+  - description: >
+      Max: The Curse of Brotherhood is visually identified on dashboard tile 1
+      or tile 2 before launch is attempted.
+    check_type: vision_judgement
+    parameters:
+      expected_visual: "The focused dashboard tile shows Max: The Curse of Brotherhood."
+    required: true
+
+  - description: >
+      The game reaches a visible Max startup, menu, or interactive screen after launch.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Max: The Curse of Brotherhood startup, menu, or gameplay screen"
+    required: true
+
+  - description: >
+      The Max level-selection menu becomes visibly available.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Max chapter or level selection menu"
+    required: true
+
+  - description: >
+      Chapter 1: Anotherland is visibly focused before it is selected.
+    check_type: vision_judgement
+    parameters:
+      expected_visual: "Chapter 1: Anotherland is highlighted or focused"
+    required: true
+
+  - description: >
+      Selecting Anotherland reaches interactive gameplay rather than a loading,
+      black, or error screen.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Anotherland interactive gameplay"
+    required: true
+
+  - description: >
+      Continued play produces a visible progress signal such as a checkpoint,
+      room transition, or puzzle advance.
+    check_type: vision_judgement
+    parameters:
+      expected_visual: "Visible evidence of Anotherland progress"
+    required: true
+
+  - description: >
+      No unrecovered error dialog or connection failure remains visible during the run.
+    check_type: no_error_dialog
+    required: true
