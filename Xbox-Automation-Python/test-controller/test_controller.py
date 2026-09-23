@@ -308,6 +308,18 @@ class ConsolePad:
         time.sleep(self.gap)
         return ok
 
+    def release_all(self) -> None:
+        """Force every directional button to 0.
+
+        Cheap insurance before a run of repeats: if a previous release was
+        dropped on the UDP hop, this clears it before it can corrupt a fresh
+        sequence of presses.
+        """
+        for name in ("up", "down", "left", "right"):
+            control = self.cfg.buttons.get(name, {}).get("gimx")
+            if control:
+                self._send_event(control, 0, f"{name}:neutral")
+
     def press_times(self, name: str, times: int = 1,
                     duration: float | None = None,
                     interval: float | None = None) -> bool:
@@ -317,6 +329,12 @@ class ConsolePad:
         gap; menus that animate may need a larger value or presses get eaten.
         """
         times = max(1, int(times))
+        kind, canonical = self.cfg.resolve(name)
+        if kind != "trigger" and times > 1:
+            # A direction stuck on from a dropped release (see press()) would
+            # otherwise auto-repeat through this entire run before the first
+            # intended press is even sent.
+            self.release_all()
         for i in range(times):
             if times > 1:
                 print(f"  [{i + 1}/{times}]", end=" ")

@@ -318,16 +318,19 @@ text_entry:
       description: "English keyboard for the main Xbox global search flow"
       initial_focus: "y"
       symbol_toggle_control: "lt"
+      # Height must stop above the "Top Results / Games / People" tab row: at
+      # 0.11 the crop caught those tabs and OCR verified against them instead
+      # of the search field.
       search_box_region:
         x: 0.16
         y: 0.06
         width: 0.68
-        height: 0.11
+        height: 0.055
       typed_text_region:
         x: 0.16
         y: 0.06
         width: 0.42
-        height: 0.11
+        height: 0.055
       rows:
         - ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
         - ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"]
