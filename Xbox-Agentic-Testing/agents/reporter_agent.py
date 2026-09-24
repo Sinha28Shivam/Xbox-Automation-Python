@@ -294,9 +294,10 @@ class ReporterAgent(BaseAgent):
         """
         writers = {
             "mechanics": ("write_mechanics_report", ""),
-
-
-
+            # write_scenario_report reads success_criteria from THIS run's
+            # own verification.json, so it is correct for any scenario - not
+            # just the mechanics writer's Max-specific fixed mechanic list.
+            "scenario": ("write_scenario_report", ""),
         }
         written: dict[str, str] = {}
         for fmt in self.context.settings.list_of("reporting.formats"):

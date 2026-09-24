@@ -1,8 +1,8 @@
 id: launch-minecraft-from-search
-title: Launch Minecraft from Xbox search and play in a new world
-description: Open Xbox search, type Minecraft, back out of the active search field, move into the results list, select the Minecraft result, launch it, create a new world, and prove basic movement/mining/inventory controls work
-goal: Open search, find Minecraft in the results list, launch it, create a new world, and prove basic gameplay controls work
-expected_outcome: Minecraft launches, a new world loads, and the player can move, mine a block, cycle the hotbar, and open the inventory
+title: Launch Minecraft from Xbox search, chop a tree, craft planks, and quit
+description: Open Xbox search, type Minecraft, back out of the active search field, move into the results list, select the Minecraft result, launch it, create a new world, prove basic movement/mining/inventory controls work, then run closed-loop reactive gameplay to find a tree, break its logs, craft planks, and quit back to the Xbox dashboard
+goal: Open search, find Minecraft in the results list, launch it, create a new world, prove basic gameplay controls work, chop a tree and craft planks with closed-loop vision-guided gameplay, and quit cleanly to the dashboard
+expected_outcome: Minecraft launches, a new world loads, the player can move, mine a block, cycle the hotbar, and open the inventory, the reactive gameplay loop breaks tree logs and crafts planks, and the game quits back to the Xbox Home Dashboard
 preconditions:
   - The console is on and awake
   - The GIMX session is authenticated
@@ -14,9 +14,11 @@ tags:
   - launch
   - minecraft
   - gameplay
+  - crafting
+  - quit
 console: xbox_one
 priority: p1
-max_steps: 40
+max_steps: 45
 success_criteria:
   - description: The search field contains the word minecraft
     check_type: text_present
@@ -46,3 +48,15 @@ success_criteria:
     check_type: vision_judgement
     parameters:
       expected_visual: The Minecraft inventory/crafting screen is visible after pressing X
+  - description: A tree is found and at least one log block is broken during closed-loop gameplay
+    check_type: vision_judgement
+    parameters:
+      expected_visual: A tree trunk is visible near the player and a log block has been broken or is visibly missing from the trunk
+  - description: Wood planks are crafted from the broken logs
+    check_type: vision_judgement
+    parameters:
+      expected_visual: Plank items are visible in the inventory, crafting grid, or hotbar
+  - description: The game quits cleanly and the Xbox dashboard is visible
+    check_type: vision_judgement
+    parameters:
+      expected_visual: The Xbox One Home Dashboard is visible and Minecraft is no longer running

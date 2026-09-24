@@ -8,7 +8,7 @@
     "Minecraft is installed or cloud-launchable and appears in search results within the top results row.",
     "The Play button is the first focused item on the Minecraft main menu, and Create New World is directly below it."
   ],
-  "estimated_duration_seconds": 180,
+  "estimated_duration_seconds": 420,
   "steps": [
     {
       "index": 0,
@@ -231,6 +231,123 @@
       "retry_limit": 1,
       "stage": "closed_loop_play",
       "stage_goal": "Prove hotbar and inventory controls work in the new world."
+    },
+    {
+      "index": 21,
+      "action": "press_button",
+      "arguments": { "button": "x" },
+      "intent": "Close the inventory screen opened in step 20 so the closed-loop gameplay step starts from a normal first-person view.",
+      "expected_observation": "The inventory/crafting screen closes and the normal gameplay HUD (hotbar, crosshair) is visible again.",
+      "verify": true,
+      "optional": true,
+      "retry_limit": 1,
+      "stage": "closed_loop_play",
+      "stage_goal": "Return to normal gameplay before the reactive Minecraft loop starts."
+    },
+    {
+      "index": 22,
+      "action": "vision_guided_minecraft_gameplay",
+      "arguments": {
+        "goal": "Find the nearest tree, break its logs by holding RT while facing the trunk, then open the inventory and craft the logs into planks.",
+        "max_cycles": 45,
+        "cycle_delay": 0.4
+      },
+      "intent": "Run the closed-loop, vision-guided Minecraft gameplay tool: observe the live frame every cycle and decide moves to find a tree, mine logs, and craft planks.",
+      "expected_observation": "Over several cycles the player locates and faces a tree, logs are broken, the inventory opens, and plank items become visible - reported as scene_state 'planks_crafted' or the cycle budget is exhausted.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1,
+      "stage": "closed_loop_play",
+      "stage_goal": "Prove reactive tree-chopping and plank-crafting gameplay works in the new world."
+    },
+    {
+      "index": 23,
+      "action": "press_button",
+      "arguments": { "button": "guide" },
+      "intent": "Open the Xbox Guide overlay as the entry point to quitting the game.",
+      "expected_observation": "The Xbox Guide overlay appears over the running game.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1,
+      "stage": "exit_to_dashboard"
+    },
+    {
+      "index": 24,
+      "action": "wait_for_stable_screen",
+      "arguments": { "timeout": 15, "label": "guide-overlay-open" },
+      "intent": "Let the Guide overlay finish animating in before navigating it.",
+      "expected_observation": "The Guide overlay is fully visible and stable.",
+      "verify": true,
+      "optional": true,
+      "retry_limit": 1,
+      "stage": "exit_to_dashboard"
+    },
+    {
+      "index": 25,
+      "action": "press_button",
+      "arguments": { "button": "down", "times": 2 },
+      "intent": "Scroll down twice in the Guide overlay to reach the running Minecraft tile.",
+      "expected_observation": "The focus highlight has moved down two positions in the Guide overlay.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1,
+      "stage": "exit_to_dashboard"
+    },
+    {
+      "index": 26,
+      "action": "wait_for_stable_screen",
+      "arguments": { "timeout": 15, "label": "guide-overlay-navigated" },
+      "intent": "Let the focus-move animation settle before opening the context menu.",
+      "expected_observation": "The Guide overlay is stable with the running game tile focused.",
+      "verify": true,
+      "optional": true,
+      "retry_limit": 1,
+      "stage": "exit_to_dashboard"
+    },
+    {
+      "index": 27,
+      "action": "press_button",
+      "arguments": { "button": "menu" },
+      "intent": "Open the contextual options menu for the focused game tile. controls.yaml maps the 'menu' button to GIMX's 'start'.",
+      "expected_observation": "A contextual menu with options including Quit appears.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1,
+      "stage": "exit_to_dashboard"
+    },
+    {
+      "index": 28,
+      "action": "wait_for_stable_screen",
+      "arguments": { "timeout": 15, "label": "context-menu-open" },
+      "intent": "Let the contextual menu finish animating in before searching it for Quit.",
+      "expected_observation": "The contextual menu is fully visible and stable.",
+      "verify": true,
+      "optional": true,
+      "retry_limit": 1,
+      "stage": "exit_to_dashboard"
+    },
+    {
+      "index": 29,
+      "action": "confirm_quit_selection",
+      "arguments": { "max_attempts": 4, "nav_button": "down", "fast_jump_button": "rt" },
+      "intent": "Navigate the contextual menu pressing 'down' up to 4 times, checking the GREEN FOCUS HIGHLIGHT (not just OCR text presence) until 'Quit' is actually selected. If still not focused after 4 downs, try RT once as a direct jump to the bottom of the menu, then confirm with A.",
+      "expected_observation": "The 'Quit' option was confirmed as the focused item (not merely present in the OCR text) and confirmed with A.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1,
+      "stage": "exit_to_dashboard"
+    },
+    {
+      "index": 30,
+      "action": "wait_for_stable_screen",
+      "arguments": { "timeout": 30, "label": "dashboard-after-quit" },
+      "intent": "Wait for Minecraft to close and the Xbox dashboard to become visible.",
+      "expected_observation": "The Xbox One Home Dashboard is visible; Minecraft has exited.",
+      "verify": true,
+      "optional": false,
+      "retry_limit": 1,
+      "stage": "exit_to_dashboard",
+      "stage_goal": "Prove the game quits cleanly back to the dashboard."
     }
   ]
 }

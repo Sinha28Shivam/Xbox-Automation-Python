@@ -7,7 +7,7 @@ import time
 from typing import Any
 
 from registry import ToolContext, ToolSpec, fail, make_tool, ok
-from vision_tools import read_screen_text_impl
+from vision_tools import detect_focus_highlight_impl, read_screen_text_impl
 
 
 def _pad(ctx: ToolContext) -> Any:
@@ -304,6 +304,126 @@ def _select_level(ctx: ToolContext) -> Any:
                      "Dynamically search for a level name (e.g. 'Sea of Sand') using OCR across chapters, navigate until found, and confirm selection with A.")
 
 
+def _quit_focus_check(ctx: ToolContext, label: str) -> dict[str, Any]:
+    """Capture a frame and check whether 'Quit' is the FOCUSED item.
+
+    Plain OCR is not enough here: the Xbox context menu renders every item's
+    text at once ('Quit' is always present in the dump whether or not it is
+    highlighted), so checking "quit" in text.lower() fires A on attempt 1
+    regardless of what is actually focused - confirmed on hardware
+    (run-20260924-115511), where this pressed A on the FIRST item and landed
+    on the Minecraft store/details page instead of quitting. Detecting the
+    green focus-highlight ring and OCR-matching ONLY inside it is what
+    actually tells us Quit is selected, not merely present.
+    """
+    result = _observe(ctx, label)
+    if not result.get("ok"):
+        return result
+    frame_path = result.get("frame_path")
+    focus = detect_focus_highlight_impl(ctx, frame_path=frame_path, expected_label="Quit")
+    return {
+        "frame_path": frame_path,
+        "text": result.get("text", ""),
+        "matched": bool(focus.get("ok") and focus.get("matched")),
+        "selected_label": focus.get("selected_label", ""),
+    }
+
+
+def confirm_quit_selection_impl(ctx: ToolContext, max_attempts: int = 4,
+                                nav_button: str = "down",
+                                fast_jump_button: str = "rt") -> dict[str, Any]:
+    """Navigate a guide/context menu until 'Quit' is FOCUSED, then press A.
+
+    Checks the green focus-highlight (not raw OCR presence) so A is only
+    pressed once Quit is actually selected - see _quit_focus_check. Tries
+    nav_button (default 'down') up to max_attempts times; if Quit still
+    is not focused, tries fast_jump_button (default 'rt') once as a direct
+    jump to the bottom of the menu, where Quit commonly sits, then re-checks.
+    """
+    pad = _pad(ctx)
+    history: list[dict[str, Any]] = []
+
+    for attempt in range(1, max_attempts + 1):
+        time.sleep(0.4)
+        check = _quit_focus_check(ctx, f"quit-select-attempt-{attempt}")
+        print(f"  [confirm_quit_selection] Attempt {attempt}/{max_attempts}: "
+              f"focused='{check.get('selected_label', '')}' matched={check.get('matched')}")
+        history.append({"attempt": attempt, "nav": nav_button, **check})
+
+        if check.get("matched"):
+            pressed = pad.press("a")
+            time.sleep(1.0)
+            return ok(
+                attempt=attempt,
+                dispatched=bool(pressed),
+                matched=True,
+                frame_path=check.get("frame_path"),
+                text=check.get("text"),
+                history=history,
+                caveat="'Quit' was confirmed as the FOCUSED item (green highlight) and selection was confirmed with A."
+            )
+
+        if attempt < max_attempts:
+            pad.press(nav_button)
+            time.sleep(0.5)
+
+    # Still not focused after max_attempts nav presses: try a direct jump
+    # (e.g. RT to skip to the bottom of the list) rather than guessing more
+    # 'down' presses blindly.
+    print(f"  [confirm_quit_selection] 'Quit' not focused after {max_attempts} "
+          f"'{nav_button}' presses; trying '{fast_jump_button}' as a direct jump.")
+    pad.press(fast_jump_button)
+    time.sleep(0.5)
+    check = _quit_focus_check(ctx, "quit-select-fast-jump")
+    history.append({"attempt": max_attempts + 1, "nav": fast_jump_button, **check})
+
+    if check.get("matched"):
+        pressed = pad.press("a")
+        time.sleep(1.0)
+        return ok(
+            attempt=max_attempts + 1,
+            dispatched=bool(pressed),
+            matched=True,
+            frame_path=check.get("frame_path"),
+            text=check.get("text"),
+            history=history,
+            caveat=(f"'Quit' was not focused after {max_attempts} '{nav_button}' presses; "
+                    f"'{fast_jump_button}' jumped focus onto it, confirmed with A.")
+        )
+
+    # Fallback if 'Quit' is still never focused: DO NOT press A blindly - that
+    # is exactly what caused the wrong-item confirm on hardware. Report the
+    # failure so the caller can replan instead of acting on an unproven guess.
+    print(f"  [confirm_quit_selection] 'Quit' still not focused after the "
+          f"fast jump; refusing to press A on an unproven selection.")
+    last = history[-1] if history else {}
+    return fail(
+        f"'Quit' could not be confirmed as the focused item after {max_attempts} "
+        f"'{nav_button}' presses and one '{fast_jump_button}' fast-jump attempt. "
+        f"Refusing to press A without proof, to avoid confirming the wrong menu item.",
+        attempt=max_attempts + 1,
+        matched=False,
+        frame_path=last.get("frame_path"),
+        text=last.get("text"),
+        history=history,
+    )
+
+
+def _confirm_quit_selection(ctx: ToolContext) -> Any:
+    def run(max_attempts: int = 4, nav_button: str = "down",
+            fast_jump_button: str = "rt") -> dict[str, Any]:
+        return confirm_quit_selection_impl(
+            ctx, max_attempts=max_attempts, nav_button=nav_button,
+            fast_jump_button=fast_jump_button)
+
+    return make_tool(run, "confirm_quit_selection",
+                     "Navigate a guide/context menu (pressing nav_button, default 'down', up to "
+                     "max_attempts times) checking the GREEN FOCUS HIGHLIGHT (not just OCR text "
+                     "presence) until 'Quit' is actually selected, then confirm with A. If still "
+                     "not focused, tries fast_jump_button (default 'rt') once as a direct jump "
+                     "before giving up - never presses A on an unproven selection.")
+
+
 def draw_magic_marker_impl(ctx: ToolContext, direction: str = "up",
                            duration: float = 1.5, stick: str = "left_stick") -> dict[str, Any]:
     """Execute the Magic Marker mechanic in Max: The Curse of Brotherhood:
@@ -472,6 +592,9 @@ def provide() -> list[ToolSpec]:
         ToolSpec(name="select_level",
                  description="Dynamically search for a level name using OCR across chapters, navigate until found, and confirm selection with A.",
                  tags=["input", "vision", "game"], factory=_select_level, mutates_hardware=True),
+        ToolSpec(name="confirm_quit_selection",
+                 description="Navigate a guide/context menu using OCR until 'Quit' is seen highlighted, then confirm with A.",
+                 tags=["input", "vision", "game"], factory=_confirm_quit_selection, mutates_hardware=True),
         ToolSpec(name="draw_magic_marker",
                  description="Hold RT to open Magic Marker, hold A to draw, and move the left stick.",
                  tags=["input", "game"], factory=_draw_magic_marker, mutates_hardware=True),
