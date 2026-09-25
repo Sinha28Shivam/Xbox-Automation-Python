@@ -1,0 +1,146 @@
+# ============================================================================
+#  minecraft_build_order.yaml - the survival tech-tree progression this
+#  agent is meant to follow, one stage at a time.
+#
+#  STATUS: planning document only. Nothing in tools/game_profiles/
+#  minecraft_profile.py reads this file yet - the live loop today still
+#  hard-stops at stage 2 (craft_planks), per its own goal text and
+#  MinecraftFrameDecision.scene_state's "planks_crafted" terminal value.
+#  Treat every stage below stage 2 as a PLAN, not a verified/working
+#  capability, until it is actually wired in and hardware-tested.
+#
+#  Each stage lists what it needs from earlier stages, what it produces,
+#  and - importantly - any gap in current code that blocks it (missing
+#  action, missing schema field, etc). Do not claim a gated stage works
+#  until its blocker is resolved AND it passes a real hardware run.
+# ============================================================================
+
+meta:
+  game: "Minecraft Bedrock Edition (Xbox One)"
+  mode: survival
+  last_updated: "2026-09-25"
+  known_gaps:
+    - "No 'place_block' action exists in MinecraftMove yet. Any stage that
+       needs a crafted block placed in the world (crafting table, furnace)
+       is blocked on this until a new action is added and hardware-verified."
+    - "MinecraftFrameDecision.scene_state is a closed Literal with only
+       6 values, none named for 'crafting_table_made' / 'furnace_placed' /
+       etc. New scene states (or a more general 'inventory snapshot' field)
+       are needed before the loop can detect progress past planks."
+    - "craftable_count / recipe_highlighted only describe ONE recipe at a
+       time (whatever is currently highlighted) - multi-item inventory
+       tracking across stages is not modeled yet."
+
+stages:
+  - id: gather_logs
+    order: 1
+    status: hardware_verified
+    goal: "Find the nearest tree and break at least 4 log blocks with mine (RT hold)."
+    requires: []
+    produces: ["log x4+"]
+    done_when: "log_visible was true and a mine action removed a log block"
+
+  - id: craft_planks
+    order: 2
+    status: hardware_verified_partial   # see project-overview.md: reached crafting screen + read count, but planks_crafted=true not yet proven in a passing run
+    goal: "Open Crafting (X), navigate_recipe to Planks, craft_all (Y)."
+    requires: ["gather_logs"]
+    produces: ["planks x4 per log"]
+    done_when: "scene_state == planks_crafted"
+
+  - id: craft_sticks
+    order: 3
+    status: planned
+    goal: "From the Crafting screen, navigate_recipe to Sticks, craft_all."
+    requires: ["craft_planks"]
+    produces: ["sticks"]
+    done_when: "not representable yet - needs a new scene_state or inventory field"
+
+  - id: craft_crafting_table
+    order: 4
+    status: blocked
+    goal: "Craft a Crafting Table from 4 planks, then PLACE it in the world."
+    requires: ["craft_planks"]
+    produces: ["crafting_table (placed)"]
+    blocked_by: "no place_block action - crafting it is feasible with today's
+                 craft_all, but placing it in the world is not"
+    done_when: "not representable yet"
+
+  - id: craft_wooden_pickaxe
+    order: 5
+    status: blocked
+    goal: "At a placed crafting table, craft a Wooden Pickaxe from planks + sticks."
+    requires: ["craft_crafting_table", "craft_sticks"]
+    produces: ["wooden_pickaxe"]
+    blocked_by: "depends on craft_crafting_table (blocked)"
+    done_when: "not representable yet"
+
+  - id: mine_stone
+    order: 6
+    status: blocked
+    goal: "Use the wooden pickaxe (equip via hotbar cycle) to mine cobblestone."
+    requires: ["craft_wooden_pickaxe"]
+    produces: ["cobblestone x8+"]
+    blocked_by: "depends on craft_wooden_pickaxe (blocked); also no
+                 'equip specific hotbar slot' action, only cycle_item_left/right"
+    done_when: "not representable yet"
+
+  - id: craft_furnace
+    order: 7
+    status: blocked
+    goal: "Craft a furnace from 8 cobblestone at the crafting table, then place it."
+    requires: ["mine_stone", "craft_crafting_table"]
+    produces: ["furnace (placed)"]
+    blocked_by: "same place_block gap as craft_crafting_table"
+    done_when: "not representable yet"
+
+  - id: craft_stone_tools
+    order: 8
+    status: blocked
+    goal: "Craft a stone pickaxe/axe/sword at the crafting table."
+    requires: ["mine_stone", "craft_crafting_table"]
+    produces: ["stone_pickaxe", "stone_axe", "stone_sword"]
+    blocked_by: "depends on craft_crafting_table (blocked)"
+    done_when: "not representable yet"
+
+  - id: mine_iron_ore
+    order: 9
+    status: blocked
+    goal: "Use the stone pickaxe to mine iron ore."
+    requires: ["craft_stone_tools"]
+    produces: ["iron_ore x4+"]
+    blocked_by: "depends on craft_stone_tools (blocked)"
+    done_when: "not representable yet"
+
+  - id: smelt_iron
+    order: 10
+    status: blocked
+    goal: "Smelt iron ore into iron ingots at the furnace (needs fuel, e.g. planks/coal)."
+    requires: ["mine_iron_ore", "craft_furnace"]
+    produces: ["iron_ingot x4+"]
+    blocked_by: "depends on craft_furnace (blocked); furnace fuel/smelting
+                 UI is not modeled in the current crafting schema at all"
+    done_when: "not representable yet"
+
+  - id: craft_iron_tools
+    order: 11
+    status: blocked
+    goal: "Craft an iron pickaxe/axe/sword at the crafting table."
+    requires: ["smelt_iron", "craft_crafting_table"]
+    produces: ["iron_pickaxe", "iron_axe", "iron_sword"]
+    blocked_by: "depends on smelt_iron and craft_crafting_table (both blocked)"
+    done_when: "not representable yet"
+
+# NEXT CODE STEPS to unblock stage 4+ (not implemented yet, for whoever
+# picks this up):
+#   1. Add a 'place_block' action to MinecraftMove (needs a facing direction
+#      and probably a hotbar-slot selector) and wire it to a real GIMX
+#      dispatch (likely LT per minecraft_controls.yaml's use_item_place_block)
+#      - THEN hardware-verify a real placed block is visible on screen.
+#   2. Extend MinecraftFrameDecision (or add a sibling model) with an
+#      inventory/progress snapshot so stages 3+ have something to check
+#      against instead of "not representable yet".
+#   3. Update MINECRAFT_GAMEPLAY_SYSTEM_PROMPT and the goal text to describe
+#      the CURRENT active stage instead of the fixed "find tree -> planks,
+#      then stop" goal, so the loop can progress stage-by-stage using this
+#      file (or a parsed version of it) as the checklist.
