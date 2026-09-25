@@ -235,8 +235,8 @@
     {
       "index": 21,
       "action": "press_button",
-      "arguments": { "button": "x" },
-      "intent": "Close the inventory screen opened in step 20 so the closed-loop gameplay step starts from a normal first-person view.",
+      "arguments": { "button": "b" },
+      "intent": "Close the inventory screen opened in step 20 using B (cancel/back) - not X, which opened it but does not toggle it closed - so the closed-loop gameplay step starts from a normal first-person view.",
       "expected_observation": "The inventory/crafting screen closes and the normal gameplay HUD (hotbar, crosshair) is visible again.",
       "verify": true,
       "optional": true,

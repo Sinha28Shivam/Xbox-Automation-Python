@@ -51,12 +51,19 @@ class MinecraftMove(BaseModel):
         "mine",
         "interact",
         "press_button",
+        "navigate_recipe",
+        "craft_all",
         "wait",
     ] = Field(description="The controller action to execute.")
 
     direction: Literal["left", "right", "up", "down", "none"] = Field(
         default="none",
-        description="Travel direction for move, or camera-turn direction for look.")
+        description="Travel direction for move, camera-turn direction for "
+                    "look, or D-pad direction for navigate_recipe. The 'All "
+                    "recipes' list is a HORIZONTAL ROW of icons, so use "
+                    "'left'/'right' here - NOT up/down, which do nothing on "
+                    "this screen (hardware-verified: up/down produced zero "
+                    "screen change).")
 
     duration: float = Field(
         default=0.8, ge=0.1, le=6.0,
@@ -67,8 +74,9 @@ class MinecraftMove(BaseModel):
     button: str = Field(
         default="",
         description="interact/press_button override, e.g. 'a', 'x', 'rb', 'lb'. "
-                    "Use 'x' to open/close inventory, 'a' to place/select in a "
-                    "crafting grid, 'rb'/'lb' to cycle hotbar slots.")
+                    "Use 'x' to open/close inventory, 'rb'/'lb' to cycle hotbar "
+                    "slots. Not used by navigate_recipe or craft_all, which "
+                    "always use D-pad and Y respectively.")
 
     purpose: str = Field(
         default="",
@@ -94,6 +102,23 @@ class MinecraftFrameDecision(BaseModel):
     log_visible: bool = Field(
         description="Is a wood log block visible directly in front of the "
                     "crosshair (close enough to mine)?")
+
+    recipe_highlighted: str = Field(
+        default="",
+        description="When scene_state is inventory_open: the name/description "
+                    "of whichever recipe is currently highlighted/selected in "
+                    "the 'All recipes' row (e.g. 'Planks', 'Stick', 'Crafting "
+                    "Table'). Empty if the inventory is not open or nothing is "
+                    "clearly highlighted yet.")
+
+    craftable_count: int = Field(
+        default=0,
+        description="The craftable quantity badge shown directly on a recipe "
+                    "icon in the 'All recipes' row (a small number in the "
+                    "corner, e.g. the Planks icon showing '4') - this is "
+                    "visible on the icon itself, no highlight/selection is "
+                    "needed to read it. 0 if no badge is visible, meaning "
+                    "that recipe cannot be made yet from current inventory.")
 
     reasoning: str = Field(
         description="Step-by-step: the immediate goal, why the chosen moves "
@@ -131,18 +156,45 @@ CONTROLS AVAILABLE TO YOU (as macros)
   mine          : hold RT while facing a block, breaks it after a few seconds
                   of continuous holding. Must be standing close enough that
                   the block is directly under the crosshair.
-  interact      : a single button press, default 'a' - use to place/select
-                  an item, confirm a crafting recipe, or take a step in a UI
+  navigate_recipe: press D-pad LEFT/RIGHT to move the highlight between
+                  recipes in the 'All recipes' row on the left of the
+                  inventory screen. This row is HORIZONTAL, not vertical -
+                  up/down do nothing here (hardware-verified: zero screen
+                  change when tried).
+  craft_all     : press Y to craft the MAXIMUM amount of the currently
+                  highlighted recipe in one action. This is the ONLY way to
+                  actually produce items - selecting a recipe alone does not
+                  craft it.
+  interact      : a single 'a' press - use ONLY to open/close a sub-menu or
+                  confirm a non-crafting prompt. Pressing 'a' on a recipe
+                  does NOT craft it on this UI - use craft_all (Y) instead.
   press_button  : a single button press with an explicit `button`, e.g. 'x'
-                  to open/close the inventory, 'rb'/'lb' to cycle hotbar slots
+                  to open the inventory, 'b' to close it (NOT 'x' again -
+                  'x' only opens, it does not toggle closed), 'rb'/'lb' to
+                  cycle hotbar slots
   wait          : do nothing this cycle, for a screen that is still loading
 
-THERE IS NO DEDICATED "CRAFT PLANKS" BUTTON. Once the inventory is open you
-must find the crafting grid yourself from what is on screen: usually placing
-a log into a crafting slot with 'interact'/'a' automatically fills the grid
-with planks, or a recipe book icon can be selected with 'a' after navigating
-to it. Read the screen each cycle and adapt - do not assume a fixed number
-of presses works.
+THE CRAFTING WORKFLOW ON THIS UI (Xbox Bedrock 'All recipes' panel):
+  The recipe list is a HORIZONTAL ROW of icons near the top-left of the
+  inventory screen, each with a small number badge in its corner showing
+  how many you can craft right now from your inventory (0 if you are
+  missing an ingredient). You do NOT need to highlight an icon to read its
+  badge - read the badges directly off the icons in the frame.
+  1. Find the recipe icon you want (e.g. Planks) in the row and read its
+     badge number directly - report it as `craftable_count` and the
+     recipe's name as `recipe_highlighted`.
+  2. If its badge is 0, you are missing an ingredient (usually: no raw log
+     in inventory yet - go mine one first).
+  3. If you need to move the SELECTION cursor onto that icon (e.g. because
+     a later step needs it focused), use navigate_recipe with direction
+     'left' or 'right' - NEVER up/down, which do nothing on this row.
+  4. Once the recipe you want shows a badge > 0, use craft_all (Y) to craft
+     the maximum amount in one press. Do NOT press 'a'/interact repeatedly
+     on a recipe - that does not craft anything on this screen and was
+     measured stalling an entire run for 6+ cycles.
+  NOTE: there is also a row of TABS above the recipe row (LB/RB cycle between
+  tabs like the magnifying-glass 'All recipes' search tab, armor, etc.) - do
+  not confuse that tab bar with the recipe row itself.
 
 SCENE STATE RULES
   in_gameplay      : normal first-person view, hotbar/crosshair visible, no
@@ -240,6 +292,23 @@ def execute_minecraft_move(ctx: ToolContext, move: MinecraftMove) -> dict[str, A
         return {"macro": "press_button", "button": button,
                 "dispatched": bool(dispatched)}
 
+    if action == "navigate_recipe":
+        # The 'All recipes' row is horizontal (hardware-verified: up/down
+        # produced zero screen change), so 'right' is the sane default -
+        # not 'down', which does nothing on this screen.
+        heading = move.direction if move.direction != "none" else "right"
+        dispatched = pad.press(heading, duration=min(duration, 0.20))
+        return {"macro": "navigate_recipe", "direction": heading,
+                "dispatched": bool(dispatched)}
+
+    if action == "craft_all":
+        # Bedrock's 'All recipes' panel crafts the maximum makeable amount
+        # of the currently highlighted recipe on a single Y press - there is
+        # no separate "confirm quantity" step.
+        dispatched = pad.press("y", duration=min(duration, 0.30))
+        return {"macro": "craft_all", "button": "y",
+                "dispatched": bool(dispatched)}
+
     if action == "wait":
         time.sleep(min(duration, 3.0))
         return {"macro": "wait", "duration": duration, "dispatched": False}
@@ -334,6 +403,7 @@ def minecraft_gameplay_loop(
     deltas: list[float] = []
 
     stuck_streak = 0
+    mine_streak = 0
     dispatched_any = False
     planks_crafted: dict[str, Any] | None = None
     stop_reason = f"Reached the {max_cycles}-cycle budget."
@@ -390,6 +460,9 @@ def minecraft_gameplay_loop(
             print(f"  Scene     : {decision.scene_state}", flush=True)
             print(f"  Tree seen : {decision.tree_visible}", flush=True)
             print(f"  Log seen  : {decision.log_visible}", flush=True)
+            if decision.scene_state == "inventory_open":
+                print(f"  Recipe    : {decision.recipe_highlighted or '(none)'} "
+                      f"x{decision.craftable_count}", flush=True)
             print(f"  Thinking  : {decision.reasoning}", flush=True)
 
             # --- 3. terminal scene state -------------------------------------
@@ -421,6 +494,15 @@ def minecraft_gameplay_loop(
             elif decision.scene_state == "menu_or_prompt" and not moves:
                 moves = [MinecraftMove(action="interact", button="a",
                                        purpose="Dismiss the prompt/menu.")]
+            elif decision.scene_state == "inventory_open" and not moves:
+                # Browsing the recipe list is always safe here, unlike
+                # spamming 'a' on a recipe (which does not craft anything on
+                # this UI and was measured stalling entire runs for 6+ cycles).
+                # 'right' matches the row's horizontal layout - hardware-
+                # verified 'down' produces zero screen change here.
+                moves = [MinecraftMove(
+                    action="navigate_recipe", direction="right", duration=0.2,
+                    purpose="Model returned no move; browse the recipe list.")]
             elif not moves:
                 # No decision is still a decision: turn to look for a tree
                 # rather than burning a cycle standing still.
@@ -452,8 +534,24 @@ def minecraft_gameplay_loop(
                 deltas.append(delta)
                 print(f"  Delta     : {delta:.3f}", flush=True)
 
+            # RCA fix (run-20260924-142031): the crack-overlay on a block
+            # being mined covers a small part of the frame, unlike a camera
+            # turn or a walk step. Hardware-measured deltas of 0.011-0.4 were
+            # recorded while a log was genuinely being chipped away (it
+            # appeared in the hotbar two cycles later) - but idle/no-op steps
+            # elsewhere in the SAME run showed deltas up to 0.071 from sensor
+            # noise alone, so no single delta threshold reliably tells real
+            # mining progress apart from noise. Instead, mine actions get
+            # their OWN patience counter and never feed the general
+            # stuck_streak - movement/look deltas (2.6-24 when they work) are
+            # a reliable progress signal, mining's are not.
+            was_mining = any(m.action == "mine" for m in moves[:3])
             progressed = delta is not None and delta >= 1.0
-            stuck_streak = 0 if progressed else stuck_streak + 1
+            if was_mining:
+                mine_streak = 0 if progressed else mine_streak + 1
+            else:
+                stuck_streak = 0 if progressed else stuck_streak + 1
+                mine_streak = 0
             move_labels = ", ".join(
                 str(m.get("macro")) + (f"({m.get('direction')})"
                                        if m.get("direction") else "")
@@ -467,6 +565,8 @@ def minecraft_gameplay_loop(
                 "scene_state": decision.scene_state,
                 "tree_visible": decision.tree_visible,
                 "log_visible": decision.log_visible,
+                "recipe_highlighted": decision.recipe_highlighted,
+                "craftable_count": decision.craftable_count,
                 "reasoning": decision.reasoning,
                 "moves": dispatched_moves,
                 "confidence": decision.confidence,
@@ -481,10 +581,23 @@ def minecraft_gameplay_loop(
 
             if stuck_streak >= max(2, int(stuck_limit)):
                 stop_reason = (
-                    f"{stuck_streak} consecutive cycles produced no visual "
-                    f"change. Either input is not reaching the console (an "
-                    f"unauthenticated GIMX session is the usual cause) or the "
-                    f"model cannot find/reach a tree. Stopping instead of "
+                    f"{stuck_streak} consecutive non-mining cycles produced no "
+                    f"visual change. Either input is not reaching the console "
+                    f"(an unauthenticated GIMX session is the usual cause) or "
+                    f"the model cannot find/reach a tree. Stopping instead of "
+                    f"sending more input into a void.")
+                print(f"\n  !! {stop_reason}", flush=True)
+                break
+
+            # Mining gets a longer leash than movement: a log takes several
+            # real swings to break, and each swing's own screen delta is too
+            # small to trust (see fix note above at progressed/mine_streak).
+            if mine_streak >= max(2, int(stuck_limit)) * 2:
+                stop_reason = (
+                    f"{mine_streak} consecutive mine attempts produced no "
+                    f"visual change even at a relaxed threshold. Either input "
+                    f"is not reaching the console or the model is mining an "
+                    f"unreachable/incorrect block. Stopping instead of "
                     f"sending more input into a void.")
                 print(f"\n  !! {stop_reason}", flush=True)
                 break

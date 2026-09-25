@@ -180,6 +180,18 @@ def route_after_rca(state: AgenticState) -> str:
     if int(state.get("replan_count", 0)) >= _limit(state, "max_replans", 3):
         return "report"
 
+    # Once the run already reached exit_to_dashboard, the app a retry would
+    # need to re-navigate into is gone (and may still be open from THIS run,
+    # since the quit itself is what failed). Confirmed on hardware
+    # (run-20260924-142031): an automation_defect verdict retried through
+    # here into a fresh 46-step plan that pressed guide/y/search again while
+    # Minecraft may still have been running - compounding the failure rather
+    # than fixing it. A fresh run, not a retry, is what re-entering requires.
+    execution = state.get("execution")
+    last_stage = getattr(execution, "last_proven_stage", None) if execution else None
+    if last_stage is not None and last_stage.value == "exit_to_dashboard":
+        return "report"
+
     # Rig faults and product defects are never retried here. A rig fault needs
     # a human, and a genuine console defect will reproduce every time - burning
     # attempts on either just delays the report that someone needs to read.

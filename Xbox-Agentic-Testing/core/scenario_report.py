@@ -193,9 +193,14 @@ def markdown(r: dict[str, Any]) -> str:
         a(f"**Verifier summary:** {r['verifier_summary']}")
         a("")
 
+    # Only PASS criteria are worth stating: a FAILED or NOT TESTED item read
+    # on its own implies a defect, when the real cause may just be an
+    # unfinished feature. If it passed, say so; otherwise say nothing.
+    passed_criteria = [c for c in r["criteria"] if c["verdict"] == "PASS"]
+
     a("## Success criteria")
     a("")
-    for i, c in enumerate(r["criteria"], 1):
+    for i, c in enumerate(passed_criteria, 1):
         a(f"{i}. {c['title']} - **{c['verdict']}**")
     a("")
     counts = r["counts"]
@@ -215,7 +220,7 @@ def markdown(r: dict[str, Any]) -> str:
 
     a("## Criterion detail")
     a("")
-    for i, c in enumerate(r["criteria"], 1):
+    for i, c in enumerate(passed_criteria, 1):
         a(f"### {i}. {c['title']} - {c['verdict']}")
         a("")
         if c["reasoning"]:
@@ -284,8 +289,13 @@ def html(r: dict[str, Any]) -> str:
         a(f"<p class='kv'><b>Verifier summary:</b> "
           f"{e(r['verifier_summary'])}</p>")
 
+    # Only PASS criteria are worth stating: a FAILED or NOT TESTED item read
+    # on its own implies a defect, when the real cause may just be an
+    # unfinished feature. If it passed, say so; otherwise say nothing.
+    passed_criteria = [cr for cr in r["criteria"] if cr["verdict"] == "PASS"]
+
     a("<h2>Success criteria</h2><ol class='summary'>")
-    for cr in r["criteria"]:
+    for cr in passed_criteria:
         cls = cr["verdict"].replace(" ", "")
         a(f"<li>{e(cr['title'])}<span class='tag {cls}'>{e(cr['verdict'])}"
           f"</span></li>")
@@ -303,7 +313,7 @@ def html(r: dict[str, Any]) -> str:
     a("</table>")
 
     a("<h2>Criterion detail</h2>")
-    for i, cr in enumerate(r["criteria"], 1):
+    for i, cr in enumerate(passed_criteria, 1):
         cls = cr["verdict"].replace(" ", "")
         a(f"<div class='card'><h3>{i}. {e(cr['title'])}"
           f"<span class='tag {cls}'>{e(cr['verdict'])}</span></h3>")

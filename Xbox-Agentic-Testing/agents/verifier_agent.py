@@ -387,6 +387,16 @@ class VerifierAgent(BaseAgent):
         execution = state.get("execution")
         if execution is not None and not execution.observed_any_change:
             return False              # nothing is getting through; retrying won't help
+
+        # Once the run has already reached exit_to_dashboard, the app that a
+        # replan would need to re-navigate is gone. Confirmed on hardware
+        # (run-20260924-130448): the run quit cleanly, then still replanned,
+        # burning ~176s on 3 rejected LLM attempts before crashing out to the
+        # reporter anyway. A fresh run - not a replan - is what re-entering
+        # the app requires.
+        last_stage = getattr(execution, "last_proven_stage", None)
+        if last_stage is not None and last_stage.value == "exit_to_dashboard":
+            return False
         return bool(result.should_replan)
 
     # -- output ------------------------------------------------------------

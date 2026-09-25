@@ -582,16 +582,19 @@ def detect_focus_highlight_impl(ctx: ToolContext, frame_path: str | None = None,
     oversized: list[dict[str, Any]] = []
     label_norm = _norm_label(expected_label)
 
-    for idx, contour in enumerate(contours):
-        x, y, bw, bh = cv2.boundingRect(contour)
+    # PERFORMANCE fix (run-20260924-130448): OCR is the expensive part here -
+    # each candidate runs up to 5 preprocessing variants through tesseract.
+    # A busy console UI can have a dozen+ green-ish contours (icons, notification
+    # dots, HUD accents), and running full multi-variant OCR on every single one
+    # was measured turning a single button-press step into 40-58s. A real focus
+    # highlight is also the BIGGEST green region on screen, so filtering to
+    # candidates first and OCR-ing only the largest few is both faster and no
+    # less accurate.
+    candidates: list[tuple[int, int, int, int, int]] = []
+    for x, y, bw, bh in (cv2.boundingRect(c) for c in contours):
         area = bw * bh
         if area < 500 or bw < 20 or bh < 12:
             continue
-
-        # RCA fix: reject candidates spanning an implausible fraction of
-        # the frame, or absurdly elongated slivers - neither looks like
-        # a single highlighted menu row/tile. Recorded (not silently
-        # dropped) so a failure result can explain what was rejected.
         aspect = max(bw / bh, bh / bw)
         if area > max_area or aspect > 15:
             oversized.append({
@@ -604,7 +607,13 @@ def detect_focus_highlight_impl(ctx: ToolContext, frame_path: str | None = None,
                            else "aspect ratio too extreme"),
             })
             continue
+        candidates.append((area, x, y, bw, bh))
 
+    # Largest first: the true highlight is rarely the smallest green blob.
+    candidates.sort(key=lambda c: c[0], reverse=True)
+    _MAX_OCR_CANDIDATES = 6
+
+    for idx, (area, x, y, bw, bh) in enumerate(candidates[:_MAX_OCR_CANDIDATES]):
         # RCA fix (run-20260904-163142): padding used to be asymmetric -
         # pad_x*3 on the right and none of that bias on the left - which
         # reliably swept the OCR crop into the *next* tile over on a
