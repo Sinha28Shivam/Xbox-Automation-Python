@@ -17,18 +17,31 @@ from schemas import TestPlan
 
 log = logging.getLogger("route_store")
 
+# Anchored to the project root (Xbox-Agentic-Testing/), never the shell's
+# CWD - config/routes/ must resolve the same way no matter where console.py
+# was launched from.
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
-def _get_route_paths(artifacts_dir: Path | str, scenario_id: str) -> list[Path]:
-    """Return prioritized paths to look for a cached route."""
+
+def _auto_saved_route_path(artifacts_dir: Path | str, scenario_id: str) -> Path:
+    """The artifacts-dir copy: written on PASS, deleted on FAIL/replan."""
     art_path = Path(artifacts_dir)
     # Handle both run-specific dir (artifacts/runs/run-...) and top-level artifacts
     base_dir = art_path.parent.parent if "runs" in art_path.parts else art_path
-    
-    candidates = [
-        base_dir / "routes" / f"{scenario_id}.route.json",
-        Path("config") / "routes" / f"{scenario_id}.route.json",
+    return base_dir / "routes" / f"{scenario_id}.route.json"
+
+
+def _pinned_route_path(scenario_id: str) -> Path:
+    """The checked-in, human-authored copy: never auto-written or deleted."""
+    return _PROJECT_ROOT / "config" / "routes" / f"{scenario_id}.route.json"
+
+
+def _get_route_paths(artifacts_dir: Path | str, scenario_id: str) -> list[Path]:
+    """Return prioritized paths to look for a cached route."""
+    return [
+        _auto_saved_route_path(artifacts_dir, scenario_id),
+        _pinned_route_path(scenario_id),
     ]
-    return candidates
 
 
 def load_cached_route(artifacts_dir: Path | str, scenario_id: str) -> TestPlan | None:
@@ -53,12 +66,9 @@ def save_cached_route(artifacts_dir: Path | str, scenario_id: str, plan: TestPla
     if not plan.steps:
         return None
     try:
-        art_path = Path(artifacts_dir)
-        base_dir = art_path.parent.parent if "runs" in art_path.parts else art_path
-        routes_dir = base_dir / "routes"
-        routes_dir.mkdir(parents=True, exist_ok=True)
-        target = routes_dir / f"{scenario_id}.route.json"
-        
+        target = _auto_saved_route_path(artifacts_dir, scenario_id)
+        target.parent.mkdir(parents=True, exist_ok=True)
+
         # Save a clean revision-1 copy
         dump = plan.model_dump(mode="json")
         dump["revision"] = 1
@@ -73,11 +83,16 @@ def save_cached_route(artifacts_dir: Path | str, scenario_id: str, plan: TestPla
 
 
 def invalidate_cached_route(artifacts_dir: Path | str, scenario_id: str) -> None:
-    """Invalidate a cached route if execution failed."""
-    for path in _get_route_paths(artifacts_dir, scenario_id):
-        if path.is_file():
-            try:
-                path.unlink(missing_ok=True)
-                log.info(f"Invalidated failed cached route: {path}")
-            except Exception as exc:
-                log.warning(f"Failed to remove cached route {path}: {exc}")
+    """Invalidate a cached route if execution failed.
+
+    Only the auto-saved artifacts-dir copy is removed. The pinned copy in
+    config/routes/ is human-authored and checked in - a FAIL here must not
+    delete it, or the next run silently loses its 0-LLM-call fast path.
+    """
+    path = _auto_saved_route_path(artifacts_dir, scenario_id)
+    if path.is_file():
+        try:
+            path.unlink(missing_ok=True)
+            log.info(f"Invalidated failed cached route: {path}")
+        except Exception as exc:
+            log.warning(f"Failed to remove cached route {path}: {exc}")

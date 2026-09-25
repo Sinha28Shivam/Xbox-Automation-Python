@@ -336,4 +336,5 @@ _TOOL_ACTIONS = {
     "run_special_action", "run_sequence", "type_text", "wait",
     "get_timing", "discover_game", "launch_game", "select_level",
     "draw_magic_marker", "vision_guided_gameplay",
+    "confirm_quit_selection", "vision_guided_minecraft_gameplay",
 }

@@ -134,11 +134,14 @@ verification:
 
 reporting:
   # The four step-by-step writers (json/markdown/html/junit) were deleted.
-  # "mechanics" is now the only report: a per-mechanic PASS / FAILED /
-  # NOT TESTED / INCONCLUSIVE verdict with screenshots and an AI audit.
-  # It emits its own markdown, html and json. Empty this list to disable
+  # "mechanics" is a per-mechanic PASS / FAILED / NOT TESTED / INCONCLUSIVE
+  # verdict with screenshots and an AI audit, but its mechanic list is
+  # hardcoded for Max: The Curse of Brotherhood - every other game shows
+  # NOT TESTED across the board. "scenario" reads the run's OWN
+  # success_criteria instead, so it is correct for any scenario file. Both
+  # emit their own markdown, html and json. Empty this list to disable
   # reporting entirely.
-  formats: ["mechanics"]
+  formats: ["mechanics", "scenario"]
   include_frames: true
   include_action_log: true
   include_transcript: true

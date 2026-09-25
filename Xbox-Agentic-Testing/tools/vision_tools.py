@@ -228,18 +228,32 @@ def _capture_frame(ctx: ToolContext) -> Any:
 
 def _wait_for_stable_screen(ctx: ToolContext) -> Any:
     def run(timeout: float | None = None,
-            label: str = "stable") -> dict[str, Any]:
+            label: str = "stable",
+            min_elapsed_seconds: float = 0.0) -> dict[str, Any]:
         try:
             cam = _capture(ctx)
         except Exception as exc:
             return fail(f"Capture unavailable: {exc}")
 
         started = time.time()
+        timeout_seconds = float(timeout or ctx.threshold("stability_timeout", 10.0))
+        settle = ctx.threshold("stability_settle", 0.4)
+        threshold = ctx.threshold("screen_change_threshold", 0.5)
         frame = cam.wait_for_stable_screen(
-            timeout=float(timeout or ctx.threshold("stability_timeout", 10.0)),
-            settle=ctx.threshold("stability_settle", 0.4),
-            threshold=ctx.threshold("screen_change_threshold", 0.5),
-        )
+            timeout=timeout_seconds, settle=settle, threshold=threshold)
+
+        # A static splash/logo screen can satisfy "stable" well before the
+        # real destination loads. min_elapsed_seconds forces re-checks past
+        # that point instead of trusting the first stable frame seen.
+        remaining = float(min_elapsed_seconds) - (time.time() - started)
+        while frame is not None and remaining > 0:
+            retry_timeout = min(remaining, timeout_seconds - (time.time() - started))
+            if retry_timeout <= 0:
+                break
+            frame = cam.wait_for_stable_screen(
+                timeout=retry_timeout, settle=settle, threshold=threshold)
+            remaining = float(min_elapsed_seconds) - (time.time() - started)
+
         if frame is None:
             return fail("No frame while waiting for the screen to settle.")
 
@@ -251,7 +265,9 @@ def _wait_for_stable_screen(ctx: ToolContext) -> Any:
         run, "wait_for_stable_screen",
         "Block until consecutive frames stop differing - i.e. the UI animation "
         "has finished - then return that frame. Always prefer this to a fixed "
-        "sleep: it adapts to how long the console actually took.")
+        "sleep: it adapts to how long the console actually took. Use "
+        "min_elapsed_seconds to guard against returning too early on a static "
+        "splash/logo screen that precedes the real destination.")
 
 
 # ===========================================================================
@@ -503,7 +519,10 @@ def _read_text_region(ctx: ToolContext) -> Any:
         "supported keyboard_variant for Xbox search-field verification.")
 
 
-def _detect_focus_highlight(ctx: ToolContext) -> Any:
+def detect_focus_highlight_impl(ctx: ToolContext, frame_path: str | None = None,
+                                expected_label: str = "",
+                                region: dict[str, float] | None = None,
+                                max_area_ratio: float = 0.35) -> dict[str, Any]:
     """Find a green-highlighted menu item/tile and OCR the nearby label.
 
     RCA fix (run-20260904-132647): the previous version had no upper bound on
@@ -514,194 +533,209 @@ def _detect_focus_highlight(ctx: ToolContext) -> Any:
     dashboard's "My games & apps" toolbar icon instead of the intended Guide
     overlay menu entry, burning two extra replans before an accidental pass.
     """
-    def run(frame_path: str | None = None,
-            expected_label: str = "",
-            region: dict[str, float] | None = None,
-            max_area_ratio: float = 0.35) -> dict[str, Any]:
-        path = frame_path or ctx.scratch.get("last_frame_path")
-        if not path:
-            result = _invoke(_capture_frame(ctx))
-            if not result.get("ok"):
-                return result
-            path = result["frame_path"]
+    path = frame_path or ctx.scratch.get("last_frame_path")
+    if not path:
+        result = _invoke(_capture_frame(ctx))
+        if not result.get("ok"):
+            return result
+        path = result["frame_path"]
 
-        try:
-            import cv2
-            import numpy as np
-        except ImportError as exc:
-            return fail(f"OpenCV unavailable: {exc}")
+    try:
+        import cv2
+        import numpy as np
+    except ImportError as exc:
+        return fail(f"OpenCV unavailable: {exc}")
 
-        frame = cv2.imread(str(path))
-        if frame is None:
-            return fail(f"Could not read frame: {path}")
+    frame = cv2.imread(str(path))
+    if frame is None:
+        return fail(f"Could not read frame: {path}")
 
+    h, w = frame.shape[:2]
+    if region:
+        cropped, error = _crop_frame(str(path), region)
+        if cropped is None:
+            return fail(error, frame_path=str(path), region=region)
+        frame = cropped
         h, w = frame.shape[:2]
-        if region:
-            cropped, error = _crop_frame(str(path), region)
-            if cropped is None:
-                return fail(error, frame_path=str(path), region=region)
-            frame = cropped
-            h, w = frame.shape[:2]
 
-        frame_area = float(w * h)
-        # RCA fix: a single highlighted tile/menu row should never fill most
-        # of the frame. Capping this well below "half the screen" stops
-        # promo banners, progress bars and colour-shifted overlay
-        # backgrounds from winning purely by being large.
-        max_area_ratio = min(max(float(max_area_ratio), 0.01), 0.9)
-        max_area = frame_area * max_area_ratio
+    frame_area = float(w * h)
+    # RCA fix: a single highlighted tile/menu row should never fill most
+    # of the frame. Capping this well below "half the screen" stops
+    # promo banners, progress bars and colour-shifted overlay
+    # backgrounds from winning purely by being large.
+    max_area_ratio = min(max(float(max_area_ratio), 0.01), 0.9)
+    max_area = frame_area * max_area_ratio
 
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        # RCA fix: narrowed from (35-95, 60-255, 60-255). That wide range
-        # matched any greenish accent (notification dots, progress bars,
-        # promo tiles) - not just the vivid, fairly saturated green Xbox
-        # actually uses for its focus-highlight ring.
-        lower = np.array([40, 90, 90], dtype=np.uint8)
-        upper = np.array([85, 255, 255], dtype=np.uint8)
-        mask = cv2.inRange(hsv, lower, upper)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
-        mask = cv2.dilate(mask, np.ones((3, 3), np.uint8), iterations=1)
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    # RCA fix: narrowed from (35-95, 60-255, 60-255). That wide range
+    # matched any greenish accent (notification dots, progress bars,
+    # promo tiles) - not just the vivid, fairly saturated green Xbox
+    # actually uses for its focus-highlight ring.
+    lower = np.array([40, 90, 90], dtype=np.uint8)
+    upper = np.array([85, 255, 255], dtype=np.uint8)
+    mask = cv2.inRange(hsv, lower, upper)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    mask = cv2.dilate(mask, np.ones((3, 3), np.uint8), iterations=1)
 
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        detections: list[dict[str, Any]] = []
-        oversized: list[dict[str, Any]] = []
-        label_norm = _norm_label(expected_label)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    detections: list[dict[str, Any]] = []
+    oversized: list[dict[str, Any]] = []
+    label_norm = _norm_label(expected_label)
 
-        for idx, contour in enumerate(contours):
-            x, y, bw, bh = cv2.boundingRect(contour)
-            area = bw * bh
-            if area < 500 or bw < 20 or bh < 12:
-                continue
-
-            # RCA fix: reject candidates spanning an implausible fraction of
-            # the frame, or absurdly elongated slivers - neither looks like
-            # a single highlighted menu row/tile. Recorded (not silently
-            # dropped) so a failure result can explain what was rejected.
-            aspect = max(bw / bh, bh / bw)
-            if area > max_area or aspect > 15:
-                oversized.append({
-                    "bbox": {"x": int(x), "y": int(y),
-                             "width": int(bw), "height": int(bh)},
-                    "area": int(area),
-                    "area_ratio": round(area / frame_area, 3),
-                    "aspect_ratio": round(aspect, 2),
-                    "reason": ("exceeds max_area_ratio" if area > max_area
-                               else "aspect ratio too extreme"),
-                })
-                continue
-
-            # RCA fix (run-20260904-163142): padding used to be asymmetric -
-            # pad_x*3 on the right and none of that bias on the left - which
-            # reliably swept the OCR crop into the *next* tile over on a
-            # horizontal tile row (e.g. reading "Max" and "Skate 3" together
-            # as one blob, which then wrongly "matched" whichever label the
-            # caller was checking for). A real highlight ring already
-            # outlines the full tile including its caption, so the crop only
-            # needs a small, symmetric margin to catch anti-aliased border
-            # pixels - not half a neighboring tile.
-            pad_x = max(6, int(bw * 0.08))
-            pad_y = max(6, int(bh * 0.08))
-            left = max(0, x - pad_x)
-            top = max(0, y - pad_y)
-            right = min(w, x + bw + pad_x)
-            bottom = min(h, y + bh + pad_y)
-            crop = frame[top:bottom, left:right]
-            crop_path = ctx.artifacts.save_frame(crop, f"focus-crop-{idx}")
-            text, engine, _ = _ocr(ctx, str(crop_path)) if crop_path else ("", "", "")
-            text = text or ""
-            text_norm = _norm_label(text)
-            match = bool(label_norm and label_norm in text_norm)
-            green_pixels = int(cv2.countNonZero(mask[y:y + bh, x:x + bw]))
-            fill_ratio = (green_pixels / area) if area else 0.0
-            detections.append({
-                "bbox": {"x": int(x), "y": int(y), "width": int(bw), "height": int(bh)},
+    # PERFORMANCE fix (run-20260924-130448): OCR is the expensive part here -
+    # each candidate runs up to 5 preprocessing variants through tesseract.
+    # A busy console UI can have a dozen+ green-ish contours (icons, notification
+    # dots, HUD accents), and running full multi-variant OCR on every single one
+    # was measured turning a single button-press step into 40-58s. A real focus
+    # highlight is also the BIGGEST green region on screen, so filtering to
+    # candidates first and OCR-ing only the largest few is both faster and no
+    # less accurate.
+    candidates: list[tuple[int, int, int, int, int]] = []
+    for x, y, bw, bh in (cv2.boundingRect(c) for c in contours):
+        area = bw * bh
+        if area < 500 or bw < 20 or bh < 12:
+            continue
+        aspect = max(bw / bh, bh / bw)
+        if area > max_area or aspect > 15:
+            oversized.append({
+                "bbox": {"x": int(x), "y": int(y),
+                         "width": int(bw), "height": int(bh)},
                 "area": int(area),
                 "area_ratio": round(area / frame_area, 3),
-                "crop_path": str(crop_path) if crop_path else None,
-                "text": text[:500],
-                "engine": engine,
-                "matches_expected": match,
-                "green_pixels": green_pixels,
-                "fill_ratio": round(fill_ratio, 3),
+                "aspect_ratio": round(aspect, 2),
+                "reason": ("exceeds max_area_ratio" if area > max_area
+                           else "aspect ratio too extreme"),
             })
+            continue
+        candidates.append((area, x, y, bw, bh))
 
-        if not detections:
-            full_text, engine, _ = _ocr(ctx, str(path))
-            full_text = full_text or ""
-            if expected_label and _norm_label(expected_label) in _norm_label(full_text):
-                return ok(
-                    frame_path=str(path),
-                    expected_label=expected_label,
-                    selected_label=expected_label,
-                    highlight_bbox=None,
-                    crop_path=None,
-                    detections=[],
-                    rejected_oversized=[],
-                    matched=True,
-                    engine=engine,
-                    caveat=f"Verified via in-frame text match for '{expected_label}' (in-game custom focus styling).",
-                )
-            if not expected_label and full_text.strip():
-                first_line = [l.strip() for l in full_text.splitlines() if l.strip()]
-                label = first_line[0] if first_line else "menu_item"
-                return ok(
-                    frame_path=str(path),
-                    expected_label="",
-                    selected_label=label,
-                    highlight_bbox=None,
-                    crop_path=None,
-                    detections=[],
-                    rejected_oversized=[],
-                    matched=True,
-                    engine=engine,
-                    caveat="Menu text visible and active on screen (in-game menu without system green highlight).",
-                )
-            return fail(
-                "No green-highlight region was detected, and expected label was not found in frame text.",
+    # Largest first: the true highlight is rarely the smallest green blob.
+    candidates.sort(key=lambda c: c[0], reverse=True)
+    _MAX_OCR_CANDIDATES = 6
+
+    for idx, (area, x, y, bw, bh) in enumerate(candidates[:_MAX_OCR_CANDIDATES]):
+        # RCA fix (run-20260904-163142): padding used to be asymmetric -
+        # pad_x*3 on the right and none of that bias on the left - which
+        # reliably swept the OCR crop into the *next* tile over on a
+        # horizontal tile row (e.g. reading "Max" and "Skate 3" together
+        # as one blob, which then wrongly "matched" whichever label the
+        # caller was checking for). A real highlight ring already
+        # outlines the full tile including its caption, so the crop only
+        # needs a small, symmetric margin to catch anti-aliased border
+        # pixels - not half a neighboring tile.
+        pad_x = max(6, int(bw * 0.08))
+        pad_y = max(6, int(bh * 0.08))
+        left = max(0, x - pad_x)
+        top = max(0, y - pad_y)
+        right = min(w, x + bw + pad_x)
+        bottom = min(h, y + bh + pad_y)
+        crop = frame[top:bottom, left:right]
+        crop_path = ctx.artifacts.save_frame(crop, f"focus-crop-{idx}")
+        text, engine, _ = _ocr(ctx, str(crop_path)) if crop_path else ("", "", "")
+        text = text or ""
+        text_norm = _norm_label(text)
+        match = bool(label_norm and label_norm in text_norm)
+        green_pixels = int(cv2.countNonZero(mask[y:y + bh, x:x + bw]))
+        fill_ratio = (green_pixels / area) if area else 0.0
+        detections.append({
+            "bbox": {"x": int(x), "y": int(y), "width": int(bw), "height": int(bh)},
+            "area": int(area),
+            "area_ratio": round(area / frame_area, 3),
+            "crop_path": str(crop_path) if crop_path else None,
+            "text": text[:500],
+            "engine": engine,
+            "matches_expected": match,
+            "green_pixels": green_pixels,
+            "fill_ratio": round(fill_ratio, 3),
+        })
+
+    if not detections:
+        full_text, engine, _ = _ocr(ctx, str(path))
+        full_text = full_text or ""
+        if expected_label and _norm_label(expected_label) in _norm_label(full_text):
+            return ok(
                 frame_path=str(path),
                 expected_label=expected_label,
-                rejected_oversized=oversized[:5],
+                selected_label=expected_label,
+                highlight_bbox=None,
+                crop_path=None,
+                detections=[],
+                rejected_oversized=[],
+                matched=True,
+                engine=engine,
+                caveat=f"Verified via in-frame text match for '{expected_label}' (in-game custom focus styling).",
             )
-
-        # RCA fix: prefer, in order - an OCR match on the expected label; a
-        # ring/border shape (low fill_ratio) over a solid filled blob, since
-        # real focus highlights outline a tile rather than paint it solid;
-        # then more green pixels as a tie-breaker. The old scoring picked
-        # the largest/most-solid-green blob first, which is exactly what let
-        # a near-full-screen banner win over the real highlight.
-        detections.sort(
-            key=lambda d: (
-                1 if d["matches_expected"] else 0,
-                1 if d["fill_ratio"] < 0.55 else 0,
-                d["green_pixels"],
-            ),
-            reverse=True,
-        )
-        best = detections[0]
-
-        if expected_label and not best["matches_expected"]:
-            return fail(
-                "A green-highlight region was found, but it did not OCR-match the expected label.",
+        if not expected_label and full_text.strip():
+            first_line = [l.strip() for l in full_text.splitlines() if l.strip()]
+            label = first_line[0] if first_line else "menu_item"
+            return ok(
                 frame_path=str(path),
-                expected_label=expected_label,
-                observed_text=best["text"],
-                highlight_bbox=best["bbox"],
-                crop_path=best["crop_path"],
-                detections=detections[:5],
-                rejected_oversized=oversized[:5],
+                expected_label="",
+                selected_label=label,
+                highlight_bbox=None,
+                crop_path=None,
+                detections=[],
+                rejected_oversized=[],
+                matched=True,
+                engine=engine,
+                caveat="Menu text visible and active on screen (in-game menu without system green highlight).",
             )
-
-        return ok(
+        return fail(
+            "No green-highlight region was detected, and expected label was not found in frame text.",
             frame_path=str(path),
             expected_label=expected_label,
-            selected_label=best["text"],
+            rejected_oversized=oversized[:5],
+        )
+
+    # RCA fix: prefer, in order - an OCR match on the expected label; a
+    # ring/border shape (low fill_ratio) over a solid filled blob, since
+    # real focus highlights outline a tile rather than paint it solid;
+    # then more green pixels as a tie-breaker. The old scoring picked
+    # the largest/most-solid-green blob first, which is exactly what let
+    # a near-full-screen banner win over the real highlight.
+    detections.sort(
+        key=lambda d: (
+            1 if d["matches_expected"] else 0,
+            1 if d["fill_ratio"] < 0.55 else 0,
+            d["green_pixels"],
+        ),
+        reverse=True,
+    )
+    best = detections[0]
+
+    if expected_label and not best["matches_expected"]:
+        return fail(
+            "A green-highlight region was found, but it did not OCR-match the expected label.",
+            frame_path=str(path),
+            expected_label=expected_label,
+            observed_text=best["text"],
             highlight_bbox=best["bbox"],
             crop_path=best["crop_path"],
             detections=detections[:5],
             rejected_oversized=oversized[:5],
-            matched=bool(best["matches_expected"] or not expected_label),
-            engine=best["engine"],
         )
+
+    return ok(
+        frame_path=str(path),
+        expected_label=expected_label,
+        selected_label=best["text"],
+        highlight_bbox=best["bbox"],
+        crop_path=best["crop_path"],
+        detections=detections[:5],
+        rejected_oversized=oversized[:5],
+        matched=bool(best["matches_expected"] or not expected_label),
+        engine=best["engine"],
+    )
+
+
+def _detect_focus_highlight(ctx: ToolContext) -> Any:
+    def run(frame_path: str | None = None,
+            expected_label: str = "",
+            region: dict[str, float] | None = None,
+            max_area_ratio: float = 0.35) -> dict[str, Any]:
+        return detect_focus_highlight_impl(
+            ctx, frame_path=frame_path, expected_label=expected_label,
+            region=region, max_area_ratio=max_area_ratio)
 
     return make_tool(
         run, "detect_focus_highlight",

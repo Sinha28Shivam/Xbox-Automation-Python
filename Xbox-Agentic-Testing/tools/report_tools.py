@@ -70,6 +70,37 @@ def _write_mechanics_report(ctx: ToolContext) -> Any:
         "audit of each frame pair. Writes markdown, html and json.")
 
 
+def _write_scenario_report(ctx: ToolContext) -> Any:
+    def run(run_dir: str = "") -> dict[str, Any]:
+        """Build the scenario report for any `console.py run --file` run."""
+        import sys
+        _root = Path(__file__).resolve().parent.parent
+        if str(_root) not in sys.path:
+            sys.path.insert(0, str(_root))
+        from scenario_report import build_report
+
+        target = Path(run_dir) if run_dir else ctx.artifacts.run_dir
+        if not Path(target).is_dir():
+            return fail(f"Not a run directory: {target}")
+
+        try:
+            written = build_report(target)
+        except Exception as exc:
+            return fail(f"Scenario report failed: {exc}")
+
+        if not written:
+            return fail("No report file could be written.")
+        return ok(run_dir=str(target), written=written, formats=sorted(written))
+
+    return make_tool(
+        run, "write_scenario_report",
+        "Build the scenario report for a `console.py run --file scenario` "
+        "run: per-success-criterion PASS/FAILED/NOT TESTED verdicts with the "
+        "verifier's own reasoning, plus a table of every agent that ran "
+        "(health/scenario_validator/planner/executor/verifier) with its "
+        "result and duration. Writes markdown, html and json.")
+
+
 def _list_artifacts(ctx: ToolContext) -> Any:
     def run() -> dict[str, Any]:
         return ok(run_dir=str(ctx.artifacts.run_dir),
@@ -87,6 +118,10 @@ def provide() -> list[ToolSpec]:
                  "Write the game-mechanics report with screenshots and AI "
                  "diagnostics.",
                  ["report"], _write_mechanics_report),
+        ToolSpec("write_scenario_report",
+                 "Write the scenario report (success criteria + agent "
+                 "attribution) for a scenario-file run.",
+                 ["report"], _write_scenario_report),
         ToolSpec("list_artifacts", "List all files produced this run.",
                  ["report", "analysis"], _list_artifacts),
     ]

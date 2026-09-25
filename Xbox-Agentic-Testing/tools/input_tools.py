@@ -491,7 +491,8 @@ def _hold_button(ctx: ToolContext) -> Any:
 # ===========================================================================
 def _move_stick(ctx: ToolContext) -> Any:
     def run(stick: str, direction: str | None = None, x: int | None = None,
-            y: int | None = None, duration: float | None = None) -> dict[str, Any]:
+            y: int | None = None, duration: float | None = None,
+            strength: float | None = None) -> dict[str, Any]:
         try:
             pad = _pad(ctx)
         except Exception as exc:
@@ -502,17 +503,20 @@ def _move_stick(ctx: ToolContext) -> Any:
             return fail(f"Unknown stick '{stick}'. Known: {', '.join(known)}",
                         dispatched=False)
         try:
-            dispatched = pad.stick(stick, direction, x, y, duration)
+            dispatched = pad.stick(stick, direction, x, y, duration, strength)
         except Exception as exc:
             return fail(f"Error moving stick: {exc}", dispatched=False)
 
         return ok(stick=stick, direction=direction, x=x, y=y,
-                  dispatched=bool(dispatched), caveat=_ACK_CAVEAT)
+                  strength=strength, dispatched=bool(dispatched),
+                  caveat=_ACK_CAVEAT)
 
     return make_tool(
         run, "move_stick",
         "Move an analog stick, either by named direction or by explicit x/y "
-        "axis values. The stick returns to centre afterwards.")
+        "axis values. 'strength' (0.0-1.0) scales a named direction for a "
+        "gentle nudge instead of a full throw - useful for camera turns. "
+        "The stick returns to centre afterwards.")
 
 
 def _pull_trigger(ctx: ToolContext) -> Any:
