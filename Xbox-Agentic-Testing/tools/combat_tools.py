@@ -61,6 +61,48 @@ from game_profiles.minecraft_profile import MinecraftMove, NearbyEntity, execute
 from health_tools import read_survival_hud_impl
 
 
+class HitCheck(BaseModel):
+    """A focused, single-purpose reading of the AFTER-attack frame only -
+    separate from CombatFrameDecision because this is a narrower question
+    (did that one swing land?) asked right after an attack move, not a
+    general scene reading. Bedrock draws no mob health bar, so a real hit
+    can only be confirmed the same way a human would from footage alone:
+    a visible reaction on the mob (a white/red damage flash, a knockback
+    flinch) or the mob vanishing outright - never inferred from pixel
+    delta alone, which an attack SWING's own arm animation already moves
+    regardless of whether it connected.
+    """
+
+    hit_confirmed: bool = Field(
+        description="True ONLY if you see a real reaction ON THE MOB - a "
+                    "damage flash, a knockback flinch, or the mob no longer "
+                    "being visible right after the swing. False if the mob "
+                    "looks completely unaffected, or if no mob is visible "
+                    "to judge at all.")
+    evidence: str = Field(
+        description="ONE short sentence: exactly what you saw that did or "
+                    "did not look like a hit (e.g. 'mob flashed white and "
+                    "flinched back' or 'mob still standing motionless, no "
+                    "visible reaction').")
+
+
+def _check_hit(ctx: ToolContext, decider: Any, after_frame: Any) -> dict[str, Any]:
+    """One small structured vision call over the after-attack frame only.
+    Never raises - a failed check is reported as unconfirmed, not a crash.
+    """
+    try:
+        image_b64 = encode_frame(after_frame)
+        if image_b64 is None:
+            return {"hit_confirmed": False, "evidence": "could not encode the after-frame"}
+        result = decide(decider, (
+            "An attack was just swung in Minecraft. Look at this frame, taken "
+            "right after the swing, and judge whether it actually hit the "
+            "targeted mob."), image_b64)
+        return {"hit_confirmed": bool(result.hit_confirmed), "evidence": result.evidence}
+    except Exception as exc:
+        return {"hit_confirmed": False, "evidence": f"hit-check failed: {exc}"}
+
+
 class CombatFrameDecision(BaseModel):
     """The model's structured reading of one combat-cycle frame, plus its plan."""
 
@@ -217,10 +259,16 @@ def engage_single_mob_impl(
     except Exception as exc:
         return fail(f"Vision model unavailable: {exc}")
 
+    try:
+        hit_decider = build_vision_decider(ctx, HitCheck)
+    except Exception:
+        hit_decider = None  # hit confirmation is a bonus signal, not required to run
+
     max_cycles = max(1, int(max_cycles))
     cycles: list[dict[str, Any]] = []
     history: list[dict[str, Any]] = []
     attacks_dispatched = 0
+    hits_confirmed = 0
     no_threat_streak = 0
     stuck_streak = 0
     dispatched_any = False
@@ -238,6 +286,17 @@ def engage_single_mob_impl(
     # A drop to/below this many hearts forces an immediate hard retreat
     # dispatched by the LOOP itself, not left to the model's judgment.
     _CRITICAL_HEARTS = 4
+    # BUG FOUND ON A REAL HARDWARE RUN (2026-09-28): Creative mode draws NO
+    # hearts/hunger HUD at all, so read_survival_hud_impl correctly returns
+    # full_hearts=0 there (see its own docstring) - but this loop was
+    # treating that 0 as a mortal emergency and force-retreating every
+    # cycle instead of letting real combat happen. A genuine survival HUD
+    # almost never shows hunger at exactly 0 the instant a fight starts, so
+    # requiring a nonzero HUNGER reading at least once before trusting a
+    # critical HEARTS reading is what tells a real survival HUD apart from
+    # creative mode's absent one, without needing to ask the model or read
+    # the pause-menu game-mode label.
+    hud_confirmed_present = False
 
     # Target persistence (fix #2). Carried across cycles in the prompt so
     # the model confirms/denies the SAME target instead of re-classifying
@@ -271,8 +330,24 @@ def engage_single_mob_impl(
             # model actually sees - not discovered after the fact.
             hud = read_survival_hud_impl(ctx, frame_path=before_path)
             current_hearts = hud.get("full_hearts") if hud.get("ok") else None
+            current_hunger = hud.get("full_hunger") if hud.get("ok") else None
+            # A nonzero reading on EITHER bar is only possible if a real
+            # survival HUD is actually being drawn - creative mode always
+            # reads 0/0 for both, so this is what tells the two apart.
+            if (current_hearts or 0) > 0 or (current_hunger or 0) > 0:
+                hud_confirmed_present = True
             health_line = ""
-            if current_hearts is not None:
+            if current_hearts is not None and not hud_confirmed_present:
+                # 0/0 with no HUD confirmed yet is indistinguishable from
+                # creative mode's absent HUD - telling the model "0 hearts"
+                # here got it to retreat from a harmless goat on a real
+                # hardware run. Say the ambiguity out loud instead.
+                health_line = (
+                    "No hearts/hunger HUD has been confirmed present yet "
+                    "(reading 0/0, which is also what creative mode looks "
+                    "like) - do NOT treat this as a real health emergency "
+                    "until a nonzero reading is seen at least once.\n")
+            elif current_hearts is not None:
                 if last_hearts is not None and current_hearts < last_hearts:
                     health_line = (
                         f"REAL HEALTH DROP DETECTED: {last_hearts} -> "
@@ -281,6 +356,7 @@ def engage_single_mob_impl(
                         f"own plan.\n")
                 else:
                     health_line = f"Current health: {current_hearts} hearts.\n"
+            if current_hearts is not None:
                 last_hearts = current_hearts
                 min_hearts_observed = (current_hearts if min_hearts_observed is None
                                        else min(min_hearts_observed, current_hearts))
@@ -318,9 +394,11 @@ def engage_single_mob_impl(
             print(f"  Target      : {decision.target_kind or '(none)'}"
                   f"  same_as_before: {decision.same_target_as_before}", flush=True)
             if current_hearts is not None:
-                print(f"  Health      : {current_hearts} hearts"
-                      f"{'  !! CRITICAL' if current_hearts <= _CRITICAL_HEARTS else ''}",
-                      flush=True)
+                critical = hud_confirmed_present and current_hearts <= _CRITICAL_HEARTS
+                suffix = "  !! CRITICAL" if critical else (
+                    "  (0/0 - no HUD confirmed yet, likely creative mode)"
+                    if not hud_confirmed_present and current_hearts == 0 else "")
+                print(f"  Health      : {current_hearts} hearts{suffix}", flush=True)
             print(f"  Thinking    : {decision.reasoning}", flush=True)
 
             # Target lock update: only adopt a new target_kind if the model
@@ -357,8 +435,11 @@ def engage_single_mob_impl(
             # Hard safety override: a critical health drop is NOT left to
             # the model, even though the prompt also told it to retreat -
             # this is the loop's own forced action, matching the fix
-            # described in this function's docstring (item 1).
-            if current_hearts is not None and current_hearts <= _CRITICAL_HEARTS:
+            # described in this function's docstring (item 1). Gated on
+            # hud_confirmed_present - see the bug note above; creative
+            # mode's 0/0 read must never trigger this.
+            if (hud_confirmed_present and current_hearts is not None
+                    and current_hearts <= _CRITICAL_HEARTS):
                 health_retreat_forced = True
                 moves = [MinecraftMove(
                     action="move", direction="down", duration=1.2,
@@ -400,6 +481,18 @@ def engage_single_mob_impl(
             after_path = (ctx.artifacts.save_frame(after_frame, f"combat-{cycle:03d}-after")
                           if after_frame is not None else None)
 
+            # Confirmed hit-or-not for THIS cycle only, and only when an
+            # attack was actually dispatched this cycle - a swing that never
+            # fired has nothing to confirm.
+            hit_check: dict[str, Any] | None = None
+            attacked_this_cycle = any(m.action == "attack" for m in moves[:3])
+            if attacked_this_cycle and hit_decider is not None and after_frame is not None:
+                hit_check = _check_hit(ctx, hit_decider, after_frame)
+                if hit_check["hit_confirmed"]:
+                    hits_confirmed += 1
+                print(f"  Hit check   : {'CONFIRMED' if hit_check['hit_confirmed'] else 'not confirmed'}"
+                     f" - {hit_check['evidence']}", flush=True)
+
             delta = frame_delta(ctx, before_frame, after_frame)
             progressed = delta is not None and delta >= 1.0
             stuck_streak = 0 if progressed else stuck_streak + 1
@@ -425,6 +518,7 @@ def engage_single_mob_impl(
                 "reasoning": decision.reasoning,
                 "moves": dispatched_moves,
                 "confidence": decision.confidence,
+                "hit_check": hit_check,
             })
             health_retreat_forced = False  # reset - only true for the cycle it fired in
             history.append({
@@ -457,6 +551,7 @@ def engage_single_mob_impl(
     print(f"  COMBAT PROTOTYPE ENDED after {len(cycles)} cycles in {duration}s", flush=True)
     print(f"  Reason           : {stop_reason}", flush=True)
     print(f"  Attacks dispatched: {attacks_dispatched}", flush=True)
+    print(f"  Hits confirmed    : {hits_confirmed}", flush=True)
     print("=" * 72 + "\n", flush=True)
 
     payload = ok(
@@ -464,6 +559,7 @@ def engage_single_mob_impl(
         cycles=cycles,
         stop_reason=stop_reason,
         attacks_dispatched=attacks_dispatched,
+        hits_confirmed=hits_confirmed,
         threat_resolved=threat_resolved,
         final_locked_target=locked_target_kind,
         min_hearts_observed=min_hearts_observed,
@@ -475,11 +571,11 @@ def engage_single_mob_impl(
             "threat_resolved=true means the mob stopped being VISIBLE, "
             "NOT a confirmed kill - this UI has no health bar or kill "
             "confirmation to check, so a fled/out-of-view mob looks "
-            "identical to a defeated one from the evidence available. The "
-            "'attack' action's actual hit-registration on a real mob is "
-            "UNVERIFIED before this tool's first hardware run - check the "
-            "per-cycle deltas for an attack cycle against a real hit "
-            "before trusting it works."),
+            "identical to a defeated one from the evidence available. "
+            "hits_confirmed is a SECOND vision model's reading of the "
+            "after-attack frame for a visible damage flash/knockback - a "
+            "real signal, but still a model's judgment of a screenshot, "
+            "not a game-provided kill/hit confirmation."),
     )
     ctx.artifacts.save_json("combat-cycles.json", payload)
     return payload
@@ -496,9 +592,12 @@ def _engage_single_mob(ctx: ToolContext) -> Any:
         "PROTOTYPE: approach, attack, and retreat-if-needed from ONE "
         "hostile mob. No health-bar reading (Bedrock UI has none) - "
         "'threat_resolved' means the mob stopped being visible, not a "
-        "confirmed kill. Bounded like every other gameplay loop: stops at "
-        "max_cycles, threat-resolved, a stuck-streak, an operator "
-        "interrupt, or a hardware/model failure.")
+        "confirmed kill. Every attack cycle is followed by a second vision "
+        "check of the after-frame for a real damage flash/knockback, "
+        "tallied as 'hits_confirmed' - still a model's judgment of a "
+        "screenshot, not a game-provided confirmation. Bounded like every "
+        "other gameplay loop: stops at max_cycles, threat-resolved, a "
+        "stuck-streak, an operator interrupt, or a hardware/model failure.")
 
 
 def provide() -> list[ToolSpec]:

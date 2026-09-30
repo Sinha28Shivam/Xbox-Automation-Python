@@ -28,9 +28,10 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from registry import ToolContext, fail, ok
+from skill_memory import find_skill_impl, list_skills_impl, report_skill_outcome_impl
 
 # Vision models cost tokens per pixel; 1280px wide is the budget the whole
 # framework uses - game silhouettes, terrain edges and UI icons stay readable
@@ -76,6 +77,58 @@ def frame_delta(ctx: ToolContext, before: Any, after: Any) -> float | None:
             return None
 
 
+_BLANK_MEAN = 3.0  # mean pixel value below this = black/no-signal frame
+_BLANK_RETRIES = 5
+_BLANK_WAIT = 1.5
+_MAX_BLANK_STREAK = 8
+
+
+def is_blank_frame(frame: Any) -> bool:
+    try:
+        return frame is not None and float(frame.mean()) < _BLANK_MEAN
+    except Exception:
+        return False
+
+
+def _drain_stale_frames(camera: Any, max_reads: int = 40) -> int:
+    """Discard frames queued in the DirectShow buffer while we were idle.
+
+    The driver keeps the frames captured right after the previous read and
+    drops newer ones, so an un-drained grab returns a picture from BEFORE the
+    last several seconds of input (measured: 'after' frame == 'before' frame).
+    Buffered reads return in a few ms; a live read blocks ~1 frame time
+    (~16 ms), so stop once two consecutive reads block.
+    """
+    cap = getattr(camera, "cap", None)
+    if cap is None:
+        return 0
+    live = 0
+    reads = 0
+    for reads in range(1, max_reads + 1):
+        start = time.time()
+        try:
+            cap.read()
+        except Exception:
+            break
+        live = live + 1 if (time.time() - start) >= 0.008 else 0
+        if live >= 2:
+            break
+    return reads
+
+
+def grab_nonblank(camera: Any) -> tuple[Any, bool]:
+    """Grab a frame; if it is black, wait and retry a few times (loading
+    screens / capture hiccups). Returns (frame, still_blank)."""
+    _drain_stale_frames(camera)
+    frame = camera.grab(allow_blank=True)
+    for _ in range(_BLANK_RETRIES):
+        if frame is None or not is_blank_frame(frame):
+            break
+        time.sleep(_BLANK_WAIT)
+        frame = camera.grab(allow_blank=True)
+    return frame, is_blank_frame(frame)
+
+
 def build_vision_decider(ctx: ToolContext, frame_model: type[BaseModel]) -> Any:
     """A structured, vision-capable runnable that returns `frame_model`."""
     from llm import LLMFactory, structured
@@ -92,11 +145,53 @@ def build_vision_decider(ctx: ToolContext, frame_model: type[BaseModel]) -> Any:
     return structured(factory.build(provider=provider), frame_model)
 
 
-def decide(decider: Any, prompt: str, image_b64: str) -> Any:
+def _current_provider(ctx: ToolContext) -> str | None:
+    """The configured LLM provider name, or None if it cannot be resolved -
+    never raises, since this only gates an optional latency optimization.
+    """
+    try:
+        from llm import LLMFactory
+        return LLMFactory(ctx.settings).default_provider
+    except Exception:
+        return None
+
+
+# Anthropic will not actually cache a block under ~1024 tokens (silently
+# charged as a normal, uncached write instead) - guarding this avoids
+# claiming a speed/cost benefit that a short prompt would never get.
+_MIN_CACHEABLE_CHARS = 1024 * 4
+
+
+def decide(decider: Any, prompt: str, image_b64: str,
+          cacheable_prefix: str | None = None,
+          provider: str | None = None) -> Any:
+    """Send one frame + prompt to the vision model.
+
+    `cacheable_prefix`, if given, is the part of the prompt that is BYTE-
+    IDENTICAL every cycle (a game's system_prompt) - split out and marked
+    with Anthropic's `cache_control` so repeated cycles reuse the provider's
+    cached read of it instead of re-processing the same few thousand tokens
+    every single call. Only applied when `provider` is 'anthropic' and the
+    prefix clears the real minimum cacheable size; every other provider (or
+    a prefix too short to benefit) gets today's single-block prompt,
+    unchanged.
+    """
     from langchain_core.messages import HumanMessage
 
+    text_blocks: list[dict[str, Any]]
+    if (cacheable_prefix and provider == "anthropic"
+            and len(cacheable_prefix) >= _MIN_CACHEABLE_CHARS):
+        rest = prompt[len(cacheable_prefix):] if prompt.startswith(cacheable_prefix) else prompt
+        text_blocks = [
+            {"type": "text", "text": cacheable_prefix,
+             "cache_control": {"type": "ephemeral"}},
+            {"type": "text", "text": rest},
+        ]
+    else:
+        text_blocks = [{"type": "text", "text": prompt}]
+
     message = HumanMessage(content=[
-        {"type": "text", "text": prompt},
+        *text_blocks,
         {"type": "image_url",
          "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
     ])
@@ -115,6 +210,87 @@ def format_history(history: list[dict[str, Any]], keep: int = 4) -> str:
         lines.append(f"  - cycle {entry['cycle']}: {entry['moves']} "
                      f"-> delta {delta_text} ({entry['outcome']})")
     return "\n".join(lines)
+
+
+def _skill_lookup(ctx: ToolContext, profile: "GameProfile",
+                  scene_state: str) -> list[Any] | None:
+    """A saved move sequence for this scene_state, reconstructed as real
+    `profile.move_model` instances - or None if there is no skill for it yet,
+    or its win-rate has not cleared the profile's trust threshold.
+    """
+    result = find_skill_impl(ctx, profile=profile.key, skill_name=scene_state)
+    if not result.get("ok"):
+        return None
+    entry = result["entry"]
+    rate = entry.get("success_rate")
+    if rate is None or entry.get("attempts", 0) < profile.skill_min_attempts:
+        return None  # not enough evidence yet either way
+    if rate < profile.skill_success_threshold:
+        return None  # demoted - this skill stopped earning trust
+    try:
+        return [profile.move_model(**m) for m in entry["moves"]]
+    except Exception:
+        return None  # a stored shape that no longer matches the model - skip, don't crash
+
+
+# ===========================================================================
+# Self-directed curriculum (opt-in) - the model proposes its OWN next goal
+# from the current frame + its own skill library, instead of always chasing
+# a single hardcoded default_goal for the whole run. Same idea as Voyager's
+# curriculum agent, built as a small addition on top of skill_memory.py
+# rather than a new subsystem.
+#
+# WHAT THIS DOES NOT DO
+# -----------------------
+# It never silently swaps the run's goal without a visible log line, and it
+# never touches profile.default_goal itself - only the in-loop working goal
+# for the REST OF THIS RUN. If the proposal call fails for any reason, the
+# current goal is kept unchanged - a curriculum that can crash the run over
+# a bad LLM response would be worse than no curriculum at all.
+# ===========================================================================
+class CurriculumProposal(BaseModel):
+    """One short self-directed goal proposal for the REST of this run."""
+
+    next_goal: str = Field(
+        description="One concrete, concise next goal reachable from the "
+                    "CURRENT frame (e.g. 'mine 3 more logs then craft a "
+                    "crafting table'). Must be a real next step, not a "
+                    "restatement of the current goal.")
+    reason: str = Field(
+        description="ONE short sentence: why this is the right next step "
+                    "given what's visible now and what skills already exist.")
+    keep_current_goal: bool = Field(
+        default=False,
+        description="True if the CURRENT goal is still the right one and "
+                    "no change is needed - next_goal/reason are ignored "
+                    "when this is true.")
+
+
+def _propose_next_goal(ctx: ToolContext, profile: "GameProfile",
+                       current_goal: str, image_b64: str) -> str:
+    """One small structured LLM call: propose the next goal, or keep the
+    current one. Never raises - any failure keeps `current_goal` unchanged.
+    """
+    try:
+        skills = list_skills_impl(ctx, profile=profile.key)
+        known = ", ".join(
+            f"{s['skill_name']} ({s.get('success_rate')})"
+            for s in skills.get("skills", [])[:10]) or "none yet"
+
+        decider = build_vision_decider(ctx, CurriculumProposal)
+        prompt = (
+            f"You are directing what to do next in {profile.key}. "
+            f"Current goal: {current_goal}\n"
+            f"Skills already proven to work (name and win-rate): {known}\n"
+            f"Look at the attached live frame. If the current goal is still "
+            f"sensible, set keep_current_goal=true. Otherwise propose ONE "
+            f"concrete next goal reachable from what you see now.")
+        proposal = decide(decider, prompt, image_b64)
+        if proposal.keep_current_goal or not proposal.next_goal.strip():
+            return current_goal
+        return proposal.next_goal.strip()
+    except Exception:
+        return current_goal  # a failed proposal keeps the run going, not stuck
 
 
 # ===========================================================================
@@ -166,12 +342,35 @@ class GameProfile:
     cycle_extra_fields: Callable[[Any], dict[str, Any]] = field(default=lambda decision: {})
     summarize: Callable[[dict[str, Any]], dict[str, Any]] = field(default=lambda counters: {})
 
+    # Independent check of a model-declared success state. Return False to
+    # reject the claim (the loop keeps playing). Default accepts.
+    confirm_success: Callable[[Any, dict[str, Any]], bool] = field(
+        default=lambda decision, counters: True)
+
     # Optional SIMULTANEOUS batch dispatch (move+look+attack in one GIMX
     # call, matching how a real player's hands work at once) - preferred
     # over the one-at-a-time execute_move loop below when a profile
     # provides it. None means "use the old sequential path" so existing
     # profiles (Max) are unaffected unless they opt in.
     execute_moves: Callable[[ToolContext, list[Any]], list[dict[str, Any]]] | None = None
+
+    # Optional SKILL-MEMORY replay (tools/skill_memory.py): when enabled, a
+    # scene_state with a high-enough saved win-rate is replayed directly
+    # instead of asking the model to re-decide move parameters it has
+    # already solved. Off by default - existing profiles are unaffected
+    # unless they opt in. forced_moves (safety overrides) is always
+    # checked FIRST and always wins over a skill replay.
+    use_skill_memory: bool = False
+    skill_success_threshold: float = 0.7
+    skill_min_attempts: int = 2
+
+    # Optional SELF-DIRECTED CURRICULUM (see CurriculumProposal note above):
+    # every `curriculum_interval` cycles, ask the model whether the working
+    # goal should change, using the skill library as context. Off by
+    # default - existing profiles keep their single fixed default_goal
+    # unless they opt in.
+    use_curriculum: bool = False
+    curriculum_interval: int = 5
 
 
 # ===========================================================================
@@ -211,6 +410,8 @@ def run_gameplay_loop(
     except Exception as exc:
         return fail(f"Vision model unavailable: {exc}")
 
+    provider = _current_provider(ctx)
+
     max_cycles = max(1, int(max_cycles))
     cycles: list[dict[str, Any]] = []
     history: list[dict[str, Any]] = []
@@ -234,7 +435,17 @@ def run_gameplay_loop(
     try:
         for cycle in range(1, max_cycles + 1):
             # --- 1. observe -------------------------------------------------
-            before = camera.grab(allow_blank=True)
+            before, before_blank = grab_nonblank(camera)
+            if before is not None and before_blank:
+                counters["blank_streak"] = counters.get("blank_streak", 0) + 1
+                print(f"  [cycle {cycle}] frame still black after retries "
+                      f"(streak {counters['blank_streak']}) - not acting.", flush=True)
+                if counters["blank_streak"] >= _MAX_BLANK_STREAK:
+                    stop_reason = (f"{_MAX_BLANK_STREAK} consecutive black frames - "
+                                   f"capture has no signal.")
+                    break
+                continue
+            counters["blank_streak"] = 0
             if before is None:
                 stop_reason = ("Capture returned no frame - the device may have "
                                "been taken by another application.")
@@ -251,6 +462,17 @@ def run_gameplay_loop(
                 stop_reason = "Could not JPEG-encode the frame for the vision model."
                 break
 
+            # --- 1b. self-directed curriculum (opt-in) -----------------------
+            # Every `curriculum_interval` cycles, not every cycle - an extra
+            # LLM call per cycle would double the round-trip cost for a
+            # decision that rarely needs to change that often.
+            if (profile.use_curriculum and cycle > 1
+                    and (cycle - 1) % max(1, profile.curriculum_interval) == 0):
+                proposed = _propose_next_goal(ctx, profile, goal, image_b64)
+                if proposed != goal:
+                    print(f"  Curriculum: goal changed -> {proposed}", flush=True)
+                    goal = proposed
+
             # --- 2. decide --------------------------------------------------
             stuck_text = ", ".join(
                 f"{name}={value}" for name, value in counters.items()
@@ -266,7 +488,9 @@ def run_gameplay_loop(
                 f"Read the attached live frame and return your decision.")
 
             try:
-                decision = decide(decider, prompt, image_b64)
+                decision = decide(decider, prompt, image_b64,
+                                  cacheable_prefix=profile.system_prompt,
+                                  provider=provider)
             except Exception as exc:
                 print(f"  [cycle {cycle}] vision model error: {exc}", flush=True)
                 history.append({"cycle": cycle, "moves": "none", "delta": None,
@@ -280,7 +504,8 @@ def run_gameplay_loop(
             print(f"  Thinking  : {decision.reasoning}", flush=True)
 
             # --- 3. terminal (success) scene state ---------------------------
-            if decision.scene_state in profile.success_states:
+            if (decision.scene_state in profile.success_states
+                    and profile.confirm_success(decision, counters)):
                 terminal_evidence = profile.build_terminal_evidence(
                     decision, cycle, before_path)
                 print(f"  >> {decision.scene_state.upper()}: "
@@ -302,7 +527,17 @@ def run_gameplay_loop(
                 continue
 
             # --- 4. choose the moves ------------------------------------------
+            # forced_moves (safety overrides, e.g. critical-health retreat)
+            # always wins - checked first, before any skill replay.
             moves = profile.forced_moves(decision, counters)
+            used_skill = False
+            if moves is None and profile.use_skill_memory:
+                moves = _skill_lookup(ctx, profile, decision.scene_state)
+                used_skill = moves is not None
+                if used_skill:
+                    print(f"  Skill     : replaying saved '{decision.scene_state}' "
+                         f"sequence instead of asking the model to re-decide it",
+                         flush=True)
             if moves is None:
                 moves = list(decision.moves)
                 if not moves:
@@ -331,7 +566,7 @@ def run_gameplay_loop(
 
             # --- 6. re-observe and measure -------------------------------------
             time.sleep(max(0.0, float(settle_after_move)))
-            after = camera.grab(allow_blank=True)
+            after, after_blank = grab_nonblank(camera)
             after_path = (ctx.artifacts.save_frame(after, f"{profile.artifact_prefix}-{cycle:03d}-after")
                           if after is not None else None)
             if after_path:
@@ -343,7 +578,23 @@ def run_gameplay_loop(
                 print(f"  Delta     : {delta:.3f}", flush=True)
 
             progressed = delta is not None and delta >= 1.0
-            profile.update_stuck_counters(counters, moves[:3], progressed)
+            if after_blank:
+                # Black after-frame (loading/transition): not evidence of
+                # being stuck, so do not feed the stuck counters.
+                print("  Delta     : (after-frame black - not counted as stuck)",
+                      flush=True)
+            else:
+                profile.update_stuck_counters(counters, moves[:3], progressed)
+
+            if used_skill:
+                # The loop's own measured delta IS the evidence - reuse it
+                # rather than inventing a second judgment of "did it work."
+                report_skill_impl_result = report_skill_outcome_impl(
+                    ctx, profile=profile.key, skill_name=decision.scene_state,
+                    success=progressed)
+                print(f"  Skill     : outcome reported, success_rate now "
+                     f"{report_skill_impl_result.get('entry', {}).get('success_rate')}",
+                     flush=True)
 
             move_labels = ", ".join(
                 str(m.get("macro")) + (f"({m.get('direction')})"
@@ -405,6 +656,7 @@ def run_gameplay_loop(
         mean_delta=mean_delta,
         max_delta=max_delta,
         observed_change=bool(max_delta is not None and max_delta >= 1.0),
+        goal_met=bool(terminal_evidence),
         duration_seconds=duration,
         dispatched=dispatched_any,
         caveat=(

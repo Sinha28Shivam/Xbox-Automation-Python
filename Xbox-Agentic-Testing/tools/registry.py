@@ -205,6 +205,6 @@ def build_default_registry(hardware: HardwareBridge, artifacts: ArtifactStore,
     registry.load_modules(module_names or [
         "hardware_tools", "input_tools", "vision_tools", "report_tools", "game_tools",
         "minecraft_gameplay", "coordinate_tools", "location_memory", "exploration_tools",
-        "combat_tools", "health_tools",
+        "combat_tools", "health_tools", "skill_memory", "gameplay_benchmark",
     ])
     return registry

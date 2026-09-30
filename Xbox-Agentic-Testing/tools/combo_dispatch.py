@@ -42,6 +42,11 @@ class ComboComponent:
     kind="stick"   -> name is a sticks: key (e.g. "left_stick"), direction
                        is a directions: key (e.g. "up"), strength scales the
                        deflection 0..1 (gentler look/aim, full for movement).
+    kind="axis"    -> name is a sticks: key. x/y are ARBITRARY -1..1 values
+                       (not a named direction) - the primitive continuous
+                       analog aiming needs, e.g. Max's Magic Marker steering
+                       the cursor toward a glowing node at (0.3, -0.7)
+                       rather than a cardinal direction.
     kind="button"  -> name is a buttons: key (e.g. "a", "ls"). Held for the
                        combo's full duration, released with everything else.
     kind="trigger" -> name is a triggers: key (e.g. "rt"). value overrides
@@ -49,11 +54,13 @@ class ComboComponent:
                        ever needed; None uses the full press value.
     """
 
-    kind: Literal["stick", "button", "trigger"]
+    kind: Literal["stick", "axis", "button", "trigger"]
     name: str
     direction: str | None = None
     strength: float = 1.0
     value: int | None = None
+    x: float = 0.0
+    y: float = 0.0
 
 
 def _stick_events(pad: Any, c: ComboComponent) -> tuple[list[tuple[str, int]], list[tuple[str, int]]]:
@@ -70,6 +77,22 @@ def _stick_events(pad: Any, c: ComboComponent) -> tuple[list[tuple[str, int]], l
     if strength < 1.0:
         magnitude = int(round(magnitude * strength))
     return [(axis, magnitude)], [(axis, 0)]
+
+
+def _axis_events(pad: Any, c: ComboComponent) -> tuple[list[tuple[str, int]], list[tuple[str, int]]]:
+    spec = pad.cfg.sticks.get(c.name)
+    if spec is None:
+        raise KeyError(f"Unknown stick '{c.name}'. Known: {', '.join(pad.cfg.sticks)}")
+    x_axis, y_axis = spec["x_axis"], spec["y_axis"]
+    low, high = int(spec.get("min", -32768)), int(spec.get("max", 32767))
+
+    def scaled(value: float) -> int:
+        value = max(-1.0, min(1.0, float(value)))
+        return int(round(value * (high if value >= 0 else abs(low))))
+
+    press = [(x_axis, scaled(c.x)), (y_axis, scaled(c.y))]
+    release = [(x_axis, 0), (y_axis, 0)]
+    return press, release
 
 
 def _button_events(pad: Any, c: ComboComponent) -> tuple[list[tuple[str, int]], list[tuple[str, int]]]:
@@ -93,6 +116,8 @@ def resolve_component(pad: Any, c: ComboComponent) -> tuple[list[tuple[str, int]
     """One component's (press_events, release_events)."""
     if c.kind == "stick":
         return _stick_events(pad, c)
+    if c.kind == "axis":
+        return _axis_events(pad, c)
     if c.kind == "button":
         return _button_events(pad, c)
     if c.kind == "trigger":
@@ -129,3 +154,21 @@ def dispatch_combo(pad: Any, components: list[ComboComponent],
 
     return {"dispatched": sent and released, "components": len(components),
            "hold": hold, "label": label}
+
+
+# ===========================================================================
+# WHY max_profile.py's Magic Marker gesture is NOT migrated onto this engine
+# ===========================================================================
+# `kind="axis"` above adds the one primitive the marker genuinely needed
+# (arbitrary continuous x/y aiming, not a named direction) - so the
+# capability gap is closed. What still does not fit is SHAPE, not a missing
+# primitive: `dispatch_combo` is assert -> hold-for-a-fixed-duration ->
+# release, but the marker's real sequence is OPEN -> AIM -> ANCHOR -> STROKE
+# (which polls the ink gauge mid-hold via `_draw_until_empty` and keeps
+# going until the gauge empties, not until a timer does) -> COMMIT -> CLOSE,
+# a five-phase stateful gesture with a data-dependent middle phase. Forcing
+# that into one fixed-hold call would mean either dropping the ink-gauge
+# polling (a real, hardware-verified behavior) or growing dispatch_combo
+# into a mid-hold-callback engine that no other game currently needs -
+# neither is a currently justified rewrite for its own sake. max_profile.py
+# keeps its own `_hold()` wrapper around `_send_events` for this reason.

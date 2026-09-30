@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from registry import ToolContext
 
-from combo_dispatch import ComboComponent, dispatch_combo
+from combo_dispatch import ComboComponent, dispatch_combo, resolve_component
 from gameplay_engine import GameProfile
 from minecraft_controls import button_for
 
@@ -29,9 +29,13 @@ class MinecraftMove(BaseModel):
     """One controller action. Several may be returned per cycle."""
 
     action: Literal[
-        "move", "look", "mine", "attack", "jump", "sprint", "interact",
+        "move", "run", "look", "mine", "attack", "jump", "sprint", "interact",
         "press_button", "navigate_recipe", "craft_all", "wait",
-    ] = Field(description="The controller action to execute.")
+        "use", "quick_move", "loot_chest",
+    ] = Field(description="The controller action to execute. 'use' taps LT "
+                          "(Use Item) to open a chest/villager; 'quick_move' "
+                          "presses Y to transfer the highlighted stack/trade "
+                          "on a chest or trade screen.")
 
     direction: Literal["left", "right", "up", "down", "none"] = Field(
         default="none",
@@ -47,8 +51,9 @@ class MinecraftMove(BaseModel):
                     "screen change).")
 
     duration: float = Field(
-        default=0.8, ge=0.1, le=6.0,
-        description="Seconds to hold the stick/trigger/button. For 'mine' "
+        default=0.8, ge=0.1, le=8.0,
+        description="Seconds to hold the stick/trigger/button. For 'run' "
+                    "use 3-6 (sustained sprint). For 'mine' "
                     "this is how long RT stays held on the block - a single "
                     "log usually needs several seconds of continuous holding. "
                     "For 'attack' this is IGNORED - each attack is always a "
@@ -117,15 +122,47 @@ class MinecraftFrameDecision(BaseModel):
     scene_state: Literal[
         "in_gameplay", "menu_or_prompt", "cutscene_or_loading",
         "inventory_open", "planks_crafted", "stuck_or_blocked",
+        "chest_open", "trade_open",
     ] = Field(description="Classification of the current screen.")
 
     player_visible: bool = Field(
         description="Is the first-person view / hotbar / crosshair visible?")
+
+    # Village-loot fields (default False so the planks profile is unaffected).
+    chest_visible: bool = Field(
+        default=False,
+        description="A chest/barrel block is visible in the 3D view.")
+    villager_visible: bool = Field(
+        default=False,
+        description="A villager (NPC with big nose) is visible in the 3D view.")
+    loot_taken: bool = Field(
+        default=False,
+        description="Only on a chest screen: your PREVIOUS quick_move visibly "
+                    "removed a stack from the chest grid.")
+    trade_done: bool = Field(
+        default=False,
+        description="Only on a trade screen: your PREVIOUS action visibly "
+                    "completed a trade (payment consumed / result received).")
+
     tree_visible: bool = Field(
+        default=False,
         description="Is a tree trunk visible anywhere in the frame?")
     log_visible: bool = Field(
-        description="Is a wood log block visible directly in front of the "
-                    "crosshair (close enough to mine)?")
+        default=False,
+        description="Is a wood log BLOCK (not a mob) visible directly in "
+                    "front of the crosshair, close enough to mine? A real "
+                    "hardware run mined a creeper standing at the crosshair "
+                    "for 2.5s after misreading its dark, vertical silhouette "
+                    "as a log trunk in dim/night lighting - if ANYTHING that "
+                    "moves, has legs, or could be a mob is at the crosshair, "
+                    "this must be False even if it looks vaguely trunk-like.")
+    mob_blocking_crosshair: bool = Field(
+        default=False,
+        description="Is a mob (any kind, hostile or passive) standing at or "
+                    "very near the crosshair, in the spot you might "
+                    "otherwise mine? Check this BEFORE setting log_visible - "
+                    "log_visible and mob_blocking_crosshair should never "
+                    "both be true for the same thing at the crosshair.")
 
     nearby_entities: list[NearbyEntity] = Field(
         default_factory=list,
@@ -184,6 +221,22 @@ GOAL: find the nearest tree, break its logs, open the inventory, and craft
 the logs into planks. Then stop - do not build, explore further, or fight
 anything once planks exist in the inventory/crafting grid.
 
+EXPLORATION STRATEGY: do NOT creep in 0.8s steps. If no tree is visible,
+use `run` (duration 4-6) in a straight line, and `look` to pick a new
+heading. Trees are green canopies on brown trunks - ignore houses, fences
+and villagers. If a wall, house or fence fills the view, `look` 1-2s to
+turn well away from it, then `run` again. Once a tree is in view, `run`
+toward it, then switch to short `move` steps and `mine` when the trunk is
+under the crosshair.
+
+If the view is very dark or enclosed (dark brick, cave, no sky), you are
+inside a structure or hole: turn around and sprint back the way you came,
+or jump up out of it - do not keep mining the walls. Only `mine` LOG blocks
+(brown bark / tree trunks), never bricks, stone or dirt. The loop will
+automatically open the crafting screen after several mining cycles; when it
+is open, read the Planks badge into `craftable_count` and, if > 0, use
+craft_all.
+
 While pursuing that goal, also report any mob, structure, or resource you
 notice in `nearby_entities` (e.g. a zombie, a distant house, an ore vein) -
 this is purely observational and does not change which moves are valid this
@@ -191,11 +244,20 @@ cycle. Only set `is_threat` true for a hostile mob close enough to matter
 right now; do not flag distant or passive mobs as threats.
 
 CONTROLS AVAILABLE TO YOU (as macros)
-  move          : left stick, walk/run in `direction` (forward=up, back=down)
+  move          : left stick, short walk step in `direction` (forward=up,
+                  back=down). Use only for small corrections near a target.
+  run           : SPRINT forward for a long stretch (duration 3-6s): holds
+                  the left stick up and clicks LS so the player sprints
+                  continuously. THIS is how you explore - one run covers
+                  30-60 blocks. Can be combined with look (turn while
+                  running) and jump (hop obstacles) in the same cycle.
   look          : right stick, turn the camera in `direction` to find/face a tree
   mine          : hold RT while facing a block, breaks it after a few seconds
                   of continuous holding. Must be standing close enough that
-                  the block is directly under the crosshair.
+                  the block is directly under the crosshair. NEVER mine if
+                  a mob is at the crosshair (a real run mistook a creeper's
+                  dark vertical silhouette for a log trunk at night and held
+                  RT on it) - check `mob_blocking_crosshair` first.
   jump          : press A once - clear a 1-block step or gap.
   sprint        : click the left stick (LS) to toggle sprinting while moving.
                   Combine with move in the SAME cycle for a running jump or
@@ -273,6 +335,9 @@ def execute_minecraft_move(ctx: ToolContext, move: MinecraftMove) -> dict[str, A
         return {"macro": "move", "direction": heading,
                 "duration": duration, "dispatched": bool(dispatched)}
 
+    if action == "run":
+        return _dispatch_run(pad, [move])[0]
+
     if action == "look":
         heading = move.direction if move.direction != "none" else "right"
         dispatched = pad.stick("right_stick", direction=heading,
@@ -347,6 +412,31 @@ def execute_minecraft_move(ctx: ToolContext, move: MinecraftMove) -> dict[str, A
         return {"macro": "craft_all", "button": "y",
                 "dispatched": bool(dispatched)}
 
+    if action == "use":
+        # LT = Use Item / Place Block (minecraft_controls.yaml). A short
+        # pull opens chests and villager trade screens.
+        lt = button_for("use_item_place_block")
+        dispatched = pad.hold(lt, max(0.2, min(1.0, duration)))
+        return {"macro": "use", "button": lt, "dispatched": bool(dispatched)}
+
+    if action == "loot_chest":
+        from .chest_loot import loot_chest_grid
+        res = loot_chest_grid(ctx)
+        print(f"[chest-loot] {res}", flush=True)
+        c = _ACTIVE_COUNTERS
+        if c is not None:
+            c["loot_verified_transfers"] = c.get("loot_verified_transfers", 0) + res["verified_transfers"]
+            c["loot_failed_transfers"] = c.get("loot_failed_transfers", 0) + res["failed_transfers"]
+            c["loot_runs"] = c.get("loot_runs", 0) + 1
+            if res["initial_occupied"] and not res["remaining_occupied"]:
+                c["chest_emptied"] = True
+        return res
+
+    if action == "quick_move":
+        dispatched = pad.press("y", duration=min(duration, 0.30))
+        return {"macro": "quick_move", "button": "y",
+                "dispatched": bool(dispatched)}
+
     if action == "jump":
         dispatched = pad.press("a", duration=min(duration, 0.25))
         return {"macro": "jump", "button": "a", "dispatched": bool(dispatched)}
@@ -370,13 +460,20 @@ def execute_minecraft_move(ctx: ToolContext, move: MinecraftMove) -> dict[str, A
 # combo_dispatch.py (shared with every other game); this function only maps
 # Minecraft's own move vocabulary onto that engine's ComboComponent list.
 # ===========================================================================
-_SIMULTANEOUS_COMPATIBLE = {"move", "look", "attack", "mine", "jump", "sprint"}
+_SIMULTANEOUS_COMPATIBLE = {"move", "run", "look", "attack", "mine", "jump", "sprint"}
+
+_RUN_MAX_SECONDS = 8.0
+_SPRINT_CLICK_SECONDS = 0.2  # LS is a toggle: click once at run start, then release
 
 _LOOK_STRENGTH = 0.6  # gentler than a full deflection, or the camera whips too fast to track a target
 
 
 def _minecraft_move_to_component(move: MinecraftMove) -> tuple[ComboComponent, float]:
     """One MinecraftMove -> (ComboComponent, hold duration for that component)."""
+    if move.action == "run":
+        heading = move.direction if move.direction in ("up", "down", "left", "right") else "up"
+        hold = max(0.5, min(_RUN_MAX_SECONDS, float(move.duration)))
+        return ComboComponent(kind="stick", name="left_stick", direction=heading), hold
     if move.action == "move":
         heading = move.direction if move.direction != "none" else "up"
         return ComboComponent(kind="stick", name="left_stick", direction=heading), float(move.duration)
@@ -392,6 +489,48 @@ def _minecraft_move_to_component(move: MinecraftMove) -> tuple[ComboComponent, f
     if move.action == "sprint":
         return ComboComponent(kind="button", name="ls"), min(float(move.duration), 0.15)
     raise ValueError(f"'{move.action}' is not simultaneous-dispatch compatible")
+
+
+def _dispatch_run(pad: Any, moves: list[MinecraftMove]) -> list[dict[str, Any]]:
+    """Sustained sprint: every component is pressed together, each is
+    released at its own hold time (LS click and jump are short, the run
+    stick and look are long)."""
+    sender = getattr(pad, "_send_events", None)
+    if not callable(sender):
+        return [{"macro": m.action, "dispatched": False,
+                 "error": "pad has no _send_events"} for m in moves]
+
+    timed: list[tuple[float, list[tuple[str, int]]]] = []
+    press_all: list[tuple[str, int]] = []
+    outcomes: list[dict[str, Any]] = []
+    sprint_wanted = False
+    for move in moves:
+        component, hold = _minecraft_move_to_component(move)
+        press, release = resolve_component(pad, component)
+        press_all += press
+        timed.append((hold, release))
+        outcome: dict[str, Any] = {"macro": move.action, "duration": hold}
+        if component.kind == "stick":
+            outcome["direction"] = component.direction
+        else:
+            outcome["button"] = component.name
+        outcomes.append(outcome)
+        if move.action == "run" and component.direction == "up":
+            sprint_wanted = True
+    if sprint_wanted:
+        press, release = resolve_component(pad, ComboComponent(kind="button", name="ls"))
+        press_all += press
+        timed.append((_SPRINT_CLICK_SECONDS, release))
+
+    ok = bool(sender(press_all, "run:press"))
+    elapsed = 0.0
+    for hold, release in sorted(timed, key=lambda t: t[0]):
+        time.sleep(max(0.0, hold - elapsed))
+        elapsed = max(elapsed, hold)
+        ok = bool(sender(release, "run:release")) and ok
+    for o in outcomes:
+        o["dispatched"] = ok
+    return outcomes
 
 
 def execute_minecraft_moves(ctx: ToolContext,
@@ -414,6 +553,13 @@ def execute_minecraft_moves(ctx: ToolContext,
         return [execute_minecraft_move(ctx, m) for m in moves]
 
     pad = ctx.hardware.pad()
+    if any(m.action == "run" for m in moves):
+        first = moves[0]
+        if first.action == "look" and first.duration >= 1.0 and len(moves) > 1:
+            # Long turn first, so the run starts on the new heading.
+            return [execute_minecraft_move(ctx, first)] + _dispatch_run(pad, moves[1:])
+        return _dispatch_run(pad, moves)
+
     components: list[ComboComponent] = []
     outcomes: list[dict[str, Any]] = []
     max_hold = 0.0
@@ -458,19 +604,32 @@ def _fallback_moves(decision: MinecraftFrameDecision) -> list[MinecraftMove]:
         return [MinecraftMove(
             action="navigate_recipe", direction="right", duration=0.2,
             purpose="Model returned no move; browse the recipe list.")]
-    # No decision is still a decision: turn to look for a tree rather than
-    # burning a cycle standing still.
-    return [MinecraftMove(
-        action="look", direction="right", duration=0.6,
-        purpose="Model returned no move; look around for a tree.")]
+    if decision.scene_state == "chest_open":
+        return [MinecraftMove(action="loot_chest", purpose="Chest open: loot every occupied slot with Y.")]
+    if decision.scene_state == "trade_open":
+        return [MinecraftMove(action="interact", button="a", purpose="Trade screen: select the highlighted trade.")]
+    # No decision is still a decision: turn and sprint to explore rather
+    # than burning a cycle standing still.
+    return [
+        MinecraftMove(action="look", direction="right", duration=0.6,
+                      purpose="Model returned no move; turn to a new heading."),
+        MinecraftMove(action="run", direction="up", duration=4.0,
+                      purpose="Model returned no move; sprint to explore."),
+    ]
 
 
 def _print_extra(decision: MinecraftFrameDecision) -> None:
     print(f"  Tree seen : {decision.tree_visible}", flush=True)
-    print(f"  Log seen  : {decision.log_visible}", flush=True)
+    print(f"  Log seen  : {decision.log_visible}"
+         f"{'  !! MOB AT CROSSHAIR' if decision.mob_blocking_crosshair else ''}",
+         flush=True)
     if decision.scene_state == "inventory_open":
         print(f"  Recipe    : {decision.recipe_highlighted or '(none)'} "
               f"x{decision.craftable_count}", flush=True)
+    if (decision.chest_visible or decision.villager_visible or decision.loot_taken
+            or decision.trade_done or decision.scene_state in ("chest_open", "trade_open")):
+        print(f"  Village   : chest={decision.chest_visible} villager={decision.villager_visible} "
+              f"loot_taken={decision.loot_taken} trade_done={decision.trade_done}", flush=True)
     if decision.nearby_entities:
         summary = ", ".join(
             f"{e.kind}({e.category}/{e.direction}/{e.distance_estimate}"
@@ -483,6 +642,11 @@ def _cycle_extra_fields(decision: MinecraftFrameDecision) -> dict[str, Any]:
     return {
         "tree_visible": decision.tree_visible,
         "log_visible": decision.log_visible,
+        "mob_blocking_crosshair": decision.mob_blocking_crosshair,
+        "chest_visible": decision.chest_visible,
+        "villager_visible": decision.villager_visible,
+        "loot_taken": decision.loot_taken,
+        "trade_done": decision.trade_done,
         "recipe_highlighted": decision.recipe_highlighted,
         "craftable_count": decision.craftable_count,
         "nearby_entities": [e.model_dump() for e in decision.nearby_entities],
@@ -510,6 +674,7 @@ def _update_stuck_counters(counters: dict[str, int], moves: list[MinecraftMove],
                            progressed: bool) -> None:
     was_mining = any(m.action == "mine" for m in moves)
     if was_mining:
+        counters["mine_cycles"] = counters.get("mine_cycles", 0) + 1
         counters["mine_streak"] = 0 if progressed else counters.get("mine_streak", 0) + 1
     else:
         counters["stuck_streak"] = 0 if progressed else counters.get("stuck_streak", 0) + 1
@@ -518,7 +683,8 @@ def _update_stuck_counters(counters: dict[str, int], moves: list[MinecraftMove],
 
 def _stuck_limits(stuck_limit: int) -> dict[str, int]:
     base = max(2, int(stuck_limit))
-    return {"stuck_streak": base, "mine_streak": base * 2}
+    # Escape maneuvers start at streak 3, so the stop must sit well above that.
+    return {"stuck_streak": max(10, base * 2), "mine_streak": base * 2}
 
 
 def _stuck_message(name: str, value: int) -> str:
@@ -529,10 +695,280 @@ def _stuck_message(name: str, value: int) -> str:
                 f"unreachable/incorrect block. Stopping instead of sending "
                 f"more input into a void.")
     return (f"{value} consecutive non-mining cycles produced no visual "
-            f"change. Either input is not reaching the console (an "
-            f"unauthenticated GIMX session is the usual cause) or the model "
-            f"cannot find/reach a tree. Stopping instead of sending more "
-            f"input into a void.")
+            f"change even with escape maneuvers. The player is most likely "
+            f"boxed in by terrain or structures (or the screen is frozen). "
+            f"Stopping instead of sending more input into a void.")
+
+
+# ===========================================================================
+# Forced re-aim after repeated failed mine attempts
+# ===========================================================================
+# REAL BUG FOUND ON HARDWARE (2026-09-28): a 12-cycle live run repeatedly
+# reported log_visible=True and dispatched mine, but the crosshair was
+# actually resting on leaf canopy/gaps between trunks (confirmed by
+# inspecting the saved frames), not a log block - so RT was held on empty
+# air over and over. mine_streak already tracks exactly this ("N failed
+# mine attempts in a row"), but nothing was using it to actually CHANGE
+# the approach - the model kept re-guessing the same wrong aim. Forcing a
+# small deliberate look-down + step-forward after 2 failures breaks the
+# loop by moving the crosshair to a genuinely different spot, instead of
+# hoping the model's next guess is better.
+_REAIM_AFTER_STREAK = 2
+_ESCAPE_AFTER_STREAK = 3
+_CRAFT_CHECK_AFTER_MINES = 5
+
+
+def _forced_moves(decision: MinecraftFrameDecision,
+                  counters: dict[str, Any]) -> list[MinecraftMove] | None:
+    # SAFETY OVERRIDE, checked first: never mine a mob. A real hardware run
+    # held RT on a creeper for 2.5s after the model itself said log_visible
+    # (the schema field didn't exist yet to catch this) - this is not left
+    # to the model's own judgment call the way the re-aim below is, because
+    # a creeper standing that close is a real explosion risk in survival.
+    if decision.mob_blocking_crosshair:
+        return [MinecraftMove(
+            action="look", direction="right", duration=0.5,
+            purpose="SAFETY OVERRIDE: a mob is at the crosshair, not a log - "
+                    "turning away instead of mining it.")]
+
+    # Crafting screen handling: bound how long it stays open.
+    if decision.scene_state == "inventory_open":
+        counters["inv_cycles"] = counters.get("inv_cycles", 0) + 1
+        if counters["inv_cycles"] >= 3 and decision.craftable_count <= 0:
+            counters["inv_cycles"] = 0
+            counters["mine_cycles"] = 0
+            return [MinecraftMove(
+                action="press_button", button="b", duration=0.2,
+                purpose="Crafting check found no craftable planks - close it and "
+                        "go chop another tree.")]
+        return None
+    counters["inv_cycles"] = 0
+
+    # Mining cap: after N mining cycles, check the crafting screen for a Planks badge.
+    if (counters.get("mine_cycles", 0) >= _CRAFT_CHECK_AFTER_MINES
+            and decision.scene_state == "in_gameplay"):
+        counters["mine_cycles"] = 0
+        counters["craft_checks"] = counters.get("craft_checks", 0) + 1
+        return [MinecraftMove(
+            action="press_button", button="x", duration=0.2,
+            purpose="MINING CAP: open crafting to check for a Planks badge.")]
+
+    streak = counters.get("stuck_streak", 0)
+    if streak >= _ESCAPE_AFTER_STREAK and decision.scene_state in (
+            "in_gameplay", "stuck_or_blocked"):
+        counters["escapes"] = counters.get("escapes", 0) + 1
+        n = counters["escapes"]
+        turn = "right" if n % 2 else "left"
+        variant = n % 4
+        if variant == 0:  # back out, turn hard, sprint
+            return [
+                MinecraftMove(action="move", direction="down", duration=2.0,
+                              purpose="ESCAPE: back away from the obstacle."),
+                MinecraftMove(action="look", direction=turn, duration=2.2,
+                              purpose="ESCAPE: turn well away."),
+                MinecraftMove(action="run", direction="up", duration=5.0,
+                              purpose="ESCAPE: sprint along the new heading."),
+            ]
+        if variant == 2:  # about-face and sprint back the way we came
+            return [
+                MinecraftMove(action="look", direction=turn, duration=4.0,
+                              purpose="ESCAPE: about-face (~180 deg)."),
+                MinecraftMove(action="run", direction="up", duration=6.0,
+                              purpose="ESCAPE: sprint back the way we came."),
+            ]
+        if variant == 3:  # sidestep, then hop and sprint
+            return [
+                MinecraftMove(action="move", direction=turn, duration=1.5,
+                              purpose="ESCAPE: sidestep along the wall."),
+                MinecraftMove(action="jump", duration=0.25,
+                              purpose="ESCAPE: hop a fence/ledge."),
+                MinecraftMove(action="run", direction="up", duration=4.0,
+                              purpose="ESCAPE: sprint forward."),
+            ]
+        return [
+            MinecraftMove(action="look", direction=turn,
+                          duration=2.2 if streak >= 5 else 1.1,
+                          purpose="ESCAPE: no progress - turn away from the obstacle."),
+            MinecraftMove(action="run", direction="up", duration=4.0,
+                          purpose="ESCAPE: sprint along the new heading."),
+            MinecraftMove(action="jump", duration=0.25,
+                          purpose="ESCAPE: hop a fence/ledge if one is in the way."),
+        ]
+
+    if counters.get("mine_streak", 0) >= _REAIM_AFTER_STREAK:
+        return [
+            MinecraftMove(action="look", direction="down", duration=0.3,
+                         purpose="FORCED RE-AIM: repeated mine attempts produced "
+                                 "no change - the crosshair is likely on leaves/"
+                                 "air, not the trunk. Look down slightly."),
+            MinecraftMove(action="move", direction="up", duration=0.4,
+                         purpose="FORCED RE-AIM: step closer so the trunk fills "
+                                 "more of the frame under the corrected crosshair."),
+        ]
+    return None
+
+
+# ===========================================================================
+# Village profile: explore, loot a chest, trade with a villager
+# ===========================================================================
+VILLAGE_SYSTEM_PROMPT = """\
+You are playing Minecraft (Xbox Bedrock) on a real Xbox One, survival, first
+person, standing in or near a VILLAGE. The attached image is the LIVE screen.
+Reason only from what you can see.
+
+GOAL: (1) find a CHEST (brown wooden box with a metal latch, often inside
+houses) and loot it; (2) find a VILLAGER (NPC with a big nose, robe) and open
+their trade screen and complete one trade. Do NOT ignore chests or
+villagers - they are the targets. Do NOT mine anything.
+
+SET FLAGS HONESTLY: chest_visible / villager_visible only when you clearly
+see one. loot_taken only on a chest screen when the chest grid visibly lost a
+stack after your last quick_move. trade_done only on a trade screen when the
+previous action visibly consumed payment or produced a result item.
+
+EXPLORING: use `run` (3-5s) along streets, `look` to choose a heading. If a
+wall/fence fills the view, `look` 1-2s away then `run`. Jump (A) hops fences
+and 1-block steps. If the view is dark or enclosed, back out and turn around.
+Avoid pits, water, lava.
+
+APPROACH: when a chest or villager is visible, face it (`look`), `run` or
+`move` up until it is very close (distance_estimate very_close), keep it at
+the crosshair, then `use` (taps LT) to open it. Do not `use` from far away.
+A villager standing at the crosshair is NOT a mob to avoid.
+
+ON A CHEST SCREEN (scene_state=chest_open): the chest grid is the TOP panel;
+your inventory is below. The loop transfers items with quick_move (Y) and
+D-pad navigation and closes it with B - you may also request those moves.
+ON A TRADE SCREEN (scene_state=trade_open): trades are listed on the left,
+selected trade's payment and result slots on the right. Use D-pad via
+navigate_recipe (up/down) to pick a trade, interact 'a' to select it,
+quick_move (Y) to take the result; 'b' closes it.
+
+CONTROLS: move, run (sprint), look, jump, use (LT tap: open chest/villager),
+quick_move (Y), interact (single button, set `button`), navigate_recipe
+(D-pad, `direction`), press_button (`button`, e.g. 'b' to close a screen),
+wait. Never use `mine` or `attack`.
+
+SCENE STATES: in_gameplay, menu_or_prompt, cutscene_or_loading,
+inventory_open (the player's own inventory/crafting screen - close with b),
+chest_open, trade_open, stuck_or_blocked (nothing changes).
+(planks_crafted is unused here - never report it.)
+
+Return your reading of the frame and 1-3 moves.
+"""
+
+_SCREEN_MAX_CYCLES = 5
+_AFTER_SCREEN_COOLDOWN = 4
+_ACTIVE_COUNTERS: dict[str, Any] | None = None
+
+
+def _village_forced_moves(decision: MinecraftFrameDecision,
+                          counters: dict[str, Any]) -> list[MinecraftMove] | None:
+    global _ACTIVE_COUNTERS
+    _ACTIVE_COUNTERS = counters
+    state = decision.scene_state
+    if state == "chest_open":
+        counters["chest_cycles"] = counters.get("chest_cycles", 0) + 1
+        counters["screen_seen_chest"] = counters.get("screen_seen_chest", 0) + 1
+        n = counters["chest_cycles"]
+        if n > 2 or counters.get("chest_emptied"):
+            counters["chest_emptied"] = False
+            counters["chest_cycles"] = 0
+            counters["cooldown"] = _AFTER_SCREEN_COOLDOWN
+            return [MinecraftMove(action="press_button", button="b", duration=0.2,
+                                  purpose="Chest looted/checked long enough - close it.")]
+        return [MinecraftMove(action="loot_chest",
+                              purpose="Walk the chest grid and Y-transfer every occupied slot.")]
+    counters["chest_cycles"] = 0
+
+    if state == "trade_open":
+        counters["trade_cycles"] = counters.get("trade_cycles", 0) + 1
+        counters["screen_seen_trade"] = counters.get("screen_seen_trade", 0) + 1
+        n = counters["trade_cycles"]
+        if n > _SCREEN_MAX_CYCLES:
+            counters["trade_cycles"] = 0
+            counters["cooldown"] = _AFTER_SCREEN_COOLDOWN
+            return [MinecraftMove(action="press_button", button="b", duration=0.2,
+                                  purpose="Trade attempts done - close the screen.")]
+        if n == 1:
+            return [MinecraftMove(action="interact", button="a",
+                                  purpose="Select the highlighted trade."),
+                    MinecraftMove(action="quick_move", purpose="Take the trade result.")]
+        heading = "down" if n % 2 == 0 else "up"
+        return [MinecraftMove(action="navigate_recipe", direction=heading, duration=0.2,
+                              purpose="Try the next trade in the list."),
+                MinecraftMove(action="interact", button="a", purpose="Select that trade."),
+                MinecraftMove(action="quick_move", purpose="Take the trade result.")]
+    counters["trade_cycles"] = 0
+
+    if state == "inventory_open":
+        return [MinecraftMove(action="press_button", button="b", duration=0.2,
+                              purpose="Wrong screen - close the inventory.")]
+
+    if counters.get("cooldown", 0) > 0 and state == "in_gameplay":
+        counters["cooldown"] -= 1
+        return [MinecraftMove(action="look", direction="right", duration=1.5,
+                              purpose="Leave the just-used chest/villager - turn away."),
+                MinecraftMove(action="run", direction="up", duration=4.0,
+                              purpose="Explore onward to the next target.")]
+
+    # A villager/chest at the crosshair is a target, not a hazard.
+    if decision.mob_blocking_crosshair and (decision.villager_visible or decision.chest_visible):
+        return None
+    return _forced_moves(decision, counters)
+
+
+def _village_confirm_success(decision: MinecraftFrameDecision,
+                             counters: dict[str, Any]) -> bool:
+    """Called only on chest_open/trade_open frames. Counts the model's
+    claims, and ends the run only once BOTH a loot and a trade are claimed."""
+    if decision.scene_state == "chest_open" and decision.loot_taken:
+        counters["loot_claims"] = counters.get("loot_claims", 0) + 1
+    if decision.scene_state == "trade_open" and decision.trade_done:
+        counters["trade_claims"] = counters.get("trade_claims", 0) + 1
+    # Loot success is MEASURED (chest slot emptied after Y), not model-claimed.
+    return (counters.get("loot_verified_transfers", 0) >= 1
+            and counters.get("trade_claims", 0) >= 1)
+
+
+def _village_terminal_evidence(decision: MinecraftFrameDecision, cycle: int,
+                               frame_path: str | None) -> dict[str, Any]:
+    return {"cycle": cycle, "reasoning": decision.reasoning,
+            "frame_path": frame_path,
+            "note": "MODEL CLAIM of loot+trade; verify the frame pairs."}
+
+
+def _village_summarize(counters: dict[str, Any]) -> dict[str, Any]:
+    return {k: counters.get(k, 0) for k in (
+        "screen_seen_chest", "screen_seen_trade", "loot_claims", "trade_claims",
+        "loot_verified_transfers", "loot_failed_transfers", "loot_runs")}
+
+
+VILLAGE_PROFILE = GameProfile(
+    key="minecraft-village",
+    move_model=MinecraftMove,
+    frame_model=MinecraftFrameDecision,
+    system_prompt=VILLAGE_SYSTEM_PROMPT,
+    default_goal=("Find a chest and loot it, then find a villager and complete "
+                  "one trade."),
+    artifact_prefix="village",
+    json_artifact_name="minecraft-village-cycles.json",
+    execute_move=execute_minecraft_move,
+    execute_moves=execute_minecraft_moves,
+    success_states={"chest_open", "trade_open"},
+    terminal_flag_key="loot_and_trade_claimed",
+    terminal_evidence_key="loot_and_trade_evidence",
+    build_terminal_evidence=_village_terminal_evidence,
+    confirm_success=_village_confirm_success,
+    fallback_moves=_fallback_moves,
+    forced_moves=_village_forced_moves,
+    update_stuck_counters=_update_stuck_counters,
+    stuck_limits=_stuck_limits,
+    stuck_message=_stuck_message,
+    print_extra=_print_extra,
+    cycle_extra_fields=_cycle_extra_fields,
+    summarize=_village_summarize,
+)
 
 
 PROFILE = GameProfile(
@@ -552,6 +988,7 @@ PROFILE = GameProfile(
     terminal_evidence_key="planks_evidence",
     build_terminal_evidence=_build_terminal_evidence,
     fallback_moves=_fallback_moves,
+    forced_moves=_forced_moves,
     update_stuck_counters=_update_stuck_counters,
     stuck_limits=_stuck_limits,
     stuck_message=_stuck_message,

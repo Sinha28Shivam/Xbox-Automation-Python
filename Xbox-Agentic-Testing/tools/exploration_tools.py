@@ -54,6 +54,18 @@ from health_tools import read_survival_hud_impl
 
 _MOVE_DISTANCE_FLOOR = 0.5  # blocks; below this a movement cycle counts as "no progress"
 
+# REAL GAP FOUND (2026-09-29): the model was only ever told "turn and move
+# a different direction" when stuck, with no jump-specific instruction at
+# all - `jump` was not even listed as an available control here (it exists
+# in the shared MinecraftMove vocabulary, but this loop's own prompt never
+# mentioned it). A real run showed exactly this: stuck cycles were always
+# resolved by turning, never by jumping over what may have been a simple
+# 1-block step. Fixed by (1) adding jump to the prompt with instructions to
+# try it on LOW obstacles, and (2) forcing a jump+move combo directly after
+# repeated stuck cycles, since a generic prompt addition alone is not
+# guaranteed to change behavior without hardware evidence it does.
+_JUMP_AFTER_STREAK = 2
+
 # Real hardware run (2026-09-25, night): this loop had NO health awareness
 # at all and the player died at cycle 3 ("YOU DIED! ... slain by Zombie") -
 # the frame right before death showed health had already crashed to ~1.5
@@ -103,23 +115,37 @@ survival first-person view. You control it through an emulated controller.
 The attached image is the LIVE screen right now - reason only from what you
 can actually see in it.
 
-GOAL: walk outward and explore the surrounding terrain, avoiding hazards
-(lava, deep water, cliffs, hostile mobs). Do NOT try to mine, craft, or
-fight - just move, look around to survey new terrain, and report anything
-notable in `nearby_entities` (villages, structures, mobs, resources). If a
-hostile mob is close, turn away and move in a different direction rather
-than engaging it.
+GOAL: walk outward, explore the surrounding terrain, and GATHER resources
+you pass along the way (logs, ore, etc.) - exploring and mapping the area
+is the priority, not crafting anything with what you gather. Do NOT open
+the inventory or craft, and do NOT fight - avoid hazards (lava, deep
+water, cliffs, hostile mobs). If a hostile mob is close, turn away and
+move in a different direction rather than engaging it. Report everything
+notable in `nearby_entities` (villages, structures, mobs, resources) -
+this is the record of what exploration found.
 
 CONTROLS AVAILABLE TO YOU
   move  : left stick, walk in `direction` (forward=up, back=down)
   look  : right stick, turn the camera in `direction` to survey new terrain
+  jump  : press A once - clears a 1-block step, dirt mound, low fence, or
+          small gap. If a low obstacle (not a full wall or cliff) is
+          directly ahead and blocking movement, JUMP over it (combine with
+          move in the SAME cycle) instead of only turning away - a real
+          player would step over a low ledge rather than always detour
+          around it.
+  mine  : hold RT while facing a resource block (log, ore, etc.) directly
+          under the crosshair - use this to GATHER something you are
+          already standing next to, then continue exploring. Do not
+          detour far out of your way hunting for a specific resource;
+          gather what is directly in your path.
   wait  : do nothing this cycle, for a screen that is still loading
 
 Prefer alternating a few `move` cycles with an occasional `look` to survey
 before continuing, rather than only ever moving in one fixed direction.
-If the last few cycles show the player's position barely changing, you are
-probably blocked by terrain - turn and move a different direction rather
-than repeating the same move.
+If the last few cycles show the player's position barely changing, first
+consider whether a LOW obstacle (step/mound/fence) is directly ahead and
+try jumping over it; only turn and try a different direction if the block
+is too tall to jump (a full wall, dense trees, or a cliff edge).
 
 SCENE STATE RULES
   in_gameplay        : normal first-person view, hotbar/crosshair visible
@@ -147,9 +173,12 @@ def explore_and_map_impl(
     stuck_limit: int = 6,
     auto_log_sightings: bool = True,
 ) -> dict[str, Any]:
-    """Explore outward, using coordinate deltas (not pixel deltas) to detect
-    being stuck. Optionally auto-records notable sightings via
-    location_memory.record_location as they are observed.
+    """Explore outward and gather resources along the way (logs, ore, etc.),
+    using coordinate deltas (not pixel deltas) to detect being stuck.
+    Crafting is out of scope for this loop - exploring and mapping the area
+    is the priority. Optionally auto-records notable sightings (structures,
+    threats, AND resources) via location_memory.record_location as they
+    are observed - this is the real record of what exploration found.
 
     Runs until one of these ends it (bounded, like every other gameplay
     loop in this framework):
@@ -186,6 +215,13 @@ def explore_and_map_impl(
     last_hearts: int | None = None
     min_hearts_observed: int | None = None
     critical_health_stop = False
+    # SAME BUG FOUND AND FIXED IN combat_tools.py (2026-09-28), missed here
+    # at the time: creative mode draws NO hearts/hunger HUD at all, so
+    # read_survival_hud_impl correctly reads 0/0 there - but this loop was
+    # treating that 0 as a mortal emergency and stopping immediately on a
+    # real hardware run. A nonzero reading on EITHER bar is the only way to
+    # tell a real survival HUD apart from creative mode's absent one.
+    hud_confirmed_present = False
 
     print("\n" + "=" * 72, flush=True)
     print("  EXPLORE AND MAP", flush=True)
@@ -222,8 +258,19 @@ def explore_and_map_impl(
             # injected as an override the model actually sees.
             hud = read_survival_hud_impl(ctx, frame_path=before_path)
             current_hearts = hud.get("full_hearts") if hud.get("ok") else None
+            current_hunger = hud.get("full_hunger") if hud.get("ok") else None
+            if (current_hearts or 0) > 0 or (current_hunger or 0) > 0:
+                hud_confirmed_present = True
             health_line = ""
-            if current_hearts is not None:
+            if current_hearts is not None and not hud_confirmed_present:
+                # 0/0 with no HUD confirmed yet is indistinguishable from
+                # creative mode's absent HUD - see the bug note above.
+                health_line = (
+                    "No hearts/hunger HUD has been confirmed present yet "
+                    "(reading 0/0, which is also what creative mode looks "
+                    "like) - do NOT treat this as a real health emergency "
+                    "until a nonzero reading is seen at least once.\n")
+            elif current_hearts is not None:
                 if last_hearts is not None and current_hearts < last_hearts:
                     health_line = (
                         f"REAL HEALTH DROP DETECTED: {last_hearts} -> "
@@ -233,6 +280,7 @@ def explore_and_map_impl(
                         f"cycle.\n")
                 else:
                     health_line = f"Current health: {current_hearts} hearts.\n"
+            if current_hearts is not None:
                 last_hearts = current_hearts
                 min_hearts_observed = (current_hearts if min_hearts_observed is None
                                        else min(min_hearts_observed, current_hearts))
@@ -271,7 +319,11 @@ def explore_and_map_impl(
             if (auto_log_sightings and coords_available
                     and before_coords.get("ok") and not before_rejected):
                 for entity in decision.nearby_entities:
-                    if entity.category == "structure" or entity.is_threat:
+                    # Resources are logged too now that gathering is part of
+                    # this loop's goal - a real "what was found while
+                    # exploring" record needs every category, not just
+                    # structures/threats.
+                    if entity.category in ("structure", "resource") or entity.is_threat:
                         rec = record_location_impl(
                             ctx, label=entity.kind,
                             x=before_coords["x"], y=before_coords["y"], z=before_coords["z"],
@@ -285,8 +337,11 @@ def explore_and_map_impl(
             # Hard safety override: a critical health drop is NOT left to the
             # model - the loop itself forces a retreat move, same as
             # combat_tools.py's fix, and STOPS the exploration afterward
-            # rather than continuing to wander at near-death health.
-            if current_hearts is not None and current_hearts <= _CRITICAL_HEARTS:
+            # rather than continuing to wander at near-death health. Gated
+            # on hud_confirmed_present - creative mode's 0/0 read must
+            # never trigger this (see the bug note above).
+            if (hud_confirmed_present and current_hearts is not None
+                    and current_hearts <= _CRITICAL_HEARTS):
                 critical_health_stop = True
                 moves = [MinecraftMove(
                     action="move", direction="down", duration=1.2,
@@ -296,6 +351,28 @@ def explore_and_map_impl(
                 print(f"  !! Forcing retreat and stopping - health at or "
                       f"below critical floor ({current_hearts} <= "
                       f"{_CRITICAL_HEARTS})", flush=True)
+            elif stuck_streak >= _JUMP_AFTER_STREAK:
+                # FORCED JUMP, not left to the model's own judgment: the
+                # prompt already tells it to try jumping over low obstacles,
+                # but a real run showed it defaulting to "turn and move"
+                # every time instead - a generic instruction was not enough
+                # to make it actually try. Forcing jump+move directly, once,
+                # after repeated stuck cycles, is what actually clears a
+                # step/mound/fence the model keeps walking into instead of
+                # jumping over.
+                moves = [MinecraftMove(
+                    action="jump", duration=0.5,
+                    purpose=f"FORCED JUMP: {stuck_streak} consecutive cycles "
+                            f"made no progress - trying to clear a low "
+                            f"obstacle (step/mound/fence) instead of "
+                            f"repeating turn-and-move."),
+                    MinecraftMove(
+                    action="move", direction="up", duration=0.6,
+                    purpose="FORCED JUMP: continue forward while airborne "
+                            "to clear the obstacle.")]
+                print(f"  !! Forcing a jump - {stuck_streak} consecutive "
+                      f"stuck cycles, trying to clear a low obstacle",
+                      flush=True)
             else:
                 moves = list(decision.moves)
                 if decision.scene_state == "cutscene_or_loading" and not moves:
@@ -491,11 +568,14 @@ def _explore_and_map(ctx: ToolContext) -> Any:
 
     return make_tool(
         run, "explore_and_map",
-        "Explore outward on foot, using COORDINATE deltas (not pixel deltas) "
-        "to detect being stuck against terrain - falls back to pixel delta "
-        "only if the coordinate HUD becomes unreadable. Auto-logs notable "
-        "sightings (structures, threats) via record_location as it goes. "
-        "Bounded like every other gameplay loop: stops at max_cycles, a "
+        "Explore outward on foot AND gather resources along the way (logs, "
+        "ore, etc.) - crafting is out of scope, exploring/mapping is the "
+        "priority. Uses COORDINATE deltas (not pixel deltas) to detect "
+        "being stuck against terrain - falls back to pixel delta only if "
+        "the coordinate HUD becomes unreadable. Auto-logs notable sightings "
+        "(structures, threats, AND resources) via record_location as it "
+        "goes - this is the real record of what exploration found. Bounded "
+        "like every other gameplay loop: stops at max_cycles, a "
         "stuck-streak, an operator interrupt, or a hardware/model failure.")
 
 

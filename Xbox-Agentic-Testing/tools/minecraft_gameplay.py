@@ -13,7 +13,15 @@ from typing import Any
 from registry import ToolContext, ToolSpec, make_tool
 
 from gameplay_engine import run_gameplay_loop
-from game_profiles.minecraft_profile import PROFILE
+from game_profiles.minecraft_profile import PROFILE, VILLAGE_PROFILE
+
+
+def village_loot_and_trade_impl(ctx: ToolContext, goal: str | None = None,
+                                max_cycles: int = 60,
+                                cycle_delay: float = 0.3) -> dict[str, Any]:
+    return run_gameplay_loop(ctx, VILLAGE_PROFILE,
+                             goal=goal or VILLAGE_PROFILE.default_goal,
+                             max_cycles=max_cycles, cycle_delay=cycle_delay)
 
 
 def vision_guided_minecraft_gameplay_impl(

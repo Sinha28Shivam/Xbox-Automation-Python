@@ -201,6 +201,7 @@ audit is a verdict asking to be believed on faith.
 | `config/graph.yaml` | Workflow topology, edges, routing |
 | `config/prompts/*.j2` | Agent behaviour |
 | `../Xbox-Automation-Python/config/controls.yaml` | Buttons, timings, devices |
+| `config/minecraft_controls.yaml` | Minecraft's real in-game button mapping (hardware-read, see gameplay section) |
 
 Values support `${ENV_VAR:default}`, expanded at load time.
 
@@ -214,6 +215,130 @@ ROUTE_MODE=supervised python console.py run "..."         # dynamic routing
 
 Enable the recovery agent: set `enabled: true` under `recovery` in
 `agents.yaml`. Nothing else needs editing — the graph heals its own edges.
+
+---
+
+## Autonomous vision-guided gameplay (Max, Minecraft)
+
+Separate from the scenario-testing workflow above, this framework also plays
+games closed-loop: look at the live frame, decide controller moves with a
+vision LLM, dispatch them, look again. This is exploratory/prototype work,
+not the hardened test pipeline — it never reports `pass`/`fail`, only
+per-cycle evidence (frame paths + measured pixel delta) for a human to judge.
+
+```bash
+python console.py play --game minecraft
+python console.py play --game max --from-dashboard --route sea-of-sand
+python console.py interactive          # then: "engage the nearest hostile mob"
+```
+
+### What's implemented and working
+
+**Shared engine** (`tools/gameplay_engine.py`) — the game-agnostic
+observe→decide→act→re-observe loop, extracted once Max's and Minecraft's
+loops reached ~80% duplication. A game plugs in by building a `GameProfile`
+(move vocabulary, frame schema, system prompt, fallback moves, stuck-counter
+rule, terminal/success detection). Nothing generic lives in a profile; nothing
+game-specific lives in the engine.
+
+**Simultaneous multi-control dispatch** (`tools/combo_dispatch.py`) — the
+real fix for "playing like a human, not a robot pressing one button at a
+time." Each `gimx.exe` launch costs ~250ms; dispatching move, then look, then
+attack as three separate calls means the first hold has already lapsed
+before the last one lands. `dispatch_combo()` resolves several
+sticks/buttons/triggers into ONE combined `gimx.exe` call (holds them
+together, releases them together) — game-agnostic, reused by both profiles.
+Minecraft's `execute_minecraft_moves()` uses it for move+look+attack+jump+
+sprint combinations (e.g. sprint+jump+look in one call); Max's Magic Marker
+macro used the same underlying `_send_events` primitive independently before
+this was generalized. Hardware-verified: a combined jump+look dispatch
+produced a real, measured camera pan + jump in one subprocess call.
+
+**Minecraft profile** (`tools/game_profiles/minecraft_profile.py`,
+`tools/minecraft_gameplay.py`) — move vocabulary (move, look, mine, attack,
+jump, sprint, interact, press_button, navigate_recipe, craft_all, wait)
+dispatched against **hardware-verified real button bindings** read directly
+from the game's own Settings → Controller → Button Mapping screen (see
+`config/minecraft_controls.yaml`), not guessed. Default goal: find a tree,
+mine logs, craft planks.
+
+**Survival HUD reading** (`tools/health_tools.py`) — hearts/hunger read via
+color-mask + contour counting (NOT OCR — icon rows are not text and OCR
+engines read them unreliably). Hardware-verified 10/10 on both rows,
+including at night. Feeds a hard **critical-health retreat override** (≤4
+hearts forces a retreat move regardless of what the model decides) wired
+into both `combat_tools.py` and `exploration_tools.py`, added after the
+player died twice in early testing (once mid-combat, once while exploring)
+with zero health awareness in the loop.
+
+**Coordinate + location memory** (`tools/coordinate_tools.py`,
+`tools/location_memory.py`) — OCR reads the `Position: X, Y, Z` HUD (direct
+`pytesseract` call, not the multi-variant `vision_tools.py` pipeline, which
+measured worse on this clean HUD text). Guarded against OCR sign/digit
+misreads via a persistent last-known-good anchor + implausible-jump
+threshold. Sightings persist across runs to `artifacts/world_memory.json`,
+keyed by coordinate rather than screenshot (day/night lighting makes visual
+matching unreliable).
+
+**Exploration** (`tools/exploration_tools.py`) — bounded outward exploration
+using coordinate-delta stuck detection (pixel-delta is too noisy over open
+terrain). Hardware-verified including a real critical-health-stop trigger.
+
+**Combat prototype** (`tools/combat_tools.py`) — approach/attack/retreat
+against ONE mob, with target-lock (`same_target_as_before`) so the loop
+doesn't re-classify the threat every cycle, plus the critical-health
+override above. Explicitly a prototype: no health-bar reading for mobs
+(Bedrock has none), no multi-mob or ranged combat.
+
+**Entity awareness** (`NearbyEntity` on `MinecraftFrameDecision`) — a
+generic mob/structure/resource list (category, kind, direction, distance,
+is_threat), hardware-verified against a real frame with two pigs correctly
+read as non-threats.
+
+**Max profile** (`tools/game_profiles/max_profile.py`) — platforming macros
+(running_jump, edge_jump_grab, climb_or_pull_up, swing_and_jump) and the
+Magic Marker (aim → anchor → stroke → commit), including an ink-gauge reader
+so a stroke runs until the ink actually empties rather than for a fixed
+timer. The marker macro was the original proof that RT+A+stick must be sent
+as one atomic combo or the hold drops mid-gesture.
+
+### How it actually works, end to end
+
+1. Grab a frame, downscale to 1280px wide, JPEG-encode.
+2. Send it + recent-cycle history to a vision LLM (Claude by default —
+   `supports_vision: true` in `settings.yaml`), which returns a structured
+   `FrameDecision`: scene classification, reasoning (deliberately kept to
+   ONE sentence to cut output-token latency), and 1-3 moves.
+3. Dispatch the moves — simultaneously via `combo_dispatch` when they're all
+   move/look/attack-family actions, sequentially otherwise (menu navigation,
+   crafting — actions that make no sense combined).
+4. Re-grab a frame, measure the pixel delta, log it as evidence.
+5. Repeat until a success state is seen, a stuck-streak limit trips, health
+   goes critical, or `max_cycles` is reached.
+
+The loop **never returns `success`** — same honesty rule as the scenario
+tester. It hands back per-cycle frame paths and deltas; a human or a
+separate verifier decides what that evidence proves.
+
+### Known gaps / not yet done
+
+- The combat prototype's `attack` action has been dispatched successfully
+  but a confirmed real melee **hit** (mob health/knockback reacting) is
+  still not directly observed — Bedrock draws no mob health bar, so "did it
+  land" can currently only be inferred from the mob disappearing.
+- No multi-mob combat, ranged combat, or armor tracking.
+- `max_profile.py`'s Magic Marker gesture still uses its own raw
+  `_send_events` calls rather than `combo_dispatch` — it does continuous
+  cursor-position aiming, not named-direction combos, so folding it into the
+  shared engine needs a different abstraction, not attempted yet.
+- Adding a third game means writing a new move vocabulary + a small
+  `_thatgame_move_to_component()` mapping function (see
+  `_minecraft_move_to_component` as the template) — no game has been added
+  this way yet, only Minecraft and Max exist.
+- Latency reduction so far is dispatch-side only (combined GIMX calls,
+  shorter required reasoning). The LLM round-trip itself (network + model
+  inference) is not yet cached, streamed, or run against a faster/smaller
+  model variant.
 
 ---
 
