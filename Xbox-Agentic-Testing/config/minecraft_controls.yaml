@@ -1,0 +1,63 @@
+# ============================================================================
+#  minecraft_controls.yaml - Minecraft Bedrock's REAL in-game button mapping
+#  Read DIRECTLY from the live game's own Settings -> Controller -> Button
+#  Mapping screen on real hardware (2026-09-25), not assumed from general
+#  Minecraft/Xbox knowledge. Every binding below was visually confirmed in a
+#  saved screenshot before being written here - see
+#  artifacts/runs/controls-lookup/frames/ for the source frames.
+#
+#  A/B Button Swap and X/Y Button Swap were both confirmed OFF (default) at
+#  the time of reading, so these are the STANDARD, non-swapped bindings.
+#  If the player ever turns either swap ON, every A/B or X/Y entry below
+#  is reversed - re-check the in-game screen again rather than assuming.
+# ============================================================================
+
+meta:
+  source: "in-game Settings -> Controller -> Button Mapping (live screenshot)"
+  verified_date: "2026-09-25"
+  button_swaps_confirmed_off: ["A/B Button Swap", "X/Y Button Swap"]
+
+bindings:
+  jump_fly_up:
+    button: "a"
+    label: "Jump / Fly Up"
+  drop_item:
+    button: "down"          # D-pad down
+    label: "Drop Item"
+  attack_destroy:
+    button: "rt"
+    label: "Attack / Destroy"
+    note: >
+      This is a TAP for attack, a HOLD for destroy/mine (same physical
+      trigger for both, matching what mine/attack already assumed in
+      game_profiles/minecraft_profile.py before this file existed - that
+      guess is CONFIRMED correct by this in-game screen, not a new finding).
+  use_item_place_block:
+    button: "lt"
+    label: "Use Item / Place Block"
+  crafting:
+    button: "x"
+    label: "Crafting"
+  inventory:
+    button: "y"
+    label: "Inventory"
+  cycle_item_left:
+    button: "lb"
+    label: "Cycle Item Left"
+  cycle_item_right:
+    button: "rb"
+    label: "Cycle Item Right"
+  toggle_perspective:
+    button: "up"            # D-pad up
+    label: "Toggle Perspective"
+  sneak_fly_down:
+    button: "b"
+    label: "Sneak / Fly Down"
+  sprint:
+    button: "ls"             # left stick click
+    label: "Sprint"
+
+# Move/look are fixed to the sticks (not remappable list entries in-game):
+sticks:
+  move: "left_stick"
+  look: "right_stick"

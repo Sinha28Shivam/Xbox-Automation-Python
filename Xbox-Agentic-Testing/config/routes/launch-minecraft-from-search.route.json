@@ -249,7 +249,7 @@
       "action": "vision_guided_minecraft_gameplay",
       "arguments": {
         "goal": "Find the nearest tree, break its logs by holding RT while facing the trunk, then open the inventory and craft the logs into planks.",
-        "max_cycles": 45,
+        "max_cycles": 120,
         "cycle_delay": 0.4
       },
       "intent": "Run the closed-loop, vision-guided Minecraft gameplay tool: observe the live frame every cycle and decide moves to find a tree, mine logs, and craft planks.",
