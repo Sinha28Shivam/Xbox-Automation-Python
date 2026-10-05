@@ -25,11 +25,13 @@ from __future__ import annotations
 
 import base64
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from pydantic import BaseModel, Field
 
+from artifacts import slug
 from registry import ToolContext, fail, ok
 from skill_memory import find_skill_impl, list_skills_impl, report_skill_outcome_impl
 
@@ -339,6 +341,10 @@ class GameProfile:
 
     extra_session_text: Callable[[dict[str, Any]], str] = field(default=lambda counters: "")
     print_extra: Callable[[Any], None] = field(default=lambda decision: None)
+    # Deterministic pixel reads (e.g. a HUD gauge) that override model fields;
+    # called with (decision, raw BGR frame) right after the model decides.
+    annotate_decision: Callable[[Any, Any], None] = field(
+        default=lambda decision, frame: None)
     cycle_extra_fields: Callable[[Any], dict[str, Any]] = field(default=lambda decision: {})
     summarize: Callable[[dict[str, Any]], dict[str, Any]] = field(default=lambda counters: {})
 
@@ -385,8 +391,15 @@ def run_gameplay_loop(
     settle_after_move: float = 0.6,
     stuck_limit: int = 6,
     stop_on_success: bool = True,
+    pipeline: bool = False,
+    overlap_act: bool = False,
+    overlap_lead: float = 0.35,
 ) -> dict[str, Any]:
     """Play a game by looking at every frame and deciding what to do.
+
+    pipeline=True: the after-frame of cycle N is reused as the before-frame
+    of cycle N+1 (one grab per cycle instead of two) and frames are written
+    to disk on a background thread, so disk I/O never blocks a decision.
 
     Runs until one of these ends it:
       * a scene_state in `profile.success_states` is seen (and stop_on_success)
@@ -432,10 +445,28 @@ def run_gameplay_loop(
     print("  Stop early : press Ctrl+C - evidence so far is kept", flush=True)
     print("=" * 72, flush=True)
 
+    saver = ThreadPoolExecutor(max_workers=1) if pipeline else None
+
+    def _save(frame: Any, label: str) -> str | None:
+        if frame is None or not ctx.artifacts.enabled:
+            return None
+        if saver is None:
+            return ctx.artifacts.save_frame(frame, label)
+        saver.submit(ctx.artifacts.save_frame, frame.copy(), label)
+        return str(ctx.artifacts.frames_dir / f"{slug(label)}.{ctx.artifacts.frame_format}")
+
+    carried: tuple[Any, bool] | None = None
+    actor = ThreadPoolExecutor(max_workers=1) if overlap_act else None
+    act_future: Any = None
+
     try:
         for cycle in range(1, max_cycles + 1):
             # --- 1. observe -------------------------------------------------
-            before, before_blank = grab_nonblank(camera)
+            if carried is not None:
+                before, before_blank = carried
+                carried = None
+            else:
+                before, before_blank = grab_nonblank(camera)
             if before is not None and before_blank:
                 counters["blank_streak"] = counters.get("blank_streak", 0) + 1
                 print(f"  [cycle {cycle}] frame still black after retries "
@@ -452,7 +483,7 @@ def run_gameplay_loop(
                 print(f"  [cycle {cycle}] {stop_reason}", flush=True)
                 break
 
-            before_path = ctx.artifacts.save_frame(
+            before_path = _save(
                 before, f"{profile.artifact_prefix}-{cycle:03d}-before")
             if before_path:
                 frames.append(before_path)
@@ -487,6 +518,7 @@ def run_gameplay_loop(
                 f"\n{format_history(history)}\n\n"
                 f"Read the attached live frame and return your decision.")
 
+            t_think = time.time()
             try:
                 decision = decide(decider, prompt, image_b64,
                                   cacheable_prefix=profile.system_prompt,
@@ -498,6 +530,7 @@ def run_gameplay_loop(
                 time.sleep(1.0)
                 continue
 
+            profile.annotate_decision(decision, before)
             print(f"\n--- cycle {cycle}/{max_cycles} " + "-" * 40, flush=True)
             print(f"  Scene     : {decision.scene_state}", flush=True)
             profile.print_extra(decision)
@@ -544,31 +577,49 @@ def run_gameplay_loop(
                     moves = profile.fallback_moves(decision)
 
             # --- 5. act -------------------------------------------------------
+            t_act = time.time()
+            think_s = round(t_act - t_think, 2)
             dispatched_moves: list[dict[str, Any]] = []
             for move in moves[:3]:
                 print(f"  Act       : {move.action} dir={move.direction} "
                       f"dur={move.duration:.2f}s - {move.purpose}", flush=True)
-            if profile.execute_moves is not None:
-                # Simultaneous dispatch - see GameProfile.execute_moves note.
-                outcomes = profile.execute_moves(ctx, moves[:3])
-                for move, outcome in zip(moves[:3], outcomes):
+            def _run_moves(batch: list[Any] = moves[:3],
+                           sink: list[dict[str, Any]] = dispatched_moves) -> None:
+                if profile.execute_moves is not None:
+                    # Simultaneous dispatch - see GameProfile.execute_moves note.
+                    outcomes = profile.execute_moves(ctx, batch)
+                else:
+                    outcomes = [profile.execute_move(ctx, m) for m in batch]
+                for move, outcome in zip(batch, outcomes):
                     outcome["purpose"] = move.purpose
-                    dispatched_moves.append(outcome)
-                    dispatched_any = dispatched_any or bool(outcome.get("dispatched"))
-                    profile.on_move_dispatched(move, counters)
+                    sink.append(outcome)
+
+            if actor is not None:
+                # Overlap: inputs keep running in the background while the
+                # next frame is grabbed early and the next think starts.
+                # Never let two input batches overlap on the pad.
+                if act_future is not None:
+                    act_future.result()
+                act_future = actor.submit(_run_moves)
+                dispatched_any = True
             else:
-                for move in moves[:3]:
-                    outcome = profile.execute_move(ctx, move)
-                    outcome["purpose"] = move.purpose
-                    dispatched_moves.append(outcome)
-                    dispatched_any = dispatched_any or bool(outcome.get("dispatched"))
-                    profile.on_move_dispatched(move, counters)
+                _run_moves()
+                dispatched_any = dispatched_any or any(
+                    o.get("dispatched") for o in dispatched_moves)
+            for move in moves[:3]:
+                profile.on_move_dispatched(move, counters)
 
             # --- 6. re-observe and measure -------------------------------------
-            time.sleep(max(0.0, float(settle_after_move)))
+            act_s = round(time.time() - t_act, 2)
+            print(f"  Timing    : think={think_s}s act={act_s}s", flush=True)
+            time.sleep(max(0.0, float(overlap_lead if actor is not None
+                                      else settle_after_move)))
             after, after_blank = grab_nonblank(camera)
-            after_path = (ctx.artifacts.save_frame(after, f"{profile.artifact_prefix}-{cycle:03d}-after")
-                          if after is not None else None)
+            if pipeline:
+                carried = (after, after_blank) if after is not None else None
+                after_path = None
+            else:
+                after_path = _save(after, f"{profile.artifact_prefix}-{cycle:03d}-after")
             if after_path:
                 frames.append(after_path)
 
@@ -599,7 +650,9 @@ def run_gameplay_loop(
             move_labels = ", ".join(
                 str(m.get("macro")) + (f"({m.get('direction')})"
                                        if m.get("direction") else "")
-                for m in dispatched_moves) or "none"
+                for m in dispatched_moves) or ", ".join(
+                    f"{m.action}({m.direction})" if m.direction else str(m.action)
+                    for m in moves[:3]) or "none"
 
             cycles.append({
                 "cycle": cycle,
@@ -610,6 +663,8 @@ def run_gameplay_loop(
                 "reasoning": decision.reasoning,
                 "moves": dispatched_moves,
                 "confidence": decision.confidence,
+                "think_s": think_s,
+                "act_s": act_s,
                 **profile.cycle_extra_fields(decision),
             })
             history.append({
@@ -627,7 +682,8 @@ def run_gameplay_loop(
                     print(f"\n  !! {stop_reason}", flush=True)
                     break
             else:
-                time.sleep(max(0.0, float(cycle_delay)))
+                if not pipeline:
+                    time.sleep(max(0.0, float(cycle_delay)))
                 continue
             break
 
@@ -635,6 +691,11 @@ def run_gameplay_loop(
         stop_reason = ("Interrupted by the operator. Everything observed up to "
                        "this point is kept as evidence.")
         print(f"\n  [stopped] {stop_reason}", flush=True)
+    finally:
+        if actor is not None:
+            actor.shutdown(wait=True)
+        if saver is not None:
+            saver.shutdown(wait=True)
 
     duration = round(time.time() - started, 2)
     mean_delta = round(sum(deltas) / len(deltas), 4) if deltas else None

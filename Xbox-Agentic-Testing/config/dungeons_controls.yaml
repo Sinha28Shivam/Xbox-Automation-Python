@@ -1,0 +1,34 @@
+# Minecraft Dungeons button map, as transcribed by the user from the in-game
+# Controls screen (2026-10-01). `emotes: rs` and `forward_dodge: lb` were
+# since confirmed by pressing them on hardware - see the note under `sticks`.
+# kind: button | trigger (must match Xbox-Automation-Python/config/controls.yaml).
+
+meta:
+  source: "user transcription of the in-game Controls screen"
+  verified: true
+
+bindings:
+  interact:        { button: "a",    kind: "button",  label: "Jump / Interact" }
+  melee:           { button: "x",    kind: "button",  label: "Melee Attack / Heavy, Jump Attack" }
+  ranged:          { button: "rt",   kind: "trigger", label: "Ranged Attack" }
+  artifact_1:      { button: "y",    kind: "button",  label: "Artifact 1" }
+  artifact_2:      { button: "b",    kind: "button",  label: "Artifact 2" }
+  artifact_3:      { button: "rb",   kind: "button",  label: "Artifact 3" }
+  forward_dodge:   { button: "lb",   kind: "button",  label: "Forward Dodge" }
+  potion:          { button: "lt",   kind: "trigger", label: "Health Potion" }
+  inventory:       { button: "up",   kind: "button",  label: "Inventory / Mini Inventory" }
+  teleport:        { button: "right", kind: "button", label: "Teleport to Player" }
+  social:          { button: "down", kind: "button",  label: "Social Menu" }
+  quest_log:       { button: "left", kind: "button",  label: "Track Quest / Quest Log" }
+  menu_wheel:      { button: "menu", kind: "button",  label: "Menu Wheel / Event Log" }
+  map_view:        { button: "view", kind: "button",  label: "World Map / map action" }
+  emotes:          { button: "rs",   kind: "button",  label: "Emotes" }
+
+sticks:
+  move: "left_stick"
+  # VERIFIED ON HARDWARE 2026-10-01: clicking the right stick opens the EMOTE
+  # WHEEL (see `emotes: rs` above) - it is NOT a dodge, and flicking it does
+  # nothing useful in combat. The dodge/roll is the LB button
+  # (`forward_dodge`) and it travels along the LEFT-STICK heading, so a
+  # directional dodge = hold left_stick toward the heading + tap LB.
+  # Do not reintroduce a `dodge: right_stick` entry.
