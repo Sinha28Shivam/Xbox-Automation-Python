@@ -10,10 +10,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from registry import ToolContext, ToolSpec, make_tool
+from tools.registry import ToolContext, ToolSpec, make_tool
 
-from gameplay_engine import run_gameplay_loop
-from game_profiles.minecraft_profile import PROFILE, VILLAGE_PROFILE
+from tools.gameplay_engine import run_gameplay_loop
+from tools.game_profiles.minecraft_profile import PROFILE, VILLAGE_PROFILE
 
 
 def village_loot_and_trade_impl(ctx: ToolContext, goal: str | None = None,

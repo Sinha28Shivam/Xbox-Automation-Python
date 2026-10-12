@@ -43,8 +43,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from registry import ToolContext, ToolSpec, fail, make_tool, ok
-from gameplay_engine import GameProfile, run_gameplay_loop
+from tools.registry import ToolContext, ToolSpec, fail, make_tool, ok
+from tools.gameplay_engine import GameProfile, run_gameplay_loop
 
 
 def _memory_path(ctx: ToolContext) -> Path:
@@ -77,12 +77,19 @@ def _save(ctx: ToolContext, entries: list[dict[str, Any]]) -> None:
 # ===========================================================================
 def _resolve_profile(profile_key: str) -> GameProfile:
     if profile_key == "minecraft":
-        from game_profiles.minecraft_profile import PROFILE
+        from tools.game_profiles.minecraft_profile import PROFILE
         return PROFILE
     if profile_key == "max":
-        from game_profiles.max_profile import PROFILE
+        from tools.game_profiles.max_profile import PROFILE
         return PROFILE
-    raise KeyError(f"Unknown profile '{profile_key}'. Known: minecraft, max")
+    if profile_key == "dungeons":
+        from tools.game_profiles.dungeons_agents import PROFILE
+        return PROFILE
+    if profile_key == "dungeons_single":
+        from tools.game_profiles.dungeons_profile import PROFILE
+        return PROFILE
+    raise KeyError(f"Unknown profile '{profile_key}'. "
+                   "Known: minecraft, max, dungeons, dungeons_single")
 
 
 # ===========================================================================

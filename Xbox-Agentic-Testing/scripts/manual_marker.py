@@ -20,20 +20,20 @@ accepts but the console ignores. Threshold sits between 512 and 1023.
 
 -----------------------------------------------------------------------------
 USAGE - interactive (just run it and answer the prompts):
-    python _manual_marker.py
+    python scripts/manual_marker.py
 
 USAGE - one shot, all values on the command line:
-    python _manual_marker.py --aim down-right --aim-time 0.1 --draw up \
+    python scripts/manual_marker.py --aim down-right --aim-time 0.1 --draw up \
         --draw-time 1.8 --strength 1.0
 
 USAGE - sweep several aim directions in one go, pausing between each:
-    python _manual_marker.py --aim right,down-right,down --aim-time 0.1
+    python scripts/manual_marker.py --aim right,down-right,down --aim-time 0.1
 
 Every run saves _mm_<n>_<stage>.png frames and prints frame-difference numbers
 so you can tell what changed even without looking at the TV.
 
 -----------------------------------------------------------------------------
-MEASURED FROM A REAL RUN (see MARKER_FINDINGS.md):
+MEASURED FROM A REAL RUN (see docs/MARKER_FINDINGS.md):
   * Max stood at (1161, 875) and did NOT move while RT was held, so the left
     stick moves the CURSOR here, not the character.
   * When the marker opens, the cursor reticle rests at about (974, 530) -
@@ -59,10 +59,10 @@ WHICH STICK MOVES THE CURSOR
 
 CONFIRMED WORKING - both operations, on hardware:
     # draw
-    python _manual_marker.py --aim down-right --aim-time 0.4 --draw up \
+    python scripts/manual_marker.py --aim down-right --aim-time 0.4 --draw up \
         --draw-time 1.8 --strength 1.0
     # destroy
-    python _manual_marker.py --mode destroy --aim down-right --aim-time 0.4 \
+    python scripts/manual_marker.py --mode destroy --aim down-right --aim-time 0.4 \
         --strength 1.0
 
 STRENGTH MATTERS MORE THAN TIME. Measured gain is ~450 px/s at strength 1.0,
@@ -81,7 +81,7 @@ DESTROY MODE (--mode destroy)
   The X-prompt icon visible next to a finished pillar in the captured frames
   is what confirms X is the erase button.
 
-      python _manual_marker.py --mode destroy --aim down-right
+      python scripts/manual_marker.py --mode destroy --aim down-right
 
   This now uses exactly the same aiming as the proven draw command
   (lstick, --aim-time 0.1). If X erases nothing, escalate:
@@ -104,16 +104,14 @@ import threading
 import time
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
-for sub in ("core", "tools", "agents", "graph"):
-    p = str(ROOT / sub)
-    if p not in sys.path:
-        sys.path.insert(0, p)
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 import cv2                                          # noqa: E402
 import numpy as np                                  # noqa: E402
-from adapters import HardwareBridge                 # noqa: E402
-from config import Config, load_dotenv_if_present   # noqa: E402
+from core.adapters import HardwareBridge                 # noqa: E402
+from core.config import Config, load_dotenv_if_present   # noqa: E402
 
 GIMX = r"C:\Program Files\GIMX\gimx.exe"
 DST = "127.0.0.1:51914"
@@ -289,7 +287,7 @@ def interactive_fill(args: argparse.Namespace) -> None:
 
     if args.aim is None:
         # down-right, not up-right: measured cursor rest (974,530) is ABOVE
-        # and LEFT of the real glow at (1246,891). See MARKER_FINDINGS.md.
+        # and LEFT of the real glow at (1246,891). See docs/MARKER_FINDINGS.md.
         args.aim = ask(" Aim direction toward the glow", "down-right")
     if args.aim_time is None:
         # 0.4 at strength 1.0 is CONFIRMED for both drawing and destroying.

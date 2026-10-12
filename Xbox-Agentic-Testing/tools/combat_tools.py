@@ -54,11 +54,11 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from registry import ToolContext, ToolSpec, fail, make_tool, ok
+from tools.registry import ToolContext, ToolSpec, fail, make_tool, ok
 
-from gameplay_engine import build_vision_decider, decide, encode_frame, format_history, frame_delta
-from game_profiles.minecraft_profile import MinecraftMove, NearbyEntity, execute_minecraft_moves
-from health_tools import read_survival_hud_impl
+from tools.gameplay_engine import build_vision_decider, decide, encode_frame, format_history, frame_delta
+from tools.game_profiles.minecraft_profile import MinecraftMove, NearbyEntity, execute_minecraft_moves
+from tools.health_tools import read_survival_hud_impl
 
 
 class HitCheck(BaseModel):

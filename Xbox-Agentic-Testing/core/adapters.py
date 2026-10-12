@@ -37,7 +37,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from config import Config
+from core.config import Config
 
 
 class AdapterLoadError(RuntimeError):

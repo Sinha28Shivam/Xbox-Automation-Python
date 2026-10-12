@@ -32,19 +32,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from registry import ToolContext, ToolSpec, fail, make_tool, ok
+from tools.registry import ToolContext, ToolSpec, fail, make_tool, ok
 
 
 def _write_mechanics_report(ctx: ToolContext) -> Any:
     def run(session_dir: str = "", use_ai: bool = True,
             max_pairs: int | None = None) -> dict[str, Any]:
         """Build the game-mechanics report for a gameplay session."""
-        # gameplay/ is on sys.path when launched via console.py, but the tool
-        # loader only adds core/ and tools/ - so import by package path.
-        import sys
-        _root = Path(__file__).resolve().parent.parent
-        if str(_root) not in sys.path:
-            sys.path.insert(0, str(_root))
         from gameplay.mechanics_report import build_report
 
         target = Path(session_dir) if session_dir else ctx.artifacts.run_dir
@@ -73,11 +67,7 @@ def _write_mechanics_report(ctx: ToolContext) -> Any:
 def _write_scenario_report(ctx: ToolContext) -> Any:
     def run(run_dir: str = "") -> dict[str, Any]:
         """Build the scenario report for any `console.py run --file` run."""
-        import sys
-        _root = Path(__file__).resolve().parent.parent
-        if str(_root) not in sys.path:
-            sys.path.insert(0, str(_root))
-        from scenario_report import build_report
+        from core.scenario_report import build_report
 
         target = Path(run_dir) if run_dir else ctx.artifacts.run_dir
         if not Path(target).is_dir():

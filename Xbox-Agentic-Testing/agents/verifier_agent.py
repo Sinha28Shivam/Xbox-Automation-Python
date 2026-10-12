@@ -26,9 +26,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from base import BaseAgent
-from route_store import invalidate_cached_route, save_cached_route
-from schemas import (
+from agents.base import BaseAgent
+from core.route_store import invalidate_cached_route, save_cached_route
+from core.schemas import (
     CriterionResult,
     Evidence,
     EvidenceKind,
@@ -36,7 +36,7 @@ from schemas import (
     VerificationResult,
     Verdict,
 )
-from state import AgenticState, note
+from core.state import AgenticState, note
 
 
 class VerifierAgent(BaseAgent):

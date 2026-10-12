@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from config import Config
+from core.config import Config
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 _CONFIG_PATH = _PROJECT_ROOT / "config" / "minecraft_controls.yaml"

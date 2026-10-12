@@ -5,7 +5,7 @@ Each is a pure function of the state returning a string, which graph.yaml maps
 to a target node:
 
     - from: "verifier"
-      router: "routing.route_after_verification"
+      router: "graph.routing.route_after_verification"
       map: { passed: "reporter", failed: "rca", replan: "planner" }
 
 WHY PURE FUNCTIONS
@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from state import AgenticState
+from core.state import AgenticState
 
 
 def _limit(state: AgenticState, key: str, fallback: int) -> int:

@@ -39,11 +39,8 @@ Xbox-Automation-Python/capture/_warmup_first_good.png
 TEMP_*
 TEMP_agent_run/
 
-# NOTE on the underscore-prefixed scripts in Xbox-Agentic-Testing/ - they ARE
-# committed on purpose. `_smoke_test.py`, `_test_fixes.py`, `_diagnose_capture.py`,
-# `_check_ocr.py`, `_inspect_run.py` and `_verify_report.py` are diagnostic
-# tools, not scratch files. The underscore only keeps them visually separate
-# from the framework itself.
+# NOTE: standalone rigs live in Xbox-Agentic-Testing/scripts/ and small
+# inspection helpers in scripts/dev/ - both ARE committed on purpose.
 
 # --- python ----------------------------------------------------------------
 __pycache__/

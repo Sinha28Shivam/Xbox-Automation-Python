@@ -7,6 +7,7 @@ console.py - the command line for the agentic console testing framework.
     python console.py health
     python console.py info
     python console.py tools
+    python console.py dungeons --cycles 60
     python console.py interactive
 
 DESIGN
@@ -42,13 +43,11 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 _ROOT = Path(__file__).resolve().parent
-for _sub in ("core", "tools", "agents", "graph", "gameplay"):
-    _path = str(_ROOT / _sub)
-    if _path not in sys.path:
-        sys.path.insert(0, _path)
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
-from runner import TestRunner, verdict_exit_code       # noqa: E402
-from schemas import Verdict                            # noqa: E402
+from graph.runner import TestRunner, verdict_exit_code       # noqa: E402
+from core.schemas import Verdict                            # noqa: E402
 
 _LINE = "=" * 72
 
@@ -101,13 +100,13 @@ def print_report(report) -> None:
 
 def print_health(runner: TestRunner) -> int:
     """Run only the health probes - no LLM, no API key needed."""
-    from artifacts import ArtifactStore
-    from base import AgentContext
-    from health_agent import HealthAgent
-    from llm import LLMFactory
-    from prompts import PromptLibrary
-    from registry import build_default_registry
-    from state import initial_state
+    from core.artifacts import ArtifactStore
+    from agents.base import AgentContext
+    from agents.health_agent import HealthAgent
+    from core.llm import LLMFactory
+    from core.prompts import PromptLibrary
+    from tools.registry import build_default_registry
+    from core.state import initial_state
 
     artifacts = ArtifactStore(
         root=runner.settings.resolve_path("paths.artifacts_dir", "./artifacts"),
@@ -292,9 +291,60 @@ def cmd_interactive(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_dungeons(args: argparse.Namespace) -> int:
+    """Minecraft Dungeons closed-loop gameplay from the current mission."""
+    from core.artifacts import ArtifactStore, new_run_id
+    from tools.dungeons_gameplay import parse_ports, vision_guided_dungeons_gameplay_impl
+    from tools.registry import ToolContext
+
+    try:
+        parse_ports(args.udp_ports)
+    except ValueError:
+        print(f"ERROR: --udp-ports must be comma-separated integers, got {args.udp_ports!r}")
+        return 4
+
+    overrides = {"save_frames": False} if args.no_artifacts else None
+    with TestRunner(args.config_dir, overrides) as runner:
+        settings = runner.settings
+        artifacts = ArtifactStore(
+            root=settings.resolve_path("paths.artifacts_dir", "./artifacts"),
+            run_id=args.run_id or new_run_id("dungeons"),
+            frame_format="jpg" if args.fast else settings.get("runtime.frame_format", "png"),
+            enabled=settings.get("runtime.save_frames", True))
+        ctx = ToolContext(hardware=runner.hardware, artifacts=artifacts,
+                          settings=settings, dry_run=False)
+
+        result = vision_guided_dungeons_gameplay_impl(
+            ctx, goal=args.goal, max_cycles=args.cycles, agents=args.agents,
+            fast=args.fast, udp_ports=args.udp_ports,
+            write_report=args.report)
+
+    print("\n" + _LINE)
+    if not result.get("ok"):
+        # Capture/model unavailable means the rig, not the game, is broken.
+        print(f"  DUNGEONS BLOCKED: {result.get('error')}")
+        print(_LINE)
+        return 2
+    print(f"  DUNGEONS RUN - {result.get('cycles_run')} cycles, "
+          f"mission complete: {bool(result.get('mission_complete'))}")
+    print(_LINE)
+    print(f"  stop reason : {result.get('stop_reason')}")
+    print(f"  mean delta  : {result.get('mean_delta')}")
+    print(f"  deaths      : {result.get('deaths', 0)}  "
+          f"potions: {result.get('potions', 0)}")
+    if result.get("scenario_verdict"):
+        print(f"  scenarios   : {result['scenario_verdict']}")
+    if artifacts.enabled:
+        print(f"\n  Run folder  : {artifacts.run_dir}")
+        if result.get("scenario_report"):
+            print(f"  Report      : {result['scenario_report']}")
+    print()
+    return 0
+
+
 def cmd_play(args: argparse.Namespace) -> int:
     """Autonomous AI Vision-LLM Gameplay."""
-    from config import Config
+    from core.config import Config
     from gameplay.autonomous_player import AutonomousPlayer
 
     configs = Config.load_all(args.config_dir or (_ROOT / "config"), {"settings": "settings.yaml"}, base=_ROOT)
@@ -340,6 +390,9 @@ examples:
   python console.py play --game "Max: The Curse of Brotherhood" --max-steps 50
   python console.py play --route artifacts/walkthroughs/sea-of-sand
   python console.py play --from-dashboard --route artifacts/walkthroughs/sea-of-sand
+  python console.py dungeons --cycles 60
+  python console.py dungeons --udp-ports 51914,51915
+  python console.py run --file scenarios/dungeons-mission-inplay.yaml
   python console.py interactive
 
 exit codes:
@@ -394,6 +447,35 @@ exit codes:
     p_play.add_argument("--no-report", dest="report", action="store_false",
                         help="skip the mechanics report")
 
+    p_dng = sub.add_parser(
+        "dungeons", help="Minecraft Dungeons closed-loop gameplay",
+        description="Play Minecraft Dungeons from the mission that is "
+                    "already on screen. Start a mission first; this does not "
+                    "launch the game.")
+    p_dng.add_argument("--cycles", type=int, default=40,
+                       help="number of observe/decide/act cycles (default 40)")
+    p_dng.add_argument("--goal", default=None,
+                       help="override the default mission goal")
+    p_dng.add_argument("--single", dest="agents", action="store_false",
+                       default=True,
+                       help="one vision decision per cycle instead of the "
+                            "observer + health/combat/interaction/navigator "
+                            "agents (no scenario report)")
+    p_dng.add_argument("--slow", dest="fast", action="store_false",
+                       default=True,
+                       help="full-size frames, no pipelining (more detail, "
+                            "slower round-trip)")
+    p_dng.add_argument("--udp-ports", default="",
+                       help="comma-separated GIMX UDP ports to mirror input "
+                            "to, one per authenticated controller "
+                            "(e.g. 51914,51915)")
+    p_dng.add_argument("--run-id", default=None,
+                       help="artifact folder name under artifacts/runs/")
+    p_dng.add_argument("--no-report", dest="report", action="store_false",
+                       default=True, help="skip the scenario report")
+    p_dng.add_argument("--no-artifacts", action="store_true",
+                       help="do not save frames or reports")
+
     sub.add_parser("health", help="check the rig and exit")
 
     p_info = sub.add_parser("info", help="show the configured setup")
@@ -409,6 +491,7 @@ exit codes:
     handlers = {
         "run": cmd_run,
         "play": cmd_play,
+        "dungeons": cmd_dungeons,
         "health": cmd_health,
         "info": cmd_info,
         "tools": cmd_tools,

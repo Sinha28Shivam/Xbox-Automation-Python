@@ -13,15 +13,15 @@ import cv2
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
-for sub in ("core", "tools", "agents", "graph", "tools/game_profiles"):
-    sys.path.insert(0, str(ROOT / sub))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from adapters import HardwareBridge
-from artifacts import ArtifactStore
-from config import Config, load_dotenv_if_present
-from registry import ToolContext
-from gameplay_engine import grab_nonblank
-from dungeons_profile import DungeonsMove, execute_move
+from core.adapters import HardwareBridge
+from core.artifacts import ArtifactStore
+from core.config import Config, load_dotenv_if_present
+from tools.registry import ToolContext
+from tools.gameplay_engine import grab_nonblank
+from tools.game_profiles.dungeons_profile import DungeonsMove, execute_move
 
 load_dotenv_if_present(ROOT / ".env")
 settings = Config.load_all(ROOT / "config", {"settings": "settings.yaml"},

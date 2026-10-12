@@ -45,7 +45,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from registry import ToolContext, ToolSpec, fail, make_tool, ok
+from tools.registry import ToolContext, ToolSpec, fail, make_tool, ok
 
 
 def _memory_path(ctx: ToolContext) -> Path:

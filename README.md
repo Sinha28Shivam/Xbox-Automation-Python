@@ -84,19 +84,29 @@ xboxArudino/
 │   ├── gimx-session/                <- session lifecycle, serial port, auth
 │   └── test-controller/             <- ConsolePad: config-driven input
 │
-└── Xbox-Agentic-Testing/            <- AGENTIC LAYER
-    ├── console.py                   <- the CLI
-    ├── config/                      <- settings, agent roster, graph topology,
-    │                                   prompts. Nothing is hardcoded.
-    ├── core/                        <- config, schemas, state, LLM factory,
-    │                                   hardware adapters, artifact store
-    ├── tools/                       <- what agents can do: hardware probes,
-    │                                   input, vision/OCR, reporting
-    ├── agents/                      <- the nine agents
-    ├── graph/                       <- routing, graph builder, runner
-    ├── scenarios/                   <- example tests
-    └── artifacts/                   <- per-run frames, logs, reports (ignored)
+├── Xbox-Agentic-Testing/            <- AGENTIC LAYER
+│   ├── console.py                   <- the CLI
+│   ├── config/                      <- settings, agent roster, graph topology,
+│   │                                   prompts. Nothing is hardcoded.
+│   ├── core/                        <- config, schemas, state, LLM factory,
+│   │                                   hardware adapters, artifact store
+│   ├── tools/                       <- what agents can do: hardware probes,
+│   │                                   input, vision/OCR, reporting
+│   ├── agents/                      <- the nine agents
+│   ├── graph/                       <- routing, graph builder, runner
+│   ├── gameplay/                    <- autonomous player, menus, mechanics report
+│   ├── scenarios/                   <- example tests
+│   ├── scripts/                     <- standalone rigs: record_play, manual_marker
+│   ├── docs/                        <- marker findings, design notes
+│   ├── scratch/                     <- ad-hoc probes and one-off experiments
+│   └── artifacts/                   <- per-run frames, logs, reports (ignored)
+│
+└── scripts/dev/                     <- small inspection helpers (JSON dumps, slicing)
 ```
+
+`core/`, `tools/`, `agents/`, `graph/` and `gameplay/` are Python packages:
+imports are package-qualified (`from core.config import Config`), and commands
+run from inside `Xbox-Agentic-Testing/`.
 
 ---
 

@@ -8,9 +8,9 @@ import inspect
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from adapters import HardwareBridge
-from artifacts import ArtifactStore
-from config import Config
+from core.adapters import HardwareBridge
+from core.artifacts import ArtifactStore
+from core.config import Config
 
 
 @dataclass
@@ -203,8 +203,10 @@ def build_default_registry(hardware: HardwareBridge, artifacts: ArtifactStore,
                           dry_run=settings.get("runtime.dry_run", False))
     registry = ToolRegistry(context)
     registry.load_modules(module_names or [
-        "hardware_tools", "input_tools", "vision_tools", "report_tools", "game_tools",
-        "minecraft_gameplay", "coordinate_tools", "location_memory", "exploration_tools",
-        "combat_tools", "health_tools", "skill_memory", "gameplay_benchmark",
+        "tools.hardware_tools", "tools.input_tools", "tools.vision_tools", "tools.report_tools",
+        "tools.game_tools", "tools.minecraft_gameplay", "tools.dungeons_gameplay",
+        "tools.coordinate_tools",
+        "tools.location_memory", "tools.exploration_tools", "tools.combat_tools",
+        "tools.health_tools", "tools.skill_memory", "tools.gameplay_benchmark",
     ])
     return registry

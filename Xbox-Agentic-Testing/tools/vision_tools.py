@@ -30,7 +30,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from registry import ToolContext, ToolSpec, fail, make_tool, ok
+from tools.registry import ToolContext, ToolSpec, fail, make_tool, ok
 
 
 def _capture(ctx: ToolContext) -> Any:

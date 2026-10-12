@@ -32,10 +32,10 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from base import BaseAgent
-from route_store import invalidate_cached_route, load_cached_route
-from schemas import PlannedStep, ScenarioStage, TestPlan, ValidatedScenario
-from state import AgenticState, note
+from agents.base import BaseAgent
+from core.route_store import invalidate_cached_route, load_cached_route
+from core.schemas import PlannedStep, ScenarioStage, TestPlan, ValidatedScenario
+from core.state import AgenticState, note
 
 
 # Stages where a menu item is SELECTED. In every one of these, pressing A
@@ -69,6 +69,12 @@ _IN_GAMEPLAY_ONLY_STAGES = frozenset({
     "closed_loop_play",
     "pause_checkpoint",
 })
+
+
+def _is_dungeons(scenario: ValidatedScenario) -> bool:
+    """Is this a Minecraft Dungeons scenario? Decided by its declared tags."""
+    return any(str(t).lower() in {"dungeons", "minecraft-dungeons"}
+               for t in (scenario.tags or []))
 
 
 _FOCUS_PROOF_STAGES = frozenset({
@@ -288,6 +294,8 @@ class PlannerAgent(BaseAgent):
         So the plan is: prove we really are in gameplay, hand over to the
         vision loop, then prove the screen moved.
         """
+        if _is_dungeons(scenario):
+            return self._fallback_dungeons_plan(scenario, plan)
         steps: list[PlannedStep] = []
         goal = (scenario.goal or "").strip() or (
             "Advance through the level under vision guidance until a "
@@ -374,6 +382,66 @@ class PlannerAgent(BaseAgent):
             "In-gameplay bootstrap: prove we are in live gameplay, then hand "
             "over to the frame-by-frame vision loop rather than pre-baking "
             "gameplay actions that were chosen before anything was seen.")
+        return plan
+
+    def _fallback_dungeons_plan(self, scenario: ValidatedScenario,
+                                plan: TestPlan) -> TestPlan:
+        """Live-gameplay bootstrap for Minecraft Dungeons.
+
+        Same shape as the Max bootstrap - baseline frame, hand over to the
+        vision loop, final frame - but the loop is the Dungeons one, which has
+        its own observer + action agents and stops on mission complete.
+        """
+        goal = (scenario.goal or "").strip() or None
+        stage = ScenarioStage.CLOSED_LOOP_PLAY
+        stage_goal = self._stage_goal(scenario, stage)
+
+        def step(action: str, intent: str, expected: str,
+                 arguments: dict[str, Any], **extra: Any) -> PlannedStep:
+            return PlannedStep(index=0, action=action, arguments=arguments,
+                               intent=intent, expected_observation=expected,
+                               stage=stage, stage_goal=stage_goal, **extra)
+
+        loop_args: dict[str, Any] = {"max_cycles": 40, "agents": True, "fast": True}
+        if goal:
+            loop_args["goal"] = goal
+        plan.steps = [
+            step("capture_frame",
+                 "Capture the live mission before touching anything, so every "
+                 "later frame has a baseline.",
+                 "A Minecraft Dungeons mission frame is captured - the hero, "
+                 "HUD hearts and minimap are visible, not a menu or the "
+                 "dashboard.",
+                 {"label": "dungeons-baseline"}, progress_signal="gameplay_screen"),
+            step("vision_guided_dungeons_gameplay",
+                 "Hand control to the Dungeons vision loop: an observer reads "
+                 "each frame and the health, combat, interaction and "
+                 "navigator agents act on it until the mission completes or "
+                 "the budget ends.",
+                 "Successive frames show the hero moving along the objective "
+                 "marker, fighting enemies and opening loot, and the loop "
+                 "reports the observed reason it stopped.",
+                 loop_args, progress_signal="progress_signal",
+                 # The loop bounds itself with max_cycles; this only covers the
+                 # settle wait after it returns (see the Max bootstrap above).
+                 timeout_seconds=6.0),
+            step("capture_frame",
+                 "Capture the final state the loop left the mission in.",
+                 "A final mission frame is archived showing where the run "
+                 "ended - ideally further along the mission or its "
+                 "completion screen.",
+                 {"label": "dungeons-final"}, progress_signal="progress_signal"),
+        ]
+        plan.assumptions = list(dict.fromkeys([
+            *plan.assumptions,
+            "Minecraft Dungeons is already running and on a mission when the "
+            "run starts.",
+            "The configured LLM provider supports vision.",
+        ]))
+        plan.rationale = (
+            plan.rationale or
+            "In-mission bootstrap: prove we are in a live Dungeons mission, "
+            "then hand over to the frame-by-frame Dungeons agent loop.")
         return plan
 
     def _fallback_staged_plan(self, scenario: ValidatedScenario,

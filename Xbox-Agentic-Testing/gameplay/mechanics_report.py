@@ -53,9 +53,8 @@ import cv2
 from pydantic import BaseModel, Field
 
 _ROOT = Path(__file__).resolve().parent.parent
-for _p in (str(_ROOT), str(_ROOT / "core"), str(_ROOT / "tools")):
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
 
 # ===========================================================================
@@ -334,7 +333,7 @@ class Judge:
         self.error = ""
 
     def _build(self) -> Any:
-        from llm import LLMFactory, structured
+        from core.llm import LLMFactory, structured
 
         factory = self._factory or LLMFactory(self.settings)
         provider = factory.default_provider
@@ -923,7 +922,7 @@ def main(argv: list[str] | None = None) -> int:
     settings = None
     if not args.no_ai:
         try:
-            from config import Config, load_dotenv_if_present
+            from core.config import Config, load_dotenv_if_present
             load_dotenv_if_present(_ROOT / ".env")
             load_dotenv_if_present(_ROOT.parent / ".env")
             settings = Config.load(_ROOT / "config" / "settings.yaml",

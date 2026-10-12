@@ -44,13 +44,13 @@ import math
 import time
 from typing import Any
 
-from registry import ToolContext, ToolSpec, fail, make_tool, ok
+from tools.registry import ToolContext, ToolSpec, fail, make_tool, ok
 
-from gameplay_engine import build_vision_decider, decide, encode_frame, format_history, frame_delta
-from game_profiles.minecraft_profile import MinecraftFrameDecision, MinecraftMove, execute_minecraft_moves
-from coordinate_tools import read_player_coordinates_impl
-from location_memory import record_location_impl
-from health_tools import read_survival_hud_impl
+from tools.gameplay_engine import build_vision_decider, decide, encode_frame, format_history, frame_delta
+from tools.game_profiles.minecraft_profile import MinecraftFrameDecision, MinecraftMove, execute_minecraft_moves
+from tools.coordinate_tools import read_player_coordinates_impl
+from tools.location_memory import record_location_impl
+from tools.health_tools import read_survival_hud_impl
 
 _MOVE_DISTANCE_FLOOR = 0.5  # blocks; below this a movement cycle counts as "no progress"
 

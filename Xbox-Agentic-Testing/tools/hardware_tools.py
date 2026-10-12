@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from registry import ToolContext, ToolSpec, fail, make_tool, ok
+from tools.registry import ToolContext, ToolSpec, fail, make_tool, ok
 
 
 # ===========================================================================

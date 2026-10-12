@@ -59,8 +59,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from registry import ToolContext, ToolSpec, fail, make_tool, ok
-from vision_tools import _capture_frame, _crop_frame, _invoke
+from tools.registry import ToolContext, ToolSpec, fail, make_tool, ok
+from tools.vision_tools import _capture_frame, _crop_frame, _invoke
 
 # Hardware-verified against a real 1920x1080 survival-mode capture
 # (2026-09-25): tightly frames both the heart row and the hunger row,

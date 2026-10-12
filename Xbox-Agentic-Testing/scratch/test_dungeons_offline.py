@@ -6,11 +6,11 @@ from types import SimpleNamespace
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
-for sub in ("core", "tools", "agents", "graph", "tools/game_profiles"):
-    sys.path.insert(0, str(ROOT / sub))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-import game_profiles.dungeons_profile as dp
-from game_profiles.dungeons_profile import DungeonsFrameDecision, DungeonsMove, PROFILE
+import tools.game_profiles.dungeons_profile as dp
+from tools.game_profiles.dungeons_profile import DungeonsFrameDecision, DungeonsMove, PROFILE
 
 controls = yaml.safe_load((ROOT.parent / "Xbox-Automation-Python" / "config" / "controls.yaml")
                           .read_text(encoding="utf-8"))

@@ -24,8 +24,8 @@ from dataclasses import dataclass
 import time
 from typing import Any
 
-from registry import ToolContext, ToolSpec, fail, make_tool, ok
-from vision_tools import read_text_region_impl, warm_ocr_impl
+from tools.registry import ToolContext, ToolSpec, fail, make_tool, ok
+from tools.vision_tools import read_text_region_impl, warm_ocr_impl
 
 # The caveat is attached to every single input result. Repetitive by design -
 # an agent summarising a run should never be able to read one of these results

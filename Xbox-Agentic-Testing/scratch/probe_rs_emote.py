@@ -16,12 +16,12 @@ import cv2
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
-for sub in ("core", "tools", "agents", "graph"):
-    sys.path.insert(0, str(ROOT / sub))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from adapters import HardwareBridge
-from config import Config, load_dotenv_if_present
-from gameplay_engine import grab_nonblank
+from core.adapters import HardwareBridge
+from core.config import Config, load_dotenv_if_present
+from tools.gameplay_engine import grab_nonblank
 
 load_dotenv_if_present(ROOT / ".env")
 settings = Config.load_all(ROOT / "config", {"settings": "settings.yaml"},

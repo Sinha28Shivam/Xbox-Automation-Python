@@ -13,7 +13,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from schemas import TestPlan
+from core.schemas import TestPlan
 
 log = logging.getLogger("route_store")
 

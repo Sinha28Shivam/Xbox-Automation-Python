@@ -4,14 +4,14 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-for sub in ("core", "tools", "agents", "graph"):
-    sys.path.insert(0, str(ROOT / sub))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from adapters import HardwareBridge
-from artifacts import ArtifactStore
-from config import Config, load_dotenv_if_present
-from registry import ToolContext
-from minecraft_gameplay import vision_guided_minecraft_gameplay_impl
+from core.adapters import HardwareBridge
+from core.artifacts import ArtifactStore
+from core.config import Config, load_dotenv_if_present
+from tools.registry import ToolContext
+from tools.minecraft_gameplay import vision_guided_minecraft_gameplay_impl
 
 max_cycles = int(sys.argv[1]) if len(sys.argv) > 1 else 120
 load_dotenv_if_present(ROOT / ".env")

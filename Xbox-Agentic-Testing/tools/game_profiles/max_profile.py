@@ -11,9 +11,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from registry import ToolContext
+from tools.registry import ToolContext
 
-from gameplay_engine import GameProfile
+from tools.gameplay_engine import GameProfile
 
 
 # ===========================================================================
@@ -491,7 +491,7 @@ def draw_marker_stroke(ctx: ToolContext, aim_x: float = 0.0, aim_y: float = -1.0
                        settle_after_draw: float = 1.5) -> dict[str, Any]:
     """Draw with the Magic Marker: OPEN -> AIM -> ANCHOR -> STROKE -> COMMIT.
 
-    Hardware-verified on this rig (see MARKER_FINDINGS.md). The AIM phase is
+    Hardware-verified on this rig (see docs/MARKER_FINDINGS.md). The AIM phase is
     the part that used to be missing: the cursor opens near the middle of the
     screen, NOT on the node, so pressing A immediately anchored the ink at the
     cursor's rest position. Measured rest was (967,534) while the target glow

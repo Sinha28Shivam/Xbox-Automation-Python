@@ -1,11 +1,11 @@
 import sys
 from pathlib import Path
-ROOT = Path(r"C:\Users\sinha\Desktop\InstrumentsStore\xboxArudino\Xbox-Agentic-Testing")
-for sub in ("core", "tools", "agents", "graph"):
-    sys.path.insert(0, str(ROOT / sub))
-from adapters import HardwareBridge
-from config import Config, load_dotenv_if_present
-from gameplay_engine import grab_nonblank
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from core.adapters import HardwareBridge
+from core.config import Config, load_dotenv_if_present
+from tools.gameplay_engine import grab_nonblank
 import cv2, pytesseract
 from PIL import Image
 load_dotenv_if_present(ROOT / ".env")

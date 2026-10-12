@@ -6,8 +6,8 @@ import re
 import time
 from typing import Any
 
-from registry import ToolContext, ToolSpec, fail, make_tool, ok
-from vision_tools import detect_focus_highlight_impl, read_screen_text_impl
+from tools.registry import ToolContext, ToolSpec, fail, make_tool, ok
+from tools.vision_tools import detect_focus_highlight_impl, read_screen_text_impl
 
 
 def _pad(ctx: ToolContext) -> Any:
@@ -547,7 +547,7 @@ def vision_guided_gameplay_impl(
     the cycle budget runs out, the operator interrupts, or several cycles in a
     row produce no visual change at all.
     """
-    from gameplay_vision import vision_gameplay_loop
+    from tools.gameplay_vision import vision_gameplay_loop
 
     return vision_gameplay_loop(
         ctx,

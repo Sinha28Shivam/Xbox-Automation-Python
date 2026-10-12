@@ -29,7 +29,7 @@ from __future__ import annotations
 import operator
 from typing import Annotated, Any, TypedDict
 
-from schemas import (
+from core.schemas import (
     ExecutionResult,
     HealthReport,
     RequirementItem,

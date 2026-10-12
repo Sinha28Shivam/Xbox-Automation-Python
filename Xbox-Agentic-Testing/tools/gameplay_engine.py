@@ -31,9 +31,9 @@ from typing import Any, Callable
 
 from pydantic import BaseModel, Field
 
-from artifacts import slug
-from registry import ToolContext, fail, ok
-from skill_memory import find_skill_impl, list_skills_impl, report_skill_outcome_impl
+from core.artifacts import slug
+from tools.registry import ToolContext, fail, ok
+from tools.skill_memory import find_skill_impl, list_skills_impl, report_skill_outcome_impl
 
 # Vision models cost tokens per pixel; 1280px wide is the budget the whole
 # framework uses - game silhouettes, terrain edges and UI icons stay readable
@@ -133,7 +133,7 @@ def grab_nonblank(camera: Any) -> tuple[Any, bool]:
 
 def build_vision_decider(ctx: ToolContext, frame_model: type[BaseModel]) -> Any:
     """A structured, vision-capable runnable that returns `frame_model`."""
-    from llm import LLMFactory, structured
+    from core.llm import LLMFactory, structured
 
     factory = LLMFactory(ctx.settings)
     provider = factory.default_provider
@@ -152,7 +152,7 @@ def _current_provider(ctx: ToolContext) -> str | None:
     never raises, since this only gates an optional latency optimization.
     """
     try:
-        from llm import LLMFactory
+        from core.llm import LLMFactory
         return LLMFactory(ctx.settings).default_provider
     except Exception:
         return None

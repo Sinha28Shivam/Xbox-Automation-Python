@@ -27,15 +27,15 @@ from typing import Any
 import yaml
 from pydantic import ValidationError
 
-from base import BaseAgent
-from schemas import (
+from agents.base import BaseAgent
+from core.schemas import (
     RequirementItem,
     STAGE_ORDER,
     StageDefinition,
     SuccessCriterion,
     ValidatedScenario,
 )
-from state import AgenticState, note
+from core.state import AgenticState, note
 
 
 class ScenarioValidatorAgent(BaseAgent):
@@ -337,6 +337,7 @@ _TOOL_ACTIONS = {
     "get_timing", "discover_game", "launch_game", "select_level",
     "draw_magic_marker", "vision_guided_gameplay",
     "confirm_quit_selection", "vision_guided_minecraft_gameplay",
+    "vision_guided_dungeons_gameplay",
     "read_player_coordinates", "record_location", "find_nearest_locations",
     "explore_and_map", "engage_single_mob", "read_survival_hud",
 }

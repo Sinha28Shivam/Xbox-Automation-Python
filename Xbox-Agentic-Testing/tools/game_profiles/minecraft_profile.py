@@ -15,11 +15,11 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from registry import ToolContext
+from tools.registry import ToolContext
 
-from combo_dispatch import ComboComponent, dispatch_combo, resolve_component
-from gameplay_engine import GameProfile
-from minecraft_controls import button_for
+from tools.combo_dispatch import ComboComponent, dispatch_combo, resolve_component
+from tools.gameplay_engine import GameProfile
+from tools.minecraft_controls import button_for
 
 
 # ===========================================================================

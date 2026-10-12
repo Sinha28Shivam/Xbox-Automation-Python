@@ -1,0 +1,94 @@
+# ===========================================================================
+# Scenario: Minecraft Dungeons - play the mission that is already on screen
+# ===========================================================================
+# Start a mission in Minecraft Dungeons first, then run from
+# Xbox-Agentic-Testing:
+#   python console.py run --file scenarios/dungeons-mission-inplay.yaml
+#
+# For a direct run without the planner/verifier, use:
+#   python console.py dungeons --cycles 60
+# ===========================================================================
+
+id: dungeons-mission-inplay
+title: "Minecraft Dungeons - play the current mission"
+description: >
+  Minecraft Dungeons is already running and the hero is inside a mission.
+  Hand control to the Dungeons vision loop: an observer reads every frame and
+  the health, combat, interaction and navigator agents follow the objective
+  marker, fight what blocks the way, open loot, and push towards the
+  mission-complete screen.
+
+console: xbox_one
+goal: >
+  Follow the objective marker through the mission, fight enemies that block
+  the way, open chests, and reach the mission-complete screen.
+
+preconditions:
+  - The console/device is powered on and awake.
+  - The GIMX session is authenticated and connected.
+  - The capture adapter shows the live Xbox display.
+  - Minecraft Dungeons is already running and the hero is inside a mission.
+
+tags:
+  - xbox
+  - dungeons
+  - minecraft-dungeons
+  - gameplay
+
+timeout_seconds: 1800
+max_steps: 10
+
+stages:
+  - id: closed_loop_play
+    objective: "Play the current mission in a closed loop until visible progress is proven."
+    required_evidence:
+      - progress_signal
+    allowed_actions:
+      - capture_frame
+      - read_screen_text
+      - vision_guided_dungeons_gameplay
+    stop_conditions:
+      - unrecovered_error_dialog
+      - stuck_without_progress
+    replan_conditions:
+      - gameplay_stuck
+
+progress_signals:
+  - objective_advanced
+  - area_transition
+  - mission_complete
+
+death_signals:
+  - hero_downed
+  - mission_failed
+
+stuck_policy:
+  no_visible_change_retries: 3
+  action_change_required: true
+  require_observation_between_actions: true
+
+recovery_policy:
+  recover_from_death: true
+  no_blind_repeat_sequences: true
+
+success_criteria:
+  - description: >
+      The run starts inside a live Minecraft Dungeons mission, not a menu,
+      loading screen or the Xbox dashboard.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: "Minecraft Dungeons in-mission gameplay with hero, hearts and minimap"
+    required: true
+
+  - description: >
+      The hero visibly advances through the mission - moving along the
+      objective, fighting enemies or opening loot - across successive frames.
+    check_type: vision_judgement
+    parameters:
+      expected_visual: "The hero's position, the enemies or the minimap change across gameplay frames"
+    required: true
+
+  - description: >
+      No unrecovered error dialog or connection failure remains visible.
+    check_type: no_error_dialog
+    required: true

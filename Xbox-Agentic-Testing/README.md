@@ -218,7 +218,7 @@ Enable the recovery agent: set `enabled: true` under `recovery` in
 
 ---
 
-## Autonomous vision-guided gameplay (Max, Minecraft)
+## Autonomous vision-guided gameplay (Max, Minecraft, Minecraft Dungeons)
 
 Separate from the scenario-testing workflow above, this framework also plays
 games closed-loop: look at the live frame, decide controller moves with a
@@ -230,7 +230,27 @@ per-cycle evidence (frame paths + measured pixel delta) for a human to judge.
 python console.py play --game minecraft
 python console.py play --game max --from-dashboard --route sea-of-sand
 python console.py interactive          # then: "engage the nearest hostile mob"
+
+# Minecraft Dungeons - start a mission first; this plays, it does not launch
+python console.py dungeons --cycles 60                 # observer + agents, fast mode
+python console.py dungeons --single --slow             # one vision decision per cycle
+python console.py dungeons --udp-ports 51914,51915     # mirror input to 2 controllers
+python console.py run --file scenarios/dungeons-mission-inplay.yaml   # via planner/verifier
 ```
+
+**Minecraft Dungeons** (`tools/dungeons_gameplay.py`, registered as the
+`vision_guided_dungeons_gameplay` tool) — profile in
+`tools/game_profiles/dungeons_profile.py`, button map in
+`config/dungeons_controls.yaml`. By default each frame goes to an observer
+that hands the situation to a health, combat, interaction or navigator agent
+(`tools/game_profiles/dungeons_agents.py`); `--single` uses one vision
+decision per cycle instead. Fast mode (default) sends smaller frames,
+pipelines grabs and overlaps acting with thinking; `--slow` turns that off.
+Each multi-agent run writes `reports/dungeons-scenarios.html` (rescue, fight,
+loot, navigation, objective) next to `dungeons-cycles.json`. Exit code `2`
+means capture or the vision model was unavailable. `run_benchmark` accepts
+the `dungeons` and `dungeons_single` profiles. Scenario YAMLs tagged
+`dungeons` get the Dungeons loop from the planner's in-gameplay fallback.
 
 ### What's implemented and working
 
@@ -396,7 +416,16 @@ and reflash the adapter to test a different platform.
 ## Extending
 
 **Add a tool** — write `provide() -> list[ToolSpec]` in a module under `tools/`,
-then grant it to an agent by name or tag in `agents.yaml`.
+add its package path (e.g. `"tools.my_tools"`) to the default module list in
+`tools/registry.py::build_default_registry`, then grant it to an agent by name
+or tag in `agents.yaml`.
+
+**Imports** — `core/`, `tools/`, `agents/`, `graph/` and `gameplay/` are
+packages rooted at this folder. Always import package-qualified
+(`from core.config import Config`, `from tools.registry import ToolContext`).
+Entry points (`console.py`, `scripts/*.py`) put only this folder on `sys.path`;
+dotted paths in `agents.yaml`/`graph.yaml` use the same form
+(`agents.health_agent.HealthAgent`, `graph.routing.route_after_health`).
 
 **Add an agent** — subclass `BaseAgent`, implement `run(state) -> dict`, add an
 entry to `agents.yaml` and a node to `graph.yaml`.

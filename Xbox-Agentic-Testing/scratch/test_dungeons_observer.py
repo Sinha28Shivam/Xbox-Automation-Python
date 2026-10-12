@@ -3,12 +3,12 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-for sub in ("core", "tools", "agents", "graph", "tools/game_profiles"):
-    sys.path.insert(0, str(ROOT / sub))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-import dungeons_scenario_report as rep
-from game_profiles.dungeons_agents import PROFILE
-from game_profiles.dungeons_profile import DungeonsFrameDecision
+import tools.dungeons_scenario_report as rep
+from tools.game_profiles.dungeons_agents import PROFILE
+from tools.game_profiles.dungeons_profile import DungeonsFrameDecision
 
 Q = dict(scene_state="in_mission", player_visible=True, enemies="none", reasoning="t")
 MOVING = {"bearing": "up_right", "shift": 30.0, "occluded": False}

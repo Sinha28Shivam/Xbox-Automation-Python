@@ -300,7 +300,7 @@ class MenuNavigator:
     # -- model -------------------------------------------------------------
     def _build_runnable(self) -> Any:
         """A structured, vision-capable runnable returning MenuDecision."""
-        from llm import LLMFactory, structured
+        from core.llm import LLMFactory, structured
 
         factory = self._llm_factory or LLMFactory(self.settings)
         provider = factory.default_provider

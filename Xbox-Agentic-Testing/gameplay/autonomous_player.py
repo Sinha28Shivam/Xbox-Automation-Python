@@ -24,7 +24,7 @@ if hasattr(sys.stderr, "reconfigure"):
 import cv2
 import numpy as np
 
-from config import Config
+from core.config import Config
 from core.adapters import HardwareBridge
 from core.game_session import GameSession
 from core.llm import LLMFactory, structured
@@ -179,7 +179,7 @@ class AutonomousPlayer:
         _, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 82])
         return base64.b64encode(buffer).decode("utf-8")
 
-    # ---- Magic Marker: hardware-verified values from MARKER_FINDINGS.md ---
+    # ---- Magic Marker: hardware-verified values from docs/MARKER_FINDINGS.md ---
     # RT is an AXIS spanning 0..32767, not a 0..255 byte. Anything below ~1023
     # leaves the trigger unpressed as far as the console is concerned.
     MARKER_RT = 32767
@@ -373,7 +373,7 @@ class AutonomousPlayer:
     # for a fixed time - it should run until the ink is spent.
     INK_MIN_HSV = (0, 0, 165)      # pale/bright ring pixels
     INK_MAX_HSV = (180, 120, 255)
-    # Hardware-measured cursor rest position at 1920x1080 (MARKER_FINDINGS.md).
+    # Hardware-measured cursor rest position at 1920x1080 (docs/MARKER_FINDINGS.md).
     CURSOR_REST_X = 967.0
     CURSOR_REST_Y = 534.0
     # Half-width of the gauge search box, as a fraction of the frame. 0.16
@@ -634,7 +634,7 @@ class AutonomousPlayer:
         `_marker_draw` never hit this because every one of its holds appends
         `centre`, which re-asserts the stick at 0 and parks the cursor. The
         proven manual gesture does the same: the CONFIRMED WORKING destroy in
-        _manual_marker.py runs WITHOUT `--hold-aim`, so its X press sends
+        scripts/manual_marker.py runs WITHOUT `--hold-aim`, so its X press sends
         ZERO on the aim axes. Mirroring that here is the fix.
 
         `settle` stays at drawing's 1.5s because an erase is ANIMATED - the
@@ -692,8 +692,8 @@ class AutonomousPlayer:
 
     def _tool_context(self) -> Any:
         """A ToolContext so the existing game_tools can be reused as-is."""
-        from artifacts import ArtifactStore
-        from registry import ToolContext
+        from core.artifacts import ArtifactStore
+        from tools.registry import ToolContext
 
         store = ArtifactStore(
             root=self.settings.resolve_path("paths.artifacts_dir", "./artifacts"),
@@ -740,7 +740,7 @@ class AutonomousPlayer:
         are in the picker and done, and if we are still on the main menu we
         step down again rather than pressing A a second time.
         """
-        from game_tools import _observe
+        from tools.game_tools import _observe
 
         for attempt in range(1, attempts + 1):
             print(f"  [launch] main menu: stepping DOWN off CONTINUE onto "
@@ -784,7 +784,7 @@ class AutonomousPlayer:
         the pre-focused CONTINUE and resume the last save, which is exactly
         the bug this exists to avoid - we need SELECT LEVEL instead.
         """
-        from game_tools import _observe
+        from tools.game_tools import _observe
 
         for attempt in range(1, attempts + 1):
             obs = _observe(ctx, f"launch-title-{attempt}")
@@ -826,7 +826,7 @@ class AutonomousPlayer:
         a chapter boundary. Pressing A there resumes the last save, so this
         drives the same SELECT LEVEL route the launch step uses.
         """
-        from game_tools import select_level_impl
+        from tools.game_tools import select_level_impl
 
         # Vision first - it can see which row is highlighted, so it will not
         # confirm CONTINUE by accident the way the keyword path could.
@@ -929,7 +929,7 @@ class AutonomousPlayer:
         attention" bypass and the chapter search are all hardware-verified
         there, and a second implementation here would drift from it.
         """
-        from game_tools import _launch_game, select_level_impl
+        from tools.game_tools import _launch_game, select_level_impl
 
         target = level or self._level_from_route() or "Sea of Sand"
         # Remembered so the play loop's main-menu guard recovers to the SAME
@@ -1094,7 +1094,7 @@ class AutonomousPlayer:
             time.sleep(0.2)
 
         elif action_type == "magic_marker":
-            # HARDWARE-VERIFIED sequence - see MARKER_FINDINGS.md.
+            # HARDWARE-VERIFIED sequence - see docs/MARKER_FINDINGS.md.
             # The previous version was wrong in four separate ways:
             #   * it opened the marker with LT ("l2"); the marker is RT ("r2")
             #   * it used 255, but the trigger axis spans 0..32767, so 255 is

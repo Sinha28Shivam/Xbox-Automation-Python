@@ -104,4 +104,4 @@ per-cycle deltas, so this needs no new plumbing.
 - Per-frame glow detection in `game_tools.py` (the vision model already
   locates nodes; a second CV detector would just disagree with it)
 - Touching the working loop, checkpoint logic, or death handling
-- `_manual_marker.py`, which stays as the standalone calibration rig
+- `scripts/manual_marker.py`, which stays as the standalone calibration rig

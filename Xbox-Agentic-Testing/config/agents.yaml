@@ -50,7 +50,7 @@ agents:
     tools:
       - "tag:hardware"
       - "tag:diagnostic"
-    output_schema: "schemas.HealthReport"
+    output_schema: "core.schemas.HealthReport"
     description: >
       Probes GIMX (process, UDP reachability, adapter firmware, serial port)
       and the capture card (device present, openable, non-blank signal), then
@@ -68,7 +68,7 @@ agents:
     prompt: "scenario_validator.j2"
     tools:
       - "tag:introspection"
-    output_schema: "schemas.ValidatedScenario"
+    output_schema: "core.schemas.ValidatedScenario"
     description: >
       Parses the scenario, resolves every referenced control against
       controls.yaml, checks preconditions and rewrites vague success criteria
@@ -86,7 +86,7 @@ agents:
     prompt: "planner.j2"
     tools:
       - "tag:introspection"
-    output_schema: "schemas.TestPlan"
+    output_schema: "core.schemas.TestPlan"
     description: >
       Produces a step list where every step carries its own expected
       observable outcome, so the verifier has something concrete to check.
@@ -103,7 +103,7 @@ agents:
       - "tag:input"
       - "tag:vision"
       - "tag:timing"
-    output_schema: "schemas.ExecutionResult"
+    output_schema: "core.schemas.ExecutionResult"
     description: >
       Drives the console through the plan, capturing a before/after frame for
       every action so that later agents reason over evidence, not assumptions.
@@ -121,7 +121,7 @@ agents:
     tools:
       - "tag:vision"
       - "tag:analysis"
-    output_schema: "schemas.VerificationResult"
+    output_schema: "core.schemas.VerificationResult"
     description: >
       Compares observed evidence against each step's expected outcome.
       "The event was accepted" is explicitly NOT evidence; only pixel change,
@@ -140,7 +140,7 @@ agents:
       - "tag:diagnostic"
       - "tag:analysis"
       - "tag:vision"
-    output_schema: "schemas.RootCauseAnalysis"
+    output_schema: "core.schemas.RootCauseAnalysis"
     description: >
       Correlates the health snapshot, action log, frame deltas and GIMX output
       into a ranked set of hypotheses, each with the evidence supporting it and
@@ -154,7 +154,7 @@ agents:
     prompt: "reporter.j2"
     tools:
       - "tag:report"
-    output_schema: "schemas.TestReport"
+    output_schema: "core.schemas.TestReport"
     description: >
       Writes JSON / Markdown / JUnit reports with embedded screenshot evidence
       and an explicit statement of what was NOT proven.
@@ -170,7 +170,7 @@ agents:
     impl: "agents.supervisor_agent.SupervisorAgent"
     prompt: "supervisor.j2"
     tools: []
-    output_schema: "schemas.RoutingDecision"
+    output_schema: "core.schemas.RoutingDecision"
     optional: true
     description: >
       Chooses the next agent from the live state. Bounded by runtime.max_steps
@@ -188,7 +188,7 @@ agents:
     tools:
       - "tag:hardware"
       - "tag:diagnostic"
-    output_schema: "schemas.RecoveryResult"
+    output_schema: "core.schemas.RecoveryResult"
     enabled: false
     optional: true
     description: >
