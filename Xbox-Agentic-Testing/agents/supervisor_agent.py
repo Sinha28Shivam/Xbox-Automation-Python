@@ -28,9 +28,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from base import BaseAgent
-from schemas import RoutingDecision
-from state import AgenticState, note
+from agents.base import BaseAgent
+from core.schemas import RoutingDecision
+from core.state import AgenticState, note
 
 
 class SupervisorAgent(BaseAgent):

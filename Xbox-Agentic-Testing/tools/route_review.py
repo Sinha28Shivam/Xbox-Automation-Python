@@ -18,7 +18,7 @@ A pale-disc detector was tried as a replacement and rejected: it flagged
 82,177px of hazy SKY at t=38.0s and pale wooden DEBRIS at t=12.2s, while the
 genuine cursor at t=30.0s measured only 10,300px. Sky outscored the real
 target, so no area/roundness threshold separates them. This repeats the
-project's existing finding (MARKER_FINDINGS.md): bright/pale detectors lock
+project's existing finding (docs/MARKER_FINDINGS.md): bright/pale detectors lock
 onto sand and sky, and CV glow detection is unusable here.
 
 So this tool does what the live agent already does successfully - it SHOWS THE
@@ -49,12 +49,10 @@ from typing import Any
 import cv2
 from pydantic import BaseModel, Field
 
-# `tools/` is added to sys.path by the tool loader at runtime; when run as a
-# script we need the repo root importable for `config` / `llm`.
+# When run as a script, the project root must be importable for `core.*`.
 _ROOT = Path(__file__).resolve().parent.parent
-for _p in (str(_ROOT), str(_ROOT / "core")):
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
 
 # ===========================================================================
@@ -159,8 +157,8 @@ a confident wrong answer is worse than "none"/false.
 
 def build_reader() -> Any:
     """A structured, vision-capable runnable returning BatchNotes."""
-    from config import Config, load_dotenv_if_present
-    from llm import LLMFactory, structured
+    from core.config import Config, load_dotenv_if_present
+    from core.llm import LLMFactory, structured
 
     # The API key normally lives in a .env beside the repo, not the shell.
     load_dotenv_if_present(_ROOT.parent / ".env")

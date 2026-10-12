@@ -11,9 +11,10 @@
 #  edges              unconditional  from -> to
 #  conditional_edges  from + router  -> {condition value: target}
 #
-#  A router is a dotted path to a function (state) -> str. The returned string
-#  is looked up in `map`. Routers live in routing.py and are pure functions of
-#  the state, which keeps them unit-testable without hardware.
+#  A router is a dotted path to a function (state) -> str, e.g.
+#  graph.routing.route_after_health. The returned string is looked up in
+#  `map`. Routers live in graph/routing.py and are pure functions of the
+#  state, which keeps them unit-testable without hardware.
 # ===========================================================================
 
 meta:
@@ -53,7 +54,7 @@ conditional_edges:
   # planner, which fails on missing state, which sends the executor the same
   # way - and the real cause ends up buried under three secondary errors.
   - from: "scenario_validator"
-    router: "routing.route_after_scenario"
+    router: "graph.routing.route_after_scenario"
     map:
       plan: "planner"
       stopped: "reporter"
@@ -62,7 +63,7 @@ conditional_edges:
   # Never hand the executor an empty or missing plan: it would drive hardware
   # with nothing to do and produce a confusing empty run.
   - from: "planner"
-    router: "routing.route_after_planner"
+    router: "graph.routing.route_after_planner"
     map:
       execute: "executor"
       stopped: "reporter"
@@ -72,7 +73,7 @@ conditional_edges:
   # produces BLOCKED, and we jump straight to the report (via recovery if it
   # is enabled and the fault looks recoverable).
   - from: "health"
-    router: "routing.route_after_health"
+    router: "graph.routing.route_after_health"
     map:
       healthy: "scenario_validator"
       recoverable: "recovery"
@@ -80,7 +81,7 @@ conditional_edges:
 
   # ---- after RECOVERY -----------------------------------------------------
   - from: "recovery"
-    router: "routing.route_after_recovery"
+    router: "graph.routing.route_after_recovery"
     map:
       recovered: "health"          # re-probe; never trust a blind retry
       failed: "reporter"
@@ -89,7 +90,7 @@ conditional_edges:
   # The executor never decides pass/fail. It only says "I finished" or
   # "I could not continue". Judgement belongs to the verifier.
   - from: "executor"
-    router: "routing.route_after_executor"
+    router: "graph.routing.route_after_executor"
     map:
       verify: "verifier"
       aborted: "rca"
@@ -98,7 +99,7 @@ conditional_edges:
   # replan exists so a recoverable navigation mistake (wrong menu row) costs
   # one more plan rather than a failed run. Bounded by runtime.max_replans.
   - from: "verifier"
-    router: "routing.route_after_verification"
+    router: "graph.routing.route_after_verification"
     map:
       passed: "reporter"
       failed: "rca"
@@ -106,7 +107,7 @@ conditional_edges:
 
   # ---- after RCA ----------------------------------------------------------
   - from: "rca"
-    router: "routing.route_after_rca"
+    router: "graph.routing.route_after_rca"
     map:
       report: "reporter"
       retry: "planner"

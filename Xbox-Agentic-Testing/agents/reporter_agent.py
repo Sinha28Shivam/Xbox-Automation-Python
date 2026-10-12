@@ -25,9 +25,9 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from base import BaseAgent
-from schemas import ExecutiveSummary, TestReport, Verdict
-from state import AgenticState, note
+from agents.base import BaseAgent
+from core.schemas import ExecutiveSummary, TestReport, Verdict
+from core.state import AgenticState, note
 
 
 class ReporterAgent(BaseAgent):

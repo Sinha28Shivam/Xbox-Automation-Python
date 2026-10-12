@@ -29,8 +29,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from registry import ToolContext, ToolSpec, fail, make_tool, ok
-from vision_tools import _capture_frame, _crop_frame, _invoke
+from tools.registry import ToolContext, ToolSpec, fail, make_tool, ok
+from tools.vision_tools import _capture_frame, _crop_frame, _invoke
 
 # Matches the three comma-separated numbers in "Position: -438, 63, 978",
 # deliberately NOT anchored on the word "Position" - hardware-verified OCR

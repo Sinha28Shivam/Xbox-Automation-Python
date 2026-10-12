@@ -20,11 +20,11 @@ import cv2
 import numpy as np
 from pydantic import BaseModel, Field, PrivateAttr, model_validator
 
-from registry import ToolContext
+from tools.registry import ToolContext
 
-from combo_dispatch import ComboComponent, dispatch_combo
-from dungeons_controls import all_bindings, button_for
-from gameplay_engine import GameProfile
+from tools.combo_dispatch import ComboComponent, dispatch_combo
+from tools.dungeons_controls import all_bindings, button_for
+from tools.gameplay_engine import GameProfile
 
 _DIAG = 0.7071
 _VECTORS: dict[str, tuple[float, float]] = {

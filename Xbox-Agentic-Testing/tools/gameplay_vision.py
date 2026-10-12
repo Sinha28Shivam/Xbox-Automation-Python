@@ -13,10 +13,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from registry import ToolContext
+from tools.registry import ToolContext
 
-from gameplay_engine import run_gameplay_loop
-from game_profiles.max_profile import PROFILE
+from tools.gameplay_engine import run_gameplay_loop
+from tools.game_profiles.max_profile import PROFILE
 
 
 def vision_gameplay_loop(

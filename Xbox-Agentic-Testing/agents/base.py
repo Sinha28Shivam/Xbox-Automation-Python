@@ -38,12 +38,12 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from artifacts import ArtifactStore
-from config import Config
-from llm import LLMFactory, structured
-from prompts import PromptLibrary
-from registry import ToolRegistry
-from state import AgenticState, note, state_digest
+from core.artifacts import ArtifactStore
+from core.config import Config
+from core.llm import LLMFactory, structured
+from core.prompts import PromptLibrary
+from tools.registry import ToolRegistry
+from core.state import AgenticState, note, state_digest
 
 
 class AgentContext:

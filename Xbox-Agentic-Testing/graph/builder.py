@@ -24,8 +24,8 @@ from __future__ import annotations
 import importlib
 from typing import Any, Callable
 
-from config import Config
-from state import AgenticState
+from core.config import Config
+from core.state import AgenticState
 
 try:
     from langgraph.graph import END, START, StateGraph
@@ -152,7 +152,7 @@ class WorkflowBuilder:
                 "route_mode is 'supervised' but the supervisor agent is "
                 "disabled in agents.yaml.")
 
-        from routing import route_supervised
+        from graph.routing import route_supervised
 
         workers = [n for n in nodes if n != "supervisor"]
         mapping: dict[str, Any] = {n: n for n in workers}

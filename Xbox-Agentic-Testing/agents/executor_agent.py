@@ -33,8 +33,8 @@ import re
 import time
 from typing import Any
 
-from base import BaseAgent
-from schemas import (
+from agents.base import BaseAgent
+from core.schemas import (
     Evidence,
     EvidenceKind,
     ExecutionResult,
@@ -45,7 +45,7 @@ from schemas import (
     StageTransition,
     StepResult,
 )
-from state import AgenticState, note
+from core.state import AgenticState, note
 
 
 _INGAME_STAGES = frozenset({
@@ -116,7 +116,8 @@ class ExecutorAgent(BaseAgent):
         # 3. Dashboard screen (without game running)
         dash_phrases = ["my games & apps", "add to play later", "sponsored"]
         hit_dash = next((p for p in dash_phrases if p in text), None)
-        game_sigs = ["curse of brotherhood", "brotherhood", "anotherland", "press a to start", "select level"]
+        game_sigs = ["curse of brotherhood", "brotherhood", "anotherland", "press a to start", "select level",
+                     "minecraft dungeons", "mission"]
         has_game_sig = any(sig in text for sig in game_sigs)
         if hit_dash and not has_game_sig:
             return {

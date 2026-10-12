@@ -13,7 +13,7 @@ reported "0 Magic Marker uses" for a run full of them.
 
 A pale-disc replacement was tried and rejected: hazy sky scored 82,177px and
 pale debris 17,297px, while the real cursor was only ~10,300px - so no size
-or roundness threshold separates them. See MARKER_FINDINGS.md.
+or roundness threshold separates them. See docs/MARKER_FINDINGS.md.
 
 The scene_change/delta logic here is still sound. For marker events, use
 route_review.py, which shows the frames to the vision model instead.
@@ -53,7 +53,7 @@ import cv2
 import numpy as np
 
 # Ambient noise on this capture path sits at 2-4; a real scene change is
-# an order of magnitude bigger. See MARKER_FINDINGS.md.
+# an order of magnitude bigger. See docs/MARKER_FINDINGS.md.
 AMBIENT_DELTA = 4.5
 
 

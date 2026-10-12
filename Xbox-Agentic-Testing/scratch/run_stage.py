@@ -12,13 +12,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-for sub in ("core", "tools", "agents", "graph", "tools/game_profiles"):
-    sys.path.insert(0, str(ROOT / sub))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from adapters import HardwareBridge
-from artifacts import ArtifactStore
-from config import Config, load_dotenv_if_present
-from registry import ToolContext
+from core.adapters import HardwareBridge
+from core.artifacts import ArtifactStore
+from core.config import Config, load_dotenv_if_present
+from tools.registry import ToolContext
 
 STAGES = {"explore": 30, "village": 60, "chest": 0, "attack": 15, "wood": 45}
 stage = sys.argv[1] if len(sys.argv) > 1 else ""
@@ -34,19 +34,19 @@ store = ArtifactStore(root=settings.resolve_path("paths.artifacts_dir", "./artif
 ctx = ToolContext(hardware=hw, artifacts=store, settings=settings, dry_run=False)
 
 if stage == "explore":
-    from exploration_tools import explore_and_map_impl
+    from tools.exploration_tools import explore_and_map_impl
     result = explore_and_map_impl(ctx, max_cycles=cycles)
 elif stage == "village":
-    from minecraft_gameplay import village_loot_and_trade_impl
+    from tools.minecraft_gameplay import village_loot_and_trade_impl
     result = village_loot_and_trade_impl(ctx, max_cycles=cycles, cycle_delay=0.4)
 elif stage == "chest":
-    from chest_loot import loot_chest_grid
+    from tools.game_profiles.chest_loot import loot_chest_grid
     result = loot_chest_grid(ctx)
 elif stage == "attack":
-    from combat_tools import engage_single_mob_impl
+    from tools.combat_tools import engage_single_mob_impl
     result = engage_single_mob_impl(ctx, max_cycles=cycles)
 else:
-    from minecraft_gameplay import vision_guided_minecraft_gameplay_impl
+    from tools.minecraft_gameplay import vision_guided_minecraft_gameplay_impl
     result = vision_guided_minecraft_gameplay_impl(ctx, max_cycles=cycles, cycle_delay=0.4)
 
 slim = {k: v for k, v in result.items() if k != "cycles"}

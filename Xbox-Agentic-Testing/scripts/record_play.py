@@ -27,9 +27,9 @@ Magic Marker uses as you make them:
     [00:45.1] SCENE CHANGE    delta 52.9 - camera panned / new area
 
 USAGE
-    python record_play.py                       # stop with Ctrl+C
-    python record_play.py --name sea-of-sand --minutes 10
-    python record_play.py --no-video            # beats only, no mp4
+    python scripts/record_play.py                       # stop with Ctrl+C
+    python scripts/record_play.py --name sea-of-sand --minutes 10
+    python scripts/record_play.py --no-video            # beats only, no mp4
 """
 from __future__ import annotations
 
@@ -44,17 +44,17 @@ from pathlib import Path
 
 import cv2
 
-ROOT = Path(__file__).resolve().parent
-sys.path.insert(0, str(ROOT / "core"))
-sys.path.insert(0, str(ROOT / "tools"))
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from config import Config, load_dotenv_if_present   # noqa: E402
-from adapters import HardwareBridge                 # noqa: E402
-from walkthrough_video import (                     # noqa: E402
+from core.config import Config, load_dotenv_if_present   # noqa: E402
+from core.adapters import HardwareBridge                 # noqa: E402
+from tools.walkthrough_video import (                     # noqa: E402
     MARKER_SAT_THRESHOLD, cursor_ring, marker_open,
 )
 
-# Ambient noise on this capture path is 2-4; see MARKER_FINDINGS.md.
+# Ambient noise on this capture path is 2-4; see docs/MARKER_FINDINGS.md.
 SCENE_DELTA = 12.0
 
 

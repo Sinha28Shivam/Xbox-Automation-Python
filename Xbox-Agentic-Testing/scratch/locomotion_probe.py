@@ -7,14 +7,14 @@ from pathlib import Path
 import pytesseract
 
 ROOT = Path(__file__).resolve().parent.parent
-for sub in ("core", "tools", "agents", "graph"):
-    sys.path.insert(0, str(ROOT / sub))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from adapters import HardwareBridge
-from artifacts import ArtifactStore
-from config import Config, load_dotenv_if_present
-from registry import ToolContext
-from gameplay_engine import grab_nonblank
+from core.adapters import HardwareBridge
+from core.artifacts import ArtifactStore
+from core.config import Config, load_dotenv_if_present
+from tools.registry import ToolContext
+from tools.gameplay_engine import grab_nonblank
 from PIL import Image
 import cv2
 

@@ -88,6 +88,12 @@ inside gameplay. In that case:
   - it stops by itself when a checkpoint/level-complete screen is SEEN, when
     the operator interrupts, when `max_cycles` is spent, or when several
     cycles produce no visual change. Do not wrap it in a retry loop.
+  - pick the loop that matches the GAME. `vision_guided_gameplay` is Max: The
+    Curse of Brotherhood only. For Minecraft (Bedrock) use
+    `vision_guided_minecraft_gameplay`. For **Minecraft Dungeons** (tagged
+    `dungeons`) use `vision_guided_dungeons_gameplay(goal=..., max_cycles=...)`
+    - it takes no `stop_on_checkpoint`; it stops on the mission-complete
+    screen by itself.
 
 
 

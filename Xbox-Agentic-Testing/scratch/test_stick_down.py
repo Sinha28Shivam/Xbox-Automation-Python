@@ -1,6 +1,8 @@
 import sys, time
-sys.path.insert(0, r'c:\Users\sinha\Desktop\InstrumentsStore\xboxArudino\Xbox-Automation-Python')
-sys.path.insert(0, r'c:\Users\sinha\Desktop\InstrumentsStore\xboxArudino\Xbox-Automation-Python\test-controller')
+from pathlib import Path
+_HW = Path(__file__).resolve().parents[2] / "Xbox-Automation-Python"
+sys.path.insert(0, str(_HW))
+sys.path.insert(0, str(_HW / "test-controller"))
 
 from capture.capture import ScreenCapture
 from test_controller import ConsolePad

@@ -27,8 +27,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from registry import ToolContext, ToolSpec, fail, make_tool, ok
-from coordinate_tools import read_player_coordinates_impl
+from tools.registry import ToolContext, ToolSpec, fail, make_tool, ok
+from tools.coordinate_tools import read_player_coordinates_impl
 
 
 def _memory_path(ctx: ToolContext) -> Path:

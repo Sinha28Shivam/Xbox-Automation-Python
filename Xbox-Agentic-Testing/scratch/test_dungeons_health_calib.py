@@ -12,8 +12,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-for sub in ("core", "tools", "agents", "graph", "tools/game_profiles"):
-    sys.path.insert(0, str(ROOT / sub))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 try:
     import cv2
@@ -21,7 +21,7 @@ except ImportError:
     print("SKIP: opencv not installed")
     sys.exit(0)
 
-import game_profiles.dungeons_profile as dp
+import tools.game_profiles.dungeons_profile as dp
 
 RUNS = ROOT / "artifacts" / "runs"
 

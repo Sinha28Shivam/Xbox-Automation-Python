@@ -6,11 +6,11 @@
 
 ```
 # draw a pillar
-python _manual_marker.py --aim down-right --aim-time 0.4 --draw up \
+python scripts/manual_marker.py --aim down-right --aim-time 0.4 --draw up \
     --draw-time 1.8 --strength 1.0
 
 # destroy a pillar
-python _manual_marker.py --mode destroy --aim down-right --aim-time 0.4 \
+python scripts/manual_marker.py --mode destroy --aim down-right --aim-time 0.4 \
     --strength 1.0
 ```
 
@@ -95,14 +95,14 @@ X-prompt icon sitting next to the finished pillar in `_mm_1downright_4drawing`
 and `_6after` is the in-game confirmation of this binding.
 
 ```
-python _manual_marker.py --mode destroy --aim down-right
+python scripts/manual_marker.py --mode destroy --aim down-right
 ```
 
 Escalate if X erases nothing:
 
 ```
-python _manual_marker.py --mode destroy --aim down-right --hold-aim
-python _manual_marker.py --mode destroy --aim down-right --hold-aim --repeat-x 3 --x-hold 0.6
+python scripts/manual_marker.py --mode destroy --aim down-right --hold-aim
+python scripts/manual_marker.py --mode destroy --aim down-right --hold-aim --repeat-x 3 --x-hold 0.6
 ```
 
 Sequence: hold RT -> aim at the **pillar** -> tap X -> release RT. Two things
@@ -132,7 +132,7 @@ for locating the pillar afterwards — the whole view moved.
 
 
 
-Evidence: `_mm_1upright_*.png` (a real `_manual_marker.py --aim up-right` run,
+Evidence: `_mm_1upright_*.png` (a real `scripts/manual_marker.py --aim up-right` run,
 1920x1080) plus a user-supplied reference screenshot.
 
 ## 1. RT range — FIXED

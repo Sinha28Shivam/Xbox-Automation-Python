@@ -218,7 +218,7 @@ class ReporterAgent:
     name = "reporter"
 
     def run(self, result: dict[str, Any], reports_dir: Path) -> dict[str, Any]:
-        import dungeons_scenario_report as rep
+        import tools.dungeons_scenario_report as rep
         report = rep.write(result, reports_dir)
         rep.print_summary(report)
         print(f"  Report: {reports_dir / 'dungeons-scenarios.html'}", flush=True)

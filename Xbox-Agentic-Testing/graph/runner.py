@@ -35,21 +35,19 @@ from typing import Any, Callable
 # dotted paths in agents.yaml short and readable, which matters because users
 # edit that file.
 _ROOT = Path(__file__).resolve().parent.parent
-for _sub in ("core", "tools", "agents", "graph"):
-    _path = str(_ROOT / _sub)
-    if _path not in sys.path:
-        sys.path.insert(0, _path)
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
-from adapters import HardwareBridge                      # noqa: E402
-from artifacts import ArtifactStore, new_run_id          # noqa: E402
-from base import AgentContext                            # noqa: E402
-from builder import _resolve, build_workflow             # noqa: E402
-from config import Config, load_dotenv_if_present        # noqa: E402
-from llm import LLMFactory                               # noqa: E402
-from prompts import PromptLibrary                        # noqa: E402
-from registry import build_default_registry              # noqa: E402
-from schemas import TestReport, Verdict                  # noqa: E402
-from state import initial_state                          # noqa: E402
+from core.adapters import HardwareBridge                      # noqa: E402
+from core.artifacts import ArtifactStore, new_run_id          # noqa: E402
+from agents.base import AgentContext                            # noqa: E402
+from graph.builder import _resolve, build_workflow             # noqa: E402
+from core.config import Config, load_dotenv_if_present        # noqa: E402
+from core.llm import LLMFactory                               # noqa: E402
+from core.prompts import PromptLibrary                        # noqa: E402
+from tools.registry import build_default_registry              # noqa: E402
+from core.schemas import TestReport, Verdict                  # noqa: E402
+from core.state import initial_state                          # noqa: E402
 
 
 CONFIG_FILES = {

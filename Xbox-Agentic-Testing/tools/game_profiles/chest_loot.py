@@ -49,7 +49,7 @@ def _serpentine(rows: int) -> list[Cell]:
 
 
 def loot_chest_grid(ctx: Any, max_steps: int = 220) -> dict[str, Any]:
-    from gameplay_engine import grab_nonblank
+    from tools.gameplay_engine import grab_nonblank
 
     pad = ctx.hardware.pad()
     cam = ctx.hardware.capture()

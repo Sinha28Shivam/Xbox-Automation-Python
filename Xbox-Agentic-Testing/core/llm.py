@@ -34,7 +34,7 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
-from config import Config
+from core.config import Config
 
 TModel = TypeVar("TModel", bound=BaseModel)
 

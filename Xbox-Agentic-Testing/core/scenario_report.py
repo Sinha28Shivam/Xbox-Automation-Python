@@ -24,9 +24,8 @@ from pathlib import Path
 from typing import Any
 
 _ROOT = Path(__file__).resolve().parent.parent
-for _p in (str(_ROOT), str(_ROOT / "core"), str(_ROOT / "tools")):
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
 # Agents run in this fixed pipeline order; state-digest.json's message list
 # is chronological but interleaves "started"/"completed" notes, so the
