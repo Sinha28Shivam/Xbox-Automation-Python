@@ -56,8 +56,9 @@ class CombatAgent(Agent):
             if d.enemy_adjacent and d.enemy_direction != "none":
                 return dp._combat_moves(d, c)
             return None
-        if d.enemy_direction == "none" and cmd and cmd.direction != "none":
-            d = d.model_copy(update={"enemy_direction": cmd.direction})
+        # Only fight what perception confirmed (dp._combat_state). The old
+        # fallback to the Observer's command direction fired crossbow volleys
+        # at empty ground whenever the model said "combat" without an enemy.
         if d.enemy_direction != "none":
             return dp._combat_moves(d, c)
         return None
@@ -189,6 +190,7 @@ class Supervisor:
             return dp._forced_moves(d, c)
         c["_downed"] = False
         dp._update_nav(d, c)
+        dp._perceive(d, c)
         if dp._entities(d, "building"):
             c["village_sightings"] += 1
         cmd = d.command
@@ -198,17 +200,39 @@ class Supervisor:
         if moves:
             self._credit(d, c, "health", f"override: health {d.health_percent}%")
             return moves
+        moves = dp._blind_defence(d, c)
+        if moves:
+            self._credit(d, c, "combat", f"override: hit by unseen attacker "
+                                         f"(-{d._nav.get('damage')}%)")
+            return moves
+        if d._nav.get("blind_attacker") or d._nav.get("held"):
+            moves = self.by_name["combat"].propose(d, c, None)
+            if moves:
+                why = ("hit, attacking last-seen enemy" if d._nav.get("blind_attacker")
+                       else "holding engagement")
+                self._credit(d, c, "combat", f"override: {why}")
+                return moves
         moves = self.urgent.propose(d, c, cmd)
         if moves:
             self._credit(d, c, "combat", "override: enemy in reach")
             return moves
-        order = [cmd.to] + [n for n in self.fallback if n != cmd.to]
+        to = cmd.to
+        if to == "combat" and d.enemy_direction == "none":
+            # The Observer asked for a fight that perception did not confirm.
+            c["combat_commands_dropped"] = c.get("combat_commands_dropped", 0) + 1
+            to = "navigator"
+        elif to == "navigator" and d.enemy_direction != "none":
+            # A confirmed enemy outranks walking past it.
+            to = "combat"
+        order = [to] + [n for n in self.fallback if n != to]
         for i, name in enumerate(order):
             if name == "health":
                 continue
             moves = self.by_name[name].propose(d, c, cmd if i == 0 else None)
             if moves:
-                self._credit(d, c, name, "command" if i == 0 else f"fallback from {cmd.to}")
+                route = ("command" if to == cmd.to else f"redirected from {cmd.to}") \
+                    if i == 0 else f"fallback from {to}"
+                self._credit(d, c, name, route)
                 return moves
         return None  # unreachable: navigator always moves
 
@@ -233,14 +257,15 @@ def _initial_counters() -> dict[str, Any]:
     c.update({f"agent_{n}": 0 for n in _AGENT_NAMES})
     c.update({"_interact_run": 0, "_approach_run": 0, "_interact_cooldown": 0,
               "_sidesteps": 0, "interaction_approaches": 0,
-              "interaction_give_ups": 0, "village_sightings": 0})
+              "interaction_give_ups": 0, "village_sightings": 0,
+              "combat_commands_dropped": 0})
     return c
 
 
 def _summarize(c: dict[str, Any]) -> dict[str, Any]:
     out = dp._summarize(c)
     out.update({k: c.get(k, 0) for k in ("interaction_approaches", "interaction_give_ups",
-                                         "village_sightings")})
+                                         "village_sightings", "combat_commands_dropped")})
     out["agent_cycles"] = {n: c.get(f"agent_{n}", 0) for n in _AGENT_NAMES}
     return out
 
