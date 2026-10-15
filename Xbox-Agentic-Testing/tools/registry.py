@@ -203,7 +203,8 @@ def build_default_registry(hardware: HardwareBridge, artifacts: ArtifactStore,
                           dry_run=settings.get("runtime.dry_run", False))
     registry = ToolRegistry(context)
     registry.load_modules(module_names or [
-        "tools.hardware_tools", "tools.input_tools", "tools.vision_tools", "tools.report_tools",
+        "tools.hardware_tools", "tools.input_tools", "tools.vision_tools",
+        "tools.navigation_tools", "tools.report_tools",
         "tools.game_tools", "tools.minecraft_gameplay", "tools.dungeons_gameplay",
         "tools.coordinate_tools",
         "tools.location_memory", "tools.exploration_tools", "tools.combat_tools",

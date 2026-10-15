@@ -137,12 +137,22 @@ class PlannerAgent(BaseAgent):
             self.context.spec_for("executor").get("tools") or [])
         executor_tools = self.context.tools.describe(executor_selectors)
 
+        # run-20261014-162340: the replan assumed a fresh dashboard and pressed
+        # Guide while the Guide was already open, which closed it. Reading the
+        # live screen lets the replan start from where the console really is.
+        current_screen_text = ""
+        if is_replan and not state.get("dry_run"):
+            reading = self.call_tool("read_screen_text")
+            if reading.get("ok"):
+                current_screen_text = str(reading.get("text", ""))[:1500]
+
         prompt = self.render_prompt(
             state,
             scenario=scenario.model_dump(mode="json"),
             tools=executor_tools,
             is_replan=is_replan,
             replan_count=replan_count,
+            current_screen_text=current_screen_text,
             previous_plan=previous.model_dump(mode="json") if previous else None,
             failure_feedback=(
                 verification.model_dump(mode="json") if verification else None),
@@ -166,7 +176,10 @@ class PlannerAgent(BaseAgent):
         for _attempt in range(3):
             candidate = self.invoke_structured(TestPlan, attempt_prompt)
             candidate.scenario_id = scenario.id
-            candidate.revision = replan_count + 1
+            # +2 on a replan: replan_count is only incremented in the return
+            # below, so +1 gave the first replan revision 1 and it overwrote
+            # the original plan-r1.json (run-20261014-162340).
+            candidate.revision = replan_count + (2 if is_replan else 1)
             if is_replan and verification is not None:
                 candidate.replan_reason = (
                     verification.replan_hint or verification.summary)
@@ -199,7 +212,7 @@ class PlannerAgent(BaseAgent):
                 plan = self._fallback_staged_plan(
                     scenario,
                     TestPlan(scenario_id=scenario.id,
-                             revision=replan_count + 1))
+                             revision=replan_count + (2 if is_replan else 1)))
                 # NOTE: deliberately WITHOUT `scenario`, so the coverage guard
                 # is skipped. The bootstrap only knows the core stages; running
                 # it and reporting honestly which stages went untested beats

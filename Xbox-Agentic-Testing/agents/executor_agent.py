@@ -302,8 +302,13 @@ class ExecutorAgent(BaseAgent):
             stage_summary=list(stage_state.values()),
         )
 
+        # execution.json always holds the latest attempt (what the verifier
+        # judged); execution-r<N>.json keeps every attempt so a replan can no
+        # longer erase the progress an earlier attempt made.
+        execution_payload = execution.model_dump(mode="json")
+        self.context.artifacts.save_json("execution.json", execution_payload)
         self.context.artifacts.save_json(
-            "execution.json", execution.model_dump(mode="json"))
+            f"execution-r{getattr(plan, 'revision', 1)}.json", execution_payload)
 
         summary = (
             f"Executed {len(results)}/{len(plan.steps)} steps; "

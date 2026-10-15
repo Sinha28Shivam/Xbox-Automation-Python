@@ -889,6 +889,8 @@ def build_report(session_dir: Path | str, settings: Any = None,
     for fmt, name, render in (
         ("markdown", "mechanics.md", lambda: markdown(payload)),
         ("html", "mechanics.html", lambda: html(payload)),
+        ("dashboard", "execution-report.html",
+         lambda: _professional_dashboard(payload)),
         ("json", "mechanics.json",
          lambda: json.dumps(payload, indent=2, default=str)),
     ):
@@ -900,6 +902,11 @@ def build_report(session_dir: Path | str, settings: Any = None,
             print(f"  [report] {fmt} failed: {exc}", flush=True)
 
     return written
+
+
+def _professional_dashboard(payload: dict[str, Any]) -> str:
+    from core.professional_report import render_dashboard
+    return render_dashboard(payload, mode="mechanics")
 
 
 def main(argv: list[str] | None = None) -> int:

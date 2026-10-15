@@ -309,6 +309,12 @@ def write(payload: dict[str, Any], reports_dir: Path) -> dict[str, Any]:
         json.dumps(report, indent=2, default=str), encoding="utf-8")
     (reports_dir / "dungeons-scenarios.html").write_text(
         _html(report, reports_dir), encoding="utf-8")
+    dashboard = dict(report)
+    dashboard["title"] = "Minecraft Dungeons - execution report"
+    dashboard["run_id"] = reports_dir.parent.name
+    from core.professional_report import render_dashboard
+    (reports_dir / "execution-report.html").write_text(
+        render_dashboard(dashboard, mode="dungeons"), encoding="utf-8")
     return report
 
 

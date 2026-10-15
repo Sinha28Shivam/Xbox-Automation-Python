@@ -402,8 +402,12 @@ class VerifierAgent(BaseAgent):
     # -- output ------------------------------------------------------------
     def _emit(self, result: VerificationResult,
               state: AgenticState) -> dict[str, Any]:
+        verification_payload = result.model_dump(mode="json")
+        self.context.artifacts.save_json("verification.json", verification_payload)
+        plan_for_revision = state.get("plan")
         self.context.artifacts.save_json(
-            "verification.json", result.model_dump(mode="json"))
+            f"verification-r{getattr(plan_for_revision, 'revision', 1)}.json",
+            verification_payload)
 
         scenario = state.get("scenario")
         plan = state.get("plan")

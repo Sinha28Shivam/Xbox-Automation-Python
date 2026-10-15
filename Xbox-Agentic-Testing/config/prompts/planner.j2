@@ -40,6 +40,20 @@ Do NOT simply repeat the previous plan. Something about it was wrong - the
 route through the menus, the timing, or an assumption. Work out what, and take
 a genuinely different approach. Read the per-step screen deltas closely: steps
 where the screen did not change are where the plan lost contact with reality.
+
+## Where the console is RIGHT NOW
+
+The console was NOT reset between attempts. It is still wherever the previous
+attempt left it. This is the text read from the live screen just before this
+replan:
+
+{{ current_screen_text or "(screen could not be read)" }}
+
+Plan from THIS state, not from the scenario's original precondition. In
+particular, if the Guide overlay is already open (text such as "Game activity",
+"Achievements", "Hold for power options", "Parties & chats" or "People" is
+visible), pressing `guide` would CLOSE it. Press `b` to back out to the Guide's
+top level instead, and continue from there.
 {% endif %}
 
 # Rules
@@ -153,7 +167,16 @@ inside gameplay. In that case:
 11. **Keep it under {{ max_steps }} steps.** Longer plans are more brittle and
    harder to diagnose.
 
-11a. **Known quirk: the Guide can open already focused inside 'My games & apps'.**
+11a. **Use closed-loop text navigation when requested.**
+   If a criterion contains `parameters.navigation_guidance`, emit one
+   `guided_navigate_to_text` step for that waypoint, passing its
+   `target_text`, `direction`, `max_presses` (when supplied), `max_attempts`,
+   and `interval`. The tool
+   captures and OCRs every intermediate screen, records all visible text,
+   sends only one directional input at a time, and stops as soon as the
+   target is observed. Never replace it with a guessed fixed press count.
+
+11b. **Known quirk: the Guide can open already focused inside 'My games & apps'.**
    On real hardware this has been observed twice: pressing Guide does not
    always land on a top-level menu list. It can open with the highlight
    already inside the 'My games & apps' flyout (on 'Quick Resume', a

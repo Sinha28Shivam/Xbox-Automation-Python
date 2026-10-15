@@ -74,15 +74,19 @@ class ReporterAgent(BaseAgent):
         )
 
         payload = report.model_dump(mode="json")
-        written = self._write(payload)
-        report.report_files = written
-
+        # The report writers read these files from disk, so they must exist
+        # before _write runs or the agent timeline and AI summary come out empty.
         self.context.artifacts.save_json(
             "state-digest.json",
             {"messages": state.get("messages", []),
              "errors": state.get("errors", []),
              "agent_outputs": state.get("agent_outputs", {})},
             subdir="logs")
+        self.context.artifacts.save_json(
+            "executive-summary.json",
+            executive_summary.model_dump(mode="json"))
+        written = self._write(payload)
+        report.report_files = written
 
         return {
             "report": report,
