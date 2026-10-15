@@ -85,6 +85,7 @@ class ReporterAgent(BaseAgent):
         self.context.artifacts.save_json(
             "executive-summary.json",
             executive_summary.model_dump(mode="json"))
+        self._age_lessons(state, verdict)
         written = self._write(payload)
         report.report_files = written
 
@@ -102,6 +103,41 @@ class ReporterAgent(BaseAgent):
                 "files": written,
             }},
         }
+
+    def _age_lessons(self, state: AgenticState, verdict: Verdict) -> None:
+        """Once per run: lessons that were applied but did not recur age out.
+
+        Skipped for dry runs and for BLOCKED/ERROR runs, where nothing reached
+        the console - "did not recur" would be meaningless there.
+        """
+        scenario = state.get("scenario")
+        if (scenario is None or state.get("dry_run")
+                or verdict in (Verdict.BLOCKED, Verdict.ERROR, Verdict.PASS)):
+            return
+        from core.lesson_store import note_run
+        reports = self.context.artifacts.reports_dir
+        applied: list[str] = []
+        for path in sorted(reports.glob("lessons-applied-r*.json")):
+            try:
+                import json
+                for l in json.loads(path.read_text(encoding="utf-8")).get("lessons") or []:
+                    if l.get("scope", "scenario") == "scenario":
+                        applied.append(str(l.get("id")))
+            except Exception:
+                continue
+        recorded = None
+        for path in sorted(reports.glob("lesson-recorded-r*.json")):
+            try:
+                import json
+                recorded = json.loads(path.read_text(encoding="utf-8")).get("id")
+            except Exception:
+                pass
+        expired = note_run(
+            self.context.artifacts.run_dir, scenario.id, applied, recorded,
+            run_id=str(state.get("run_id", "")),
+            expire_after=int(self.context.settings.get("learning.expire_after_quiet_runs", 3)))
+        if expired:
+            print(f"  [lessons] expired (did not recur): {', '.join(expired)}", flush=True)
 
     def _executive_summary(self, state: AgenticState,
                            verdict: Verdict) -> ExecutiveSummary:

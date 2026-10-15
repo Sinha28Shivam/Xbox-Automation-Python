@@ -152,7 +152,8 @@ class ExecutorAgent(BaseAgent):
                     "action": "proceed", "frame_path": frame_path,
                     "reason": "Screen could not be read; lesson could not be checked."}
         text = str(reading.get("text", ""))
-        decision = runtime_lessons.decide(step.action, args, text, rules, lessons)
+        decision = runtime_lessons.decide(step.action, args, text, rules, lessons,
+                                          destinations=getattr(self, "_destinations", []))
         if decision is not None:
             decision["frame_path"] = frame_path
             decision["screen_text"] = text[:800]
@@ -240,6 +241,13 @@ class ExecutorAgent(BaseAgent):
         revision = int(getattr(plan, "revision", 1) or 1)
         lessons = self._load_applied_lessons(revision)
         rules = runtime_lessons.active_rules(lessons)
+        # Leaf destinations only: items that are OPENED (require_focus). The
+        # Game Activity tab heads every screen its items are opened from.
+        self._destinations = [
+            str(nav["target_text"]) for c in scenario.success_criteria
+            for nav in [(c.parameters or {}).get("navigation_guidance")]
+            if isinstance(nav, dict) and nav.get("target_text")
+            and nav.get("require_focus", True)]
         runtime_log: list[dict[str, Any]] = []
         if lessons:
             print(f"  [executor] {len(lessons)} lesson(s) active at runtime"

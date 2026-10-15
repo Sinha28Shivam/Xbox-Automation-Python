@@ -177,6 +177,28 @@ python console.py interactive              # REPL
 
 ---
 
+## Failure learning
+
+Every failure is recorded as a lesson in `artifacts/lessons/<scenario-id>.json`
+and given to the planner on every later run of that scenario. Lessons from
+scenarios tagged `guide`, `dashboard`, `store`, `search` or `settings` are also
+shared with other scenarios carrying the same tag. During execution, some
+lessons are enforced against the live screen (for example, Guide is not
+pressed when the Guide is already open).
+
+A lesson closes when the scenario passes, after it is applied in 3 runs
+without recurring (`learning.expire_after_quiet_runs`), or by hand:
+
+```powershell
+python console.py lessons                       # open lessons, all scenarios
+python console.py lessons list <scenario> --all # include resolved/expired
+python console.py lessons resolve <scenario> L002 --reason "fixed in code"
+```
+
+Keep a scenario's `id:` stable - lessons are stored under it.
+
+---
+
 ## Offline tests
 
 No Xbox, GIMX, capture card or LLM key is needed:

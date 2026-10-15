@@ -118,4 +118,23 @@ screen["text"] = DASHBOARD
 agent.run({"plan": plan, "scenario": scenario, "dry_run": False})
 assert ("press_button", GUIDE) in dispatched
 
-print("runtime lesson tests passed (8 cases, incl. real executor loop)")
+# ---- destination_already_open (real OCR from run-20261015-113636) ----------
+L_OPEN = {"id": "L010", "what_went_wrong":
+          "An early A opened Achievements, then the plan pressed A again on the "
+          "already open page.", "failed_step": {"action": "press_button", "arguments": {"button": "a"}}}
+rules = rl.active_rules([L_OPEN])
+assert "destination_already_open" in rules
+LEAF = ["Achievements", "Stats", "Go to official club"]
+open_page = "Achievements\n64,800 6\nDundecns Il\n11:08 PM"
+panel = "Game activity\nHold for power options\nAchievements\nStats"
+d = rl.decide("press_button", {"button": "a"}, open_page, rules, [L_OPEN], destinations=LEAF)
+assert d["action"] == "skip" and d["rule"] == "destination_already_open", d
+d = rl.decide("press_button", {"button": "a"}, panel, rules, [L_OPEN], destinations=LEAF)
+assert d["action"] == "proceed", "A from the Game activity panel must still be pressed"
+
+# The B-at-dashboard rule must NOT exist: translucent Guide panels show the
+# dashboard's "SPONSORED" text behind them (6 false positives measured).
+L_BACK = {"id": "L011", "what_went_wrong": "Extra B press after returning to the dashboard."}
+assert "stop_back_at_dashboard" not in rl.active_rules([L_BACK])
+
+print("runtime lesson tests passed (10 cases, incl. real executor loop)")

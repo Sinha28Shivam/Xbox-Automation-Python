@@ -149,4 +149,29 @@ ls.record_failure(ga, "entry-point-game-activity", rca=rig, execution=rig_exec,
 assert all(l["failure_class"] != "rig_fault"
            for l in json.loads(shared_file.read_text())["lessons"])
 
-print("lesson store tests passed (15 cases)")
+# ---- Expiry, manual resolve, listing ---------------------------------------
+root3 = Path(tempfile.mkdtemp())
+r3 = root3 / "runs" / "r"
+(r3 / "reports").mkdir(parents=True)
+le = ls.record_failure(r3, "exp", rca=rca, execution=execution, run_id="r0",
+                       tags=["guide"])
+# 16. Applied but did not recur for 3 runs -> expired (own + shared copy).
+assert ls.note_run(r3, "exp", [le["id"]], None, "r1", expire_after=3) == []
+assert ls.note_run(r3, "exp", [le["id"]], None, "r2", expire_after=3) == []
+assert ls.note_run(r3, "exp", [le["id"]], None, "r3", expire_after=3) == [le["id"]]
+assert ls.open_lessons(r3, "exp") == []
+assert ls.open_lessons(r3, "other", tags=["guide"]) == [], "shared copy expires too"
+# 17. A recurrence resets the quiet counter.
+le2 = ls.record_failure(r3, "exp2", rca=rca, execution=execution, run_id="r0")
+ls.note_run(r3, "exp2", [le2["id"]], None, "r1", expire_after=2)
+ls.note_run(r3, "exp2", [le2["id"]], le2["id"], "r2", expire_after=2)
+assert ls.note_run(r3, "exp2", [le2["id"]], None, "r3", expire_after=2) == []
+assert len(ls.open_lessons(r3, "exp2")) == 1
+# 18. Manual resolve by id prefix.
+assert ls.resolve_one(r3, "exp2", "L001", "fixed in code")
+assert ls.open_lessons(r3, "exp2") == []
+assert not ls.resolve_one(r3, "exp2", "L001"), "already resolved"
+# 19. Listing sees every scenario but not the shared file.
+assert set(ls.all_lessons(r3)) == {"exp", "exp2"}
+
+print("lesson store tests passed (19 cases)")

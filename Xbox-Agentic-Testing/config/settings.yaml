@@ -145,6 +145,9 @@ learning:
   # resolves it. Do not list game-specific tags here.
   shared_tags: ["guide", "dashboard", "store", "search", "settings"]
   max_shared_lessons: 3
+  # A lesson applied in this many consecutive failing runs WITHOUT recurring
+  # is closed as "expired" (0 = never). A PASS still resolves all of them.
+  expire_after_quiet_runs: 3
 
 reporting:
   # The four step-by-step writers (json/markdown/html/junit) were deleted.

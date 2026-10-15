@@ -253,6 +253,50 @@ def cmd_tools(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_lessons(args: argparse.Namespace) -> int:
+    """List or resolve learned lessons. Reads files only; no rig needed."""
+    from core import lesson_store
+    from core.config import Config
+
+    # base=_ROOT as the runner does: relative config paths are relative to the
+    # project, not to config/ (which would give config/artifacts).
+    settings = Config.load(Path(args.config_dir or _ROOT / "config") / "settings.yaml",
+                           base=_ROOT)
+    root = settings.resolve_path("paths.artifacts_dir", "./artifacts")
+
+    if args.action == "resolve":
+        if not (args.scenario and args.lesson_id):
+            print("usage: console.py lessons resolve <scenario-id> <lesson-id> [--reason ...]")
+            return 4
+        ok = lesson_store.resolve_one(root, args.scenario, args.lesson_id,
+                                      args.reason or "resolved manually")
+        print(f"  {'Resolved' if ok else 'No open lesson matching'} "
+              f"{args.lesson_id} in {args.scenario}")
+        return 0 if ok else 1
+
+    data = lesson_store.all_lessons(root)
+    if args.scenario:
+        data = {k: v for k, v in data.items() if k == args.scenario}
+    if args.json:
+        print(json.dumps(data, indent=2, default=str))
+        return 0
+    print("\n" + _LINE + "\n  LEARNED LESSONS\n" + _LINE)
+    if not data:
+        print("\n  No lessons recorded yet.\n")
+        return 0
+    for scenario_id, lessons in data.items():
+        shown = [l for l in lessons if args.all or l.get("status") == "open"]
+        print(f"\n  {scenario_id}  ({sum(l.get('status') == 'open' for l in lessons)} open, "
+              f"{len(lessons)} total)")
+        for l in shown:
+            shared = f" shared:{','.join(l['shared_tags'])}" if l.get("shared_tags") else ""
+            print(f"    [{l.get('status', '?'):8}] {l.get('id')}  {l.get('failure_class')}  "
+                  f"seen {l.get('occurrences', 1)}x  quiet {l.get('quiet_runs', 0)}{shared}")
+            print(f"               {str(l.get('primary_cause', ''))[:110]}")
+    print()
+    return 0
+
+
 def cmd_interactive(args: argparse.Namespace) -> int:
     """A REPL for iterating on scenarios without restarting the framework.
 
@@ -486,6 +530,14 @@ exit codes:
 
     sub.add_parser("interactive", help="scenario REPL")
 
+    p_les = sub.add_parser("lessons", help="list or resolve learned lessons")
+    p_les.add_argument("action", nargs="?", choices=["list", "resolve"], default="list")
+    p_les.add_argument("scenario", nargs="?", help="scenario id (optional for list)")
+    p_les.add_argument("lesson_id", nargs="?", help="lesson id or prefix, e.g. L002")
+    p_les.add_argument("--reason", help="why it is resolved (for resolve)")
+    p_les.add_argument("--all", action="store_true", help="include resolved/expired")
+    p_les.add_argument("--json", action="store_true")
+
     args = ap.parse_args()
 
     handlers = {
@@ -496,6 +548,7 @@ exit codes:
         "info": cmd_info,
         "tools": cmd_tools,
         "interactive": cmd_interactive,
+        "lessons": cmd_lessons,
     }
     if args.command not in handlers:
         ap.print_help()

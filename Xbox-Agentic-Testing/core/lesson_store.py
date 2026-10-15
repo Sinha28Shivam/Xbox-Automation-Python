@@ -334,21 +334,97 @@ def resolve_all(artifacts_dir: Path | str, scenario_id: str,
                 resolved_ids.add(lesson.get("id"))
         if resolved_ids:
             _save(path, scenario_id, lessons)
-            spath = shared_path(artifacts_dir)
-            shared = _load(spath)
-            touched = False
-            for entry in shared:
-                if (entry.get("origin_scenario") == scenario_id
-                        and entry.get("id") in resolved_ids):
-                    entry.update(status="resolved", resolved_at=_now(),
-                                 resolved_by_run=run_id)
-                    touched = True
-            if touched:
-                _save(spath, "_shared", shared)
+            _mark_shared(artifacts_dir, scenario_id, resolved_ids, "resolved", run_id)
         return len(resolved_ids)
     except Exception as exc:
         log.warning("Could not resolve lessons for %s: %s", scenario_id, exc)
         return 0
+
+
+def note_run(artifacts_dir: Path | str, scenario_id: str,
+             applied_ids: list[str], recorded_id: str | None,
+             run_id: str = "", expire_after: int = 3) -> list[str]:
+    """Age the scenario's open lessons; expire ones that stopped recurring.
+
+    Called once per finished (non-dry) run. A lesson that was applied but did
+    NOT happen again this run gets `quiet_runs += 1`; after `expire_after`
+    such runs it is closed as "expired". This stops a scenario that never
+    fully passes (for an unrelated reason) from carrying fixed problems
+    forever. A recurrence resets the counter.
+    """
+    try:
+        path = lessons_path(artifacts_dir, scenario_id)
+        lessons = _load(path)
+        expired: list[str] = []
+        changed = False
+        for lesson in lessons:
+            if lesson.get("status") != "open":
+                continue
+            if lesson.get("id") == recorded_id:
+                lesson["quiet_runs"] = 0
+                changed = True
+                continue
+            if lesson.get("id") not in set(applied_ids or []):
+                continue
+            lesson["quiet_runs"] = int(lesson.get("quiet_runs", 0)) + 1
+            changed = True
+            if expire_after > 0 and lesson["quiet_runs"] >= expire_after:
+                lesson.update(status="expired", resolved_at=_now(),
+                              resolved_by_run=run_id,
+                              resolution=f"did not recur in {lesson['quiet_runs']} runs")
+                expired.append(str(lesson.get("id")))
+        if changed:
+            _save(path, scenario_id, lessons)
+        if expired:
+            _mark_shared(artifacts_dir, scenario_id, set(expired), "expired", run_id)
+        return expired
+    except Exception as exc:
+        log.warning("Could not age lessons for %s: %s", scenario_id, exc)
+        return []
+
+
+def resolve_one(artifacts_dir: Path | str, scenario_id: str, lesson_id: str,
+                reason: str = "resolved manually") -> bool:
+    """Close one lesson by hand, e.g. after the bug it describes was fixed in code."""
+    path = lessons_path(artifacts_dir, scenario_id)
+    lessons = _load(path)
+    hit = next((l for l in lessons if str(l.get("id", "")).startswith(lesson_id)
+                and l.get("status") == "open"), None)
+    if hit is None:
+        return False
+    hit.update(status="resolved", resolved_at=_now(), resolved_by_run="manual",
+               resolution=reason)
+    _save(path, scenario_id, lessons)
+    _mark_shared(artifacts_dir, scenario_id, {hit["id"]}, "resolved", "manual")
+    return True
+
+
+def _mark_shared(artifacts_dir: Path | str, scenario_id: str, ids: set[str],
+                 status: str, run_id: str) -> None:
+    spath = shared_path(artifacts_dir)
+    shared = _load(spath)
+    touched = False
+    for entry in shared:
+        if entry.get("origin_scenario") == scenario_id and entry.get("id") in ids:
+            entry.update(status=status, resolved_at=_now(), resolved_by_run=run_id)
+            touched = True
+    if touched:
+        _save(spath, "_shared", shared)
+
+
+def all_lessons(artifacts_dir: Path | str) -> dict[str, list[dict[str, Any]]]:
+    """Every scenario's lesson file, for the CLI listing."""
+    folder = _base_dir(artifacts_dir) / "lessons"
+    out: dict[str, list[dict[str, Any]]] = {}
+    for path in sorted(folder.glob("*.json")) if folder.is_dir() else []:
+        if path.name == SHARED_FILE:
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            out[str(data.get("scenario_id") or path.stem)] = list(data.get("lessons") or [])
+        except Exception:
+            continue
+    return out
 
 
 def prompt_view(lessons: list[dict[str, Any]]) -> list[dict[str, Any]]:
