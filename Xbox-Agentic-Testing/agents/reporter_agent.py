@@ -22,12 +22,12 @@ letting a green heading imply more than the evidence supports.
 
 from __future__ import annotations
 
-import time
 from typing import Any
 
 from agents.base import BaseAgent
 from core.schemas import ExecutiveSummary, TestReport, Verdict
 from core.state import AgenticState, note
+from datetime import UTC
 
 
 class ReporterAgent(BaseAgent):
@@ -315,11 +315,11 @@ class ReporterAgent(BaseAgent):
         if not started_at:
             return 0.0
         try:
-            from datetime import datetime, timezone
+            from datetime import datetime
             start = datetime.fromisoformat(started_at)
             if start.tzinfo is None:
-                start = start.replace(tzinfo=timezone.utc)
-            return round((datetime.now(timezone.utc) - start).total_seconds(), 2)
+                start = start.replace(tzinfo=UTC)
+            return round((datetime.now(UTC) - start).total_seconds(), 2)
         except (ValueError, TypeError):
             return 0.0
 

@@ -26,9 +26,10 @@ Ctrl+C.
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 # The framework's own packages are added to sys.path so that modules can import
 # each other by bare name (`from config import Config`). Flat imports keep the
@@ -91,7 +92,7 @@ class TestRunner:
     def run(self, scenario_input: str, scenario_source: str = "text",
             run_id: str | None = None) -> TestReport | None:
         run_id = run_id or new_run_id()
-        started_at = datetime.now(timezone.utc).isoformat()
+        started_at = datetime.now(UTC).isoformat()
 
         artifacts = ArtifactStore(
             root=self.settings.resolve_path("paths.artifacts_dir", "./artifacts"),
@@ -201,7 +202,7 @@ class TestRunner:
     def close(self) -> None:
         self.hardware.close()
 
-    def __enter__(self) -> "TestRunner":
+    def __enter__(self) -> TestRunner:
         return self
 
     def __exit__(self, *exc: object) -> None:

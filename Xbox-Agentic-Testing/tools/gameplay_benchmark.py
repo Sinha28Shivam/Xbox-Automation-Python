@@ -39,7 +39,7 @@ against one recorded last week, in a later session.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -128,7 +128,7 @@ def run_benchmark_impl(
         "profile": profile,
         "scenario_name": scenario_name,
         "goal": goal,
-        "recorded_at": datetime.now(timezone.utc).isoformat(),
+        "recorded_at": datetime.now(UTC).isoformat(),
         "max_cycles": max_cycles,
         "cycles_run": loop_result.get("cycles_run"),
         "reached_terminal": reached_terminal,

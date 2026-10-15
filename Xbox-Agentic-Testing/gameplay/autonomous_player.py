@@ -11,7 +11,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -121,7 +121,7 @@ class AutonomousPlayer:
             cv2.imwrite(str(tmp_path), frame, [cv2.IMWRITE_PNG_COMPRESSION, 3])
             if tmp_path.exists():
                 os.replace(tmp_path, live_path)
-        except Exception as e:
+        except Exception:
             pass
 
         return step_filename

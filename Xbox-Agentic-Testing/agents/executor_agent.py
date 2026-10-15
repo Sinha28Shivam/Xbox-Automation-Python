@@ -87,7 +87,8 @@ def _screen_signatures() -> dict[str, list[str]]:
         print(f"  [guard] screen_signatures.yaml unreadable ({exc}); using built-ins",
               flush=True)
         return _SIGNATURES_FALLBACK
-    lower = lambda items: [str(i).lower() for i in (items or [])]
+    def lower(items: Any) -> list[str]:
+        return [str(i).lower() for i in (items or [])]
     in_game = lower(data.get("in_game_generic"))
     for phrases in (data.get("games") or {}).values():
         in_game += lower(phrases)
@@ -264,8 +265,8 @@ class ExecutorAgent(BaseAgent):
                 break
 
             # Rich real-time terminal log header
-            stage_name = step.stage.value if hasattr(step.stage, "value") else str(step.stage or "unspecified")
-            print(f"\n" + "-" * 72, flush=True)
+            stage_name = step.stage.value if step.stage is not None else "unspecified"
+            print("\n" + "-" * 72, flush=True)
             print(f"[Step {step.index + 1}/{len(plan.steps)}] [{stage_name.upper()}] Action: {step.action}", flush=True)
             if step.arguments:
                 print(f"  Arguments: {step.arguments}", flush=True)
@@ -294,7 +295,7 @@ class ExecutorAgent(BaseAgent):
                     )
                     results.append(blocked)
                     aborted = True
-                    abort_reason = blocked.error
+                    abort_reason = blocked.error or "blocked"
                     notes.append(abort_reason)
                     print(f"\n{'!' * 72}", flush=True)
                     print(f"[BLIND TAPPING PREVENTED at Step {step.index + 1}]", flush=True)
@@ -315,7 +316,7 @@ class ExecutorAgent(BaseAgent):
                 )
                 results.append(blocked)
                 aborted = True
-                abort_reason = blocked.error
+                abort_reason = blocked.error or "blocked"
                 notes.append(abort_reason)
                 print(f"\n{'!' * 72}", flush=True)
                 print(f"[SELECTION BLOCKED at Step {step.index + 1}]", flush=True)
@@ -344,7 +345,7 @@ class ExecutorAgent(BaseAgent):
                 )
                 results.append(result)
                 notes.append(result.observation)
-                print(f"  Result:    SKIPPED (lesson)", flush=True)
+                print("  Result:    SKIPPED (lesson)", flush=True)
                 continue
 
             result = self._execute_step(step, dry_run)

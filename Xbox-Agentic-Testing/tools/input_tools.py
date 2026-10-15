@@ -150,7 +150,7 @@ def _clean_verified_text(observed: str, expected_text: str) -> str:
 
 def _common_prefix(a: str, b: str) -> int:
     size = 0
-    for left, right in zip(a, b):
+    for left, right in zip(a, b, strict=False):
         if left != right:
             break
         size += 1

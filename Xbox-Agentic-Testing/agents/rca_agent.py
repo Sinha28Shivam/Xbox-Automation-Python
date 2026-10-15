@@ -213,12 +213,13 @@ class RCAAgent(BaseAgent):
                   if s.dispatched and s.action in {"press_button", "hold_button",
                                                    "move_stick", "run_sequence"}
                   and s.screen_delta is not None]
+        deltas = [float(s.screen_delta or 0.0) for s in inputs]
         trailing = 0
-        for s in reversed(inputs):
-            if s.screen_delta >= 0.05:
+        for delta in reversed(deltas):
+            if delta >= 0.05:
                 break
             trailing += 1
-        responsive_before = any(s.screen_delta >= 0.05 for s in inputs[:len(inputs) - trailing])
+        responsive_before = any(d >= 0.05 for d in deltas[:len(deltas) - trailing])
         if trailing >= 3 and responsive_before:
             return (f"the last {trailing} delivered inputs produced no screen "
                     f"change after the console had been responsive")

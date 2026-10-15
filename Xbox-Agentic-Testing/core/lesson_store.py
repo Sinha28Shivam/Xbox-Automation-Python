@@ -23,7 +23,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -84,7 +84,7 @@ def _sync_shared(artifacts_dir: Path | str, origin: str,
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def _load(path: Path) -> list[dict[str, Any]]:
@@ -325,13 +325,13 @@ def resolve_all(artifacts_dir: Path | str, scenario_id: str,
     try:
         path = lessons_path(artifacts_dir, scenario_id)
         lessons = _load(path)
-        resolved_ids = set()
+        resolved_ids: set[str] = set()
         for lesson in lessons:
             if lesson.get("status") == "open":
                 lesson["status"] = "resolved"
                 lesson["resolved_at"] = _now()
                 lesson["resolved_by_run"] = run_id
-                resolved_ids.add(lesson.get("id"))
+                resolved_ids.add(str(lesson.get("id")))
         if resolved_ids:
             _save(path, scenario_id, lessons)
             _mark_shared(artifacts_dir, scenario_id, resolved_ids, "resolved", run_id)

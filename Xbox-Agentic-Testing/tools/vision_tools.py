@@ -152,7 +152,7 @@ def read_text_region_impl(ctx: ToolContext, frame_path: str | None = None,
         return fail(error, frame_path=str(path), region=resolved)
 
     try:
-        import cv2
+        import cv2  # noqa: F401 - availability check before saving the crop
     except ImportError as exc:
         return fail(f"OpenCV unavailable: {exc}")
 
@@ -1043,7 +1043,6 @@ def _run_engine(ctx: ToolContext, name: str, path: str) -> str | None:
     """Run one named OCR engine. Returns text, or None if the name is unknown."""
     if name == "pytesseract":
         import pytesseract
-        from PIL import Image
 
         # image_to_string works, but calling get_tesseract_version first turns
         # "the binary is not installed" into a clear error here rather than a

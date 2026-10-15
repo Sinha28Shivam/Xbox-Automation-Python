@@ -65,6 +65,7 @@ ignore = [
     "B008",   # function calls in defaults (pydantic Field) are intended
     "UP007",  # X | Y unions: keep existing Optional[...] where present
     "UP045",
+    "UP042",  # (str, Enum) -> StrEnum changes str(member) output used in reports
 ]
 
 [tool.ruff.lint.per-file-ignores]

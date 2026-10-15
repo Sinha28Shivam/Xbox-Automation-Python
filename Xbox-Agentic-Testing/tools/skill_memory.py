@@ -41,7 +41,7 @@ be recallable in the next.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -100,7 +100,7 @@ def record_skill_impl(
 
     entries = _load(ctx)
     existing = _find_entry(entries, profile, skill_name)
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     entry = {
         "profile": profile,
         "skill_name": skill_name,
@@ -202,7 +202,7 @@ def report_skill_outcome_impl(ctx: ToolContext, profile: str, skill_name: str,
     entry["attempts"] = int(entry.get("attempts", 0)) + 1
     entry["successes"] = int(entry.get("successes", 0)) + (1 if success else 0)
     entry["success_rate"] = round(entry["successes"] / entry["attempts"], 3)
-    entry["last_used_at"] = datetime.now(timezone.utc).isoformat()
+    entry["last_used_at"] = datetime.now(UTC).isoformat()
     _save(ctx, entries)
 
     return ok(entry=entry, journal_path=str(_memory_path(ctx)))

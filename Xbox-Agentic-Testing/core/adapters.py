@@ -312,7 +312,7 @@ class HardwareBridge:
                     pass
                 self._capture = None
 
-    def __enter__(self) -> "HardwareBridge":
+    def __enter__(self) -> HardwareBridge:
         return self
 
     def __exit__(self, *exc: object) -> None:

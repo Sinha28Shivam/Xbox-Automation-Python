@@ -1,0 +1,27 @@
+# Local quality gates. Install once:  pip install pre-commit && pre-commit install
+# Uses the project's own venv tools so versions match CI and pyproject.
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff (lint)
+        entry: ruff check --force-exclude
+        language: system
+        types: [python]
+        files: ^Xbox-Agentic-Testing/
+        args: ["--config", "Xbox-Agentic-Testing/pyproject.toml"]
+      - id: mypy
+        name: mypy (core, agents)
+        entry: bash -c "cd Xbox-Agentic-Testing && mypy"
+        language: system
+        pass_filenames: false
+        files: ^Xbox-Agentic-Testing/(core|agents)/.*\.py$
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-yaml
+        files: ^Xbox-Agentic-Testing/(config|scenarios)/
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]

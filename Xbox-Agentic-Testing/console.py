@@ -47,7 +47,6 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from graph.runner import TestRunner, verdict_exit_code       # noqa: E402
-from core.schemas import Verdict                            # noqa: E402
 
 _LINE = "=" * 72
 

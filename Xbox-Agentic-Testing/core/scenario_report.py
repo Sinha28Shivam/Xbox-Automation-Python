@@ -162,7 +162,7 @@ def analyse(run_dir: Path | str) -> dict[str, Any]:
             "criteria_total": len(crit),
             "last_proven_stage": ex.get("last_proven_stage") or "",
         })
-    lessons_applied = []
+    lessons_applied: list[dict[str, Any]] = []
     learning_checked = any(reports_dir.glob("lessons-applied-r*.json"))
     for path in sorted(reports_dir.glob("lessons-applied-r*.json")):
         applied = _load_json(path)

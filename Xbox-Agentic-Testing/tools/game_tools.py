@@ -192,7 +192,7 @@ def _launch_game(ctx: ToolContext) -> Any:
             "error 0x",
         ]
         if any(ind in after_text for ind in error_indicators):
-            print(f"  [launch_game] 'Your account needs attention' prompt detected. Pressing A to bypass warning...", flush=True)
+            print("  [launch_game] 'Your account needs attention' prompt detected. Pressing A to bypass warning...", flush=True)
             _pad(ctx).press("a")
             time.sleep(3.0)
             after = _observe(ctx, "game-launch-after-bypass")
@@ -394,8 +394,8 @@ def confirm_quit_selection_impl(ctx: ToolContext, max_attempts: int = 4,
     # Fallback if 'Quit' is still never focused: DO NOT press A blindly - that
     # is exactly what caused the wrong-item confirm on hardware. Report the
     # failure so the caller can replan instead of acting on an unproven guess.
-    print(f"  [confirm_quit_selection] 'Quit' still not focused after the "
-          f"fast jump; refusing to press A on an unproven selection.")
+    print("  [confirm_quit_selection] 'Quit' still not focused after the "
+          "fast jump; refusing to press A on an unproven selection.")
     last = history[-1] if history else {}
     return fail(
         f"'Quit' could not be confirmed as the focused item after {max_attempts} "
@@ -500,7 +500,7 @@ def draw_magic_marker_impl(ctx: ToolContext, direction: str = "up",
                      "rt:release")
     time.sleep(0.3)
 
-    print(f"  [draw_magic_marker] Magic Marker drawing completed successfully.", flush=True)
+    print("  [draw_magic_marker] Magic Marker drawing completed successfully.", flush=True)
 
     return ok(
         mechanic="magic_marker_draw",

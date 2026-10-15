@@ -78,7 +78,8 @@ def _spark(values: list[float], top: float, color: str) -> str:
 
 
 def render(by_scenario: dict[str, list[dict[str, Any]]], artifacts_dir: Path) -> str:
-    e = lambda v: html.escape(str(v))
+    def e(v: Any) -> str:
+        return html.escape(str(v))
     cards = []
     for sid, runs in sorted(by_scenario.items(), key=lambda kv: kv[1][-1]["run_id"], reverse=True):
         passes = sum(r["verdict"] == "PASS" for r in runs)

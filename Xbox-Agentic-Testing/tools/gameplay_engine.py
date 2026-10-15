@@ -27,7 +27,8 @@ import base64
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from pydantic import BaseModel, Field
 
@@ -106,7 +107,7 @@ def _drain_stale_frames(camera: Any, max_reads: int = 40) -> int:
         return 0
     live = 0
     reads = 0
-    for reads in range(1, max_reads + 1):
+    for reads in range(1, max_reads + 1):  # noqa: B007 - returned below
         start = time.time()
         try:
             cap.read()
@@ -214,7 +215,7 @@ def format_history(history: list[dict[str, Any]], keep: int = 4) -> str:
     return "\n".join(lines)
 
 
-def _skill_lookup(ctx: ToolContext, profile: "GameProfile",
+def _skill_lookup(ctx: ToolContext, profile: GameProfile,
                   scene_state: str) -> list[Any] | None:
     """A saved move sequence for this scene_state, reconstructed as real
     `profile.move_model` instances - or None if there is no skill for it yet,
@@ -268,7 +269,7 @@ class CurriculumProposal(BaseModel):
                     "when this is true.")
 
 
-def _propose_next_goal(ctx: ToolContext, profile: "GameProfile",
+def _propose_next_goal(ctx: ToolContext, profile: GameProfile,
                        current_goal: str, image_b64: str) -> str:
     """One small structured LLM call: propose the next goal, or keep the
     current one. Never raises - any failure keeps `current_goal` unchanged.
@@ -593,7 +594,7 @@ def run_gameplay_loop(
                     outcomes = profile.execute_moves(ctx, batch)
                 else:
                     outcomes = [profile.execute_move(ctx, m) for m in batch]
-                for move, outcome in zip(batch, outcomes):
+                for move, outcome in zip(batch, outcomes, strict=False):
                     outcome["purpose"] = move.purpose
                     sink.append(outcome)
 

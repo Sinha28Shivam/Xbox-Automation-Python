@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import json
 import math
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -92,7 +92,7 @@ def record_location_impl(
         "label": label,
         "x": float(x), "y": float(y), "z": float(z),
         "notes": notes,
-        "seen_at": datetime.now(timezone.utc).isoformat(),
+        "seen_at": datetime.now(UTC).isoformat(),
         # "As sighted", not a re-identification signal - see module docstring.
         "frame_path": frame_path,
     }

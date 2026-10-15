@@ -107,7 +107,7 @@ def _scenario(name: str, seen: list[int], attempted: list[int],
 def build(payload: dict[str, Any]) -> dict[str, Any]:
     cycles = [c for c in payload.get("cycles", []) if c.get("scene_state") == "in_mission"]
     by_n = {c["cycle"]: c for c in cycles}
-    nxt = {a["cycle"]: b for a, b in zip(cycles, cycles[1:])}
+    nxt = {a["cycle"]: b for a, b in zip(cycles, cycles[1:], strict=False)}
 
     # Saving villagers: villager in danger -> rescue moves -> danger cleared.
     seen = [c["cycle"] for c in cycles if c.get("villager_in_danger")
@@ -143,7 +143,7 @@ def build(payload: dict[str, Any]) -> dict[str, Any]:
                     or _ents(c, "loot", True) or _ents(c, "portal", True))
     # Next logged cycle of any kind: a teleport's result is a loading screen.
     all_c = payload.get("cycles", [])
-    nxt_any = {a["cycle"]: b for a, b in zip(all_c, all_c[1:])}
+    nxt_any = {a["cycle"]: b for a, b in zip(all_c, all_c[1:], strict=False)}
     seen = [c["cycle"] for c in cycles if near_item(c)]
     tried = [c["cycle"] for c in cycles if _did(c, "interact") and near_item(c)
              and not _pressed_at(c, "villager")]

@@ -395,7 +395,7 @@ def explore_and_map_impl(
                       f"dur={move.duration:.2f}s - {move.purpose}", flush=True)
             outcomes = execute_minecraft_moves(ctx, moves[:3])
             dispatched_moves: list[dict[str, Any]] = []
-            for move, outcome in zip(moves[:3], outcomes):
+            for move, outcome in zip(moves[:3], outcomes, strict=False):
                 outcome["purpose"] = move.purpose
                 dispatched_moves.append(outcome)
                 dispatched_any = dispatched_any or bool(outcome.get("dispatched"))
