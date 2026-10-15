@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 
 from core.schemas import TestPlan
+from core.store_lock import locked
 
 log = logging.getLogger("route_store")
 
@@ -68,12 +70,15 @@ def save_cached_route(artifacts_dir: Path | str, scenario_id: str, plan: TestPla
         target = _auto_saved_route_path(artifacts_dir, scenario_id)
         target.parent.mkdir(parents=True, exist_ok=True)
 
-        # Save a clean revision-1 copy
+        # Save a clean revision-1 copy, atomically and under the store lock:
+        # a half-written route would be replayed as a plan on the next run.
         dump = plan.model_dump(mode="json")
         dump["revision"] = 1
         dump["replan_reason"] = None
-        with target.open("w", encoding="utf-8") as f:
-            json.dump(dump, f, indent=2)
+        with locked(target):
+            tmp = target.with_suffix(f".{os.getpid()}.tmp")
+            tmp.write_text(json.dumps(dump, indent=2), encoding="utf-8")
+            tmp.replace(target)
         log.info(f"Saved verified route for '{scenario_id}' to {target}")
         return target
     except Exception as exc:
@@ -91,7 +96,8 @@ def invalidate_cached_route(artifacts_dir: Path | str, scenario_id: str) -> None
     path = _auto_saved_route_path(artifacts_dir, scenario_id)
     if path.is_file():
         try:
-            path.unlink(missing_ok=True)
+            with locked(path):
+                path.unlink(missing_ok=True)
             log.info(f"Invalidated failed cached route: {path}")
         except Exception as exc:
             log.warning(f"Failed to remove cached route {path}: {exc}")

@@ -96,11 +96,13 @@ class TestRunner:
     # -- running -----------------------------------------------------------
     def run(self, scenario_input: str, scenario_source: str = "text",
             run_id: str | None = None) -> TestReport | None:
-        run_id = run_id or new_run_id()
+        artifacts_root = self.settings.resolve_path("paths.artifacts_dir", "./artifacts")
+        save_frames = self.settings.get("runtime.save_frames", True)
+        run_id = run_id or new_run_id(root=artifacts_root if save_frames else None)
         started_at = datetime.now(UTC).isoformat()
 
         artifacts = ArtifactStore(
-            root=self.settings.resolve_path("paths.artifacts_dir", "./artifacts"),
+            root=artifacts_root,
             run_id=run_id,
             frame_format=self.settings.get("runtime.frame_format", "png"),
             enabled=self.settings.get("runtime.save_frames", True),
