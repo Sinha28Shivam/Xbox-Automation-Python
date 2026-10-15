@@ -25,6 +25,26 @@ Use these rather than inventing delays - they were measured on this hardware.
 Note that `game_launch_wait` is a placeholder, not a measurement: real launch
 times vary hugely by title. Prefer `wait_for_stable_screen` over any fixed wait.
 
+{% if lessons %}
+# LESSONS FROM EARLIER FAILED RUNS OF THIS SCENARIO
+
+These failures really happened on this console in previous runs. They were
+recorded automatically by the RCA agent. Your plan MUST avoid repeating them.
+For each lesson, change the step it points at (route, direction, press count,
+timing, or precondition handling) - do not reproduce the same failing step with
+the same arguments. For EVERY lesson, add one entry to `assumptions` that starts
+with the lesson id, e.g. "L001-...: avoided by ...". A plan that repeats a
+lesson's failing step without such an entry is rejected automatically.
+
+Lessons with `"scope": "shared"` were learned by a DIFFERENT scenario
+(`from_scenario`) on the same console surface (`surface_tags`, e.g. the Guide).
+They describe how that surface behaves, which applies here too - but their
+`failed_step` was part of another test's route, so adapt the insight rather
+than copying the step. Cite them the same way, e.g. "L001-... (shared): ...".
+
+{{ lessons | tojson }}
+{% endif %}
+
 {% if is_replan %}
 # THIS IS A REPLAN (attempt {{ replan_count }} of {{ state.replan_count }})
 

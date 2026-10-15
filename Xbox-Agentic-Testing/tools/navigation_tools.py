@@ -32,6 +32,22 @@ def _settle(ctx: ToolContext, label: str, min_wait: float,
     return _invoke(_capture_frame(ctx), label=label)
 
 
+def _is_page_heading(text: str, needle: str, case_sensitive: bool) -> bool:
+    """Is the target the heading of the page currently shown?
+
+    Xbox pages put their title on the first real text line (OCR'd top-down),
+    e.g. 'Achievements' / 'Minecraft Dungeons II'. An exact match there means
+    we are already inside that destination.
+    """
+    for line in text.splitlines():
+        clean = line.strip()
+        if sum(ch.isalpha() for ch in clean) < 3:
+            continue
+        candidate = clean if case_sensitive else clean.lower()
+        return candidate == needle
+    return False
+
+
 def _focus_matches(ctx: ToolContext, frame_path: str,
                    target: str) -> dict[str, Any]:
     """Is the target the highlighted item, not merely somewhere on screen?"""
@@ -114,7 +130,13 @@ def _guided_navigate_to_text(ctx: ToolContext) -> Any:
                      if matched_lines and require_focus else
                      {"focused": bool(matched_lines), "focused_label": "",
                       "highlight_found": False})
-            reached = bool(matched_lines) and focus["focused"]
+            # run-20261015-113636: an earlier A press had already OPENED the
+            # Achievements page. Its heading was the first OCR line, so the
+            # target was the destination itself, not an item to focus - yet the
+            # tool scrolled the page 7 times looking for a highlight on it.
+            already_open = (index == 0 and require_focus
+                            and _is_page_heading(text, needle, case_sensitive))
+            reached = bool(matched_lines) and (focus["focused"] or already_open)
             observation = {
                 "attempt": index + 1,
                 "direction": direction_name,
@@ -123,6 +145,7 @@ def _guided_navigate_to_text(ctx: ToolContext) -> Any:
                 "visible_lines": [line for line in text.splitlines()
                                   if line.strip()],
                 "text_visible": bool(matched_lines),
+                "already_open": already_open,
                 "focused": focus["focused"],
                 "focused_label": focus["focused_label"],
                 "matched": reached,
@@ -142,9 +165,12 @@ def _guided_navigate_to_text(ctx: ToolContext) -> Any:
                     attempts_used=index + 1,
                     frame_path=captured.get("frame_path"),
                     focused=focus["focused"],
+                    already_open=already_open,
                     observation=(
-                        f"'{target}' is " + ("the highlighted item"
-                                              if require_focus else "visible")
+                        f"'{target}' is " + (
+                            "already the open page - do NOT press A again"
+                            if already_open else
+                            "the highlighted item" if require_focus else "visible")
                         + "; navigation stopped before another input was sent."),
                 )
 

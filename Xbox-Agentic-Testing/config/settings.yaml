@@ -132,6 +132,20 @@ verification:
     engines: ["pytesseract"]
     min_confidence: 0.4
 
+learning:
+  # Failure learning (core/lesson_store.py). RCA records a lesson after every
+  # failure into artifacts/lessons/<scenario>.json; the planner reads open
+  # lessons on EVERY plan; a PASS resolves them. Set LEARNING_ENABLED=false
+  # to plan without them (lessons are still recorded).
+  enabled: "${LEARNING_ENABLED:true}"
+  max_lessons_in_prompt: 5
+  # Shared lessons: a lesson from a scenario tagged with one of these UI
+  # surfaces is also offered to every OTHER scenario with the same tag
+  # (artifacts/lessons/_shared.json). Only the origin scenario passing
+  # resolves it. Do not list game-specific tags here.
+  shared_tags: ["guide", "dashboard", "store", "search", "settings"]
+  max_shared_lessons: 3
+
 reporting:
   # The four step-by-step writers (json/markdown/html/junit) were deleted.
   # "mechanics" is a per-mechanic PASS / FAILED / NOT TESTED / INCONCLUSIVE

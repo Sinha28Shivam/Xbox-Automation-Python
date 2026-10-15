@@ -45,6 +45,7 @@ from core.schemas import (
     StageTransition,
     StepResult,
 )
+from core import runtime_lessons
 from core.state import AgenticState, note
 
 
@@ -72,6 +73,46 @@ class ExecutorAgent(BaseAgent):
             return False
         val = step.stage.value if hasattr(step.stage, "value") else str(step.stage)
         return val in _INGAME_STAGES
+
+    def _load_applied_lessons(self, revision: int) -> list[dict[str, Any]]:
+        """The exact lessons the planner used for THIS plan revision."""
+        path = self.context.artifacts.reports_dir / f"lessons-applied-r{revision}.json"
+        if not path.is_file():
+            return []
+        try:
+            import json
+            return list(json.loads(path.read_text(encoding="utf-8")).get("lessons") or [])
+        except Exception:
+            return []
+
+    def _runtime_lesson_check(self, step: PlannedStep, rules: dict[str, list[str]],
+                              lessons: list[dict[str, Any]]) -> dict[str, Any] | None:
+        """Read the LIVE screen and let lesson rules veto or annotate the step."""
+        args = dict(step.arguments or {})
+        if not runtime_lessons.needs_screen(step.action, args, rules, lessons):
+            return None
+        frame = self.call_tool("capture_frame", label=f"{step.index}-lesson-check")
+        frame_path = frame.get("frame_path") if frame.get("ok") else None
+        reading = (self.call_tool("read_screen_text", frame_path=frame_path)
+                   if frame_path else {"ok": False})
+        if not reading.get("ok"):
+            # Cannot see the screen: never skip blindly, and say so.
+            return {"rule": "unverified", "lessons": [l.get("id") for l in lessons][:3],
+                    "action": "proceed", "frame_path": frame_path,
+                    "reason": "Screen could not be read; lesson could not be checked."}
+        text = str(reading.get("text", ""))
+        decision = runtime_lessons.decide(step.action, args, text, rules, lessons)
+        if decision is not None:
+            decision["frame_path"] = frame_path
+            decision["screen_text"] = text[:800]
+            decision["screen_preview"] = " | ".join(
+                l.strip() for l in text.splitlines() if l.strip())[:160]
+        return decision
+
+    @staticmethod
+    def _dashboard_is_expected(scenario: Any) -> bool:
+        tags = {str(t).lower() for t in (getattr(scenario, "tags", None) or [])}
+        return bool(tags & {"dashboard", "guide"})
 
     @staticmethod
     def _guard_ingame_screen(prior_results: list[StepResult]) -> dict[str, Any]:
@@ -152,6 +193,14 @@ class ExecutorAgent(BaseAgent):
         current_stage: ScenarioStage | None = None
         last_proven_stage: ScenarioStage | None = None
 
+        revision = int(getattr(plan, "revision", 1) or 1)
+        lessons = self._load_applied_lessons(revision)
+        rules = runtime_lessons.active_rules(lessons)
+        runtime_log: list[dict[str, Any]] = []
+        if lessons:
+            print(f"  [executor] {len(lessons)} lesson(s) active at runtime"
+                  + (f"; rules: {', '.join(rules)}" if rules else ""), flush=True)
+
         for step in plan.steps[:max_steps]:
             if time.time() > run_deadline:
                 aborted, abort_reason = True, (
@@ -173,8 +222,13 @@ class ExecutorAgent(BaseAgent):
             if step.expected_observation:
                 print(f"  Expected:  {step.expected_observation}", flush=True)
 
-            # In-game active screen guard: prevent blind tapping on dashboard or store
-            if not dry_run and self._is_ingame_stage(step):
+            # In-game active screen guard: prevent blind tapping on dashboard or store.
+            # Skipped for dashboard/Guide scenarios: there the dashboard IS the
+            # product under test, not a sign the game was lost.
+            # (run-20261015-113636 aborted on the exact dashboard its last
+            # criterion asked to verify.)
+            if not dry_run and self._is_ingame_stage(step) \
+                    and not self._dashboard_is_expected(state.get("scenario")):
                 screen_guard = self._guard_ingame_screen(results)
                 if not screen_guard["ok"]:
                     blocked = StepResult(
@@ -216,6 +270,30 @@ class ExecutorAgent(BaseAgent):
                 print(f"Reason: {abort_reason}", flush=True)
                 print(f"{'!' * 72}\n", flush=True)
                 break
+
+            decision = (None if dry_run or not lessons else
+                        self._runtime_lesson_check(step, rules, lessons))
+            if decision is not None:
+                decision["step_index"] = step.index
+                runtime_log.append(decision)
+                print(f"  [lesson] {decision['action'].upper()} "
+                      f"({decision['rule']}, {', '.join(decision['lessons'])}): "
+                      f"{decision['reason']}", flush=True)
+            if decision is not None and decision["action"] == "skip":
+                result = StepResult(
+                    index=step.index, action=step.action,
+                    arguments=dict(step.arguments), stage=step.stage,
+                    dispatched=False,
+                    observation=(f"Skipped by runtime lesson "
+                                 f"{', '.join(decision['lessons'])}: {decision['reason']}"),
+                    frame_before=decision.get("frame_path"),
+                    frame_after=decision.get("frame_path"),
+                    ocr_text=decision.get("screen_text"),
+                )
+                results.append(result)
+                notes.append(result.observation)
+                print(f"  Result:    SKIPPED (lesson)", flush=True)
+                continue
 
             result = self._execute_step(step, dry_run)
             results.append(result)
@@ -309,6 +387,12 @@ class ExecutorAgent(BaseAgent):
         self.context.artifacts.save_json("execution.json", execution_payload)
         self.context.artifacts.save_json(
             f"execution-r{getattr(plan, 'revision', 1)}.json", execution_payload)
+        if lessons:
+            self.context.artifacts.save_json(
+                f"runtime-lessons-r{revision}.json",
+                {"lessons": [l.get("id") for l in lessons], "rules": rules,
+                 "decisions": [{k: v for k, v in d.items() if k != "screen_text"}
+                               for d in runtime_log]})
 
         summary = (
             f"Executed {len(results)}/{len(plan.steps)} steps; "

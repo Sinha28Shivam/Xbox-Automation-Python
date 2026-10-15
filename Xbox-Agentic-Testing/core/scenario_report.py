@@ -162,6 +162,21 @@ def analyse(run_dir: Path | str) -> dict[str, Any]:
             "criteria_total": len(crit),
             "last_proven_stage": ex.get("last_proven_stage") or "",
         })
+    lessons_applied = []
+    learning_checked = any(reports_dir.glob("lessons-applied-r*.json"))
+    for path in sorted(reports_dir.glob("lessons-applied-r*.json")):
+        applied = _load_json(path)
+        for lesson in applied.get("lessons") or []:
+            key = (lesson.get("id"), lesson.get("from_scenario"))
+            if key not in {(l.get("id"), l.get("from_scenario")) for l in lessons_applied}:
+                lessons_applied.append(lesson)
+    runtime_decisions = []
+    for path in sorted(reports_dir.glob("runtime-lessons-r*.json")):
+        revision = "".join(ch for ch in path.stem if ch.isdigit())
+        for d in _load_json(path).get("decisions") or []:
+            runtime_decisions.append({**d, "revision": int(revision or 0)})
+    lessons_recorded = [_load_json(p) for p in
+                        sorted(reports_dir.glob("lesson-recorded-r*.json"))]
     navigation = []
     for path in sorted((run_dir / "reports").glob("guided-navigation*.json")):
         trace = _load_json(path)
@@ -204,6 +219,10 @@ def analyse(run_dir: Path | str) -> dict[str, Any]:
         } if rca else {},
         "navigation": navigation,
         "attempts": attempts,
+        "lessons_applied": lessons_applied,
+        "learning_checked": learning_checked,
+        "runtime_decisions": runtime_decisions,
+        "lessons_recorded": [l for l in lessons_recorded if l],
         "health_summary": data["health"].get("summary", ""),
     }
 

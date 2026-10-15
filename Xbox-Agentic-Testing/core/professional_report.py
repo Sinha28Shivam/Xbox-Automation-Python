@@ -140,6 +140,56 @@ def _scenario_extras(data: dict[str, Any]) -> str:
     run_dir = data.get("run_dir")
     out: list[str] = []
 
+    applied = data.get("lessons_applied") or []
+    recorded = data.get("lessons_recorded") or []
+    if applied or recorded or data.get("learning_checked"):
+        def _lesson_rows(items: list[dict[str, Any]], cause_key: str) -> str:
+            return "".join(
+                f"<tr><td><code>{_esc(l.get('id'))}</code>"
+                + (f"<div class='small'>shared from <b>{_esc(l.get('from_scenario'))}</b></div>"
+                   if l.get("scope") == "shared" else "")
+                + "</td>"
+                f"<td><span class='tag FAIL'>{_esc(str(l.get('failure_class', '')).upper())}</span></td>"
+                f"<td>{_esc(l.get('seen') or str(l.get('occurrences', 1)) + 'x')}</td>"
+                f"<td>{_esc(l.get(cause_key) or '')}"
+                + "".join(f"<div class='small'>{_esc(n)}</div>"
+                          for n in (l.get('navigation_observed') or l.get('navigation_notes') or []))
+                + "</td></tr>" for l in items)
+        head = ("<table><thead><tr><th>Lesson</th><th>Class</th><th>Seen</th>"
+                "<th>What went wrong</th></tr></thead><tbody>")
+        body = ""
+        if applied:
+            body += ("<h3>Applied to this run's plan</h3><p class='small'>Failures from "
+                     "earlier runs that the planner was told to avoid.</p>"
+                     + head + _lesson_rows(applied, "what_went_wrong") + "</tbody></table>")
+        else:
+            body += "<p class='small'>No open lessons existed when this run was planned.</p>"
+        decisions = data.get("runtime_decisions") or []
+        if applied:
+            rows = "".join(
+                f"<tr><td>Step {_esc(d.get('step_index'))}</td>"
+                f"<td><span class='tag {'PASS' if d.get('action') == 'skip' else 'OBSERVED'}'>"
+                f"{_esc(str(d.get('action', '')).upper())}</span></td>"
+                f"<td><code>{_esc(d.get('rule'))}</code><div class='small'>"
+                f"{_esc(', '.join(d.get('lessons') or []))}</div></td>"
+                f"<td>{_esc(d.get('reason'))}<div class='small'>screen: "
+                f"{_esc(d.get('screen_preview') or '-')}</div></td>"
+                f"<td>{_img(d.get('frame_path'), data.get('run_dir'))}</td></tr>"
+                for d in decisions)
+            body += ("<h3 style='margin-top:18px'>Enforced during execution</h3>"
+                     "<p class='small'>Live-screen checks the executor made before "
+                     "dispatching steps that a lesson covers.</p>"
+                     + (("<table><thead><tr><th>Step</th><th>Decision</th><th>Rule</th>"
+                         "<th>Why</th><th>Screen</th></tr></thead><tbody>"
+                         + rows + "</tbody></table>") if decisions else
+                        "<p class='small'>No planned step matched a lesson rule, so no "
+                        "runtime check was needed.</p>"))
+        if recorded:
+            body += ("<h3 style='margin-top:18px'>Recorded from this run</h3><p class='small'>"
+                     "Will be applied to the next run's plan until a run passes.</p>"
+                     + head + _lesson_rows(recorded, "primary_cause") + "</tbody></table>")
+        out.append(f"<h2>Failure learning</h2><div class='card'>{body}</div>")
+
     attempts = data.get("attempts") or []
     if len(attempts) > 1:
         rows = "".join(

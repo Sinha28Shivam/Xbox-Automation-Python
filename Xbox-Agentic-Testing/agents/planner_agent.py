@@ -33,6 +33,7 @@ import re
 from typing import Any
 
 from agents.base import BaseAgent
+from core.lesson_store import open_lessons, prompt_view
 from core.route_store import invalidate_cached_route, load_cached_route
 from core.schemas import PlannedStep, ScenarioStage, TestPlan, ValidatedScenario
 from core.state import AgenticState, note
@@ -103,8 +104,32 @@ class PlannerAgent(BaseAgent):
         replan_count = int(state.get("replan_count", 0))
         is_replan = previous is not None and verification is not None
 
-        # Tier-1 Route Caching: check for verified route on initial run
-        if not is_replan:
+        # Failure learning: read on EVERY plan (first plan and replans), so a
+        # mistake made in an earlier run is not repeated in this one.
+        lessons = open_lessons(
+            self.context.artifacts.run_dir, scenario.id,
+            limit=int(self.context.settings.get("learning.max_lessons_in_prompt", 5)),
+            tags=scenario.tags,
+            shared_tags=self.context.settings.list_of("learning.shared_tags") or None,
+            shared_limit=int(self.context.settings.get("learning.max_shared_lessons", 3)))
+        if not self.context.settings.get("learning.enabled", True):
+            lessons = []
+        lessons_for_prompt = prompt_view(lessons)
+        self.context.artifacts.save_json(
+            f"lessons-applied-r{replan_count + (2 if is_replan else 1)}.json",
+            {"scenario_id": scenario.id, "count": len(lessons),
+             "lessons": lessons_for_prompt})
+        if lessons:
+            labels = [f"{l.get('id')}" + (f" (shared from {l.get('origin_scenario')})"
+                                          if l.get("scope") == "shared" else "")
+                      for l in lessons]
+            print(f"  [planner] Applying {len(lessons)} lesson(s) from earlier "
+                  f"failed runs: {', '.join(labels)}", flush=True)
+
+        # Tier-1 Route Caching: check for verified route on initial run.
+        # Skipped while lessons are open: a lesson newer than the route means
+        # the route is no longer trusted for this console state.
+        if not is_replan and not lessons:
             cached_plan = load_cached_route(self.context.artifacts.run_dir, scenario.id)
             declared_stages = {s.id.value for s in (scenario.stages or [])}
             cached_stages = {s.stage.value for s in (cached_plan.steps if cached_plan else []) if s.stage is not None}
@@ -153,6 +178,7 @@ class PlannerAgent(BaseAgent):
             is_replan=is_replan,
             replan_count=replan_count,
             current_screen_text=current_screen_text,
+            lessons=lessons_for_prompt,
             previous_plan=previous.model_dump(mode="json") if previous else None,
             failure_feedback=(
                 verification.model_dump(mode="json") if verification else None),
@@ -195,6 +221,7 @@ class PlannerAgent(BaseAgent):
                 candidate = self._fallback_staged_plan(scenario, candidate)
             try:
                 plan = self._sanitise_plan(candidate, scenario)
+                self._check_lessons_respected(plan, lessons)
                 break
             except ValueError as exc:
                 last_error = exc
@@ -249,6 +276,7 @@ class PlannerAgent(BaseAgent):
         return {
             "plan": plan,
             "replan_count": replan_count + (1 if is_replan else 0),
+            "lessons_applied": [str(l.get("id")) for l in lessons],
             "messages": [note(self.role, summary)],
             "agent_outputs": {self.role: {
                 "ok": True,
@@ -257,6 +285,39 @@ class PlannerAgent(BaseAgent):
                 "assumptions": plan.assumptions,
             }},
         }
+
+    @staticmethod
+    def _check_lessons_respected(plan: TestPlan,
+                                 lessons: list[dict[str, Any]]) -> None:
+        """Reject a plan that silently repeats a recorded failing step.
+
+        The prompt asks the model to learn; this makes it non-optional. A plan
+        may still contain a step identical to one that failed (sometimes the
+        step was fine and the context was wrong), but only if it says which
+        lesson it considered - so every repeat is a decision, not an accident.
+        """
+        cited = " ".join(plan.assumptions or []).lower()
+        for lesson in lessons:
+            # Shared lessons come from a DIFFERENT scenario, whose failing
+            # step may be perfectly correct here. They are advice, not a veto.
+            if lesson.get("scope") == "shared":
+                continue
+            step = lesson.get("failed_step") or {}
+            action, args = step.get("action"), step.get("arguments") or {}
+            if not action or action in {"capture_frame", "wait_for_stable_screen",
+                                        "read_screen_text"}:
+                continue
+            repeated = any(s.action == action and (s.arguments or {}) == args
+                           for s in plan.steps)
+            lesson_id = str(lesson.get("id", ""))
+            if repeated and lesson_id.lower() not in cited:
+                raise ValueError(
+                    f"Lesson {lesson_id} recorded that `{action}` with arguments "
+                    f"{args} preceded a failure ({lesson.get('primary_cause', '')[:200]}). "
+                    f"Your plan repeats that exact step without addressing it. "
+                    f"Either change the step, or keep it and add an assumption "
+                    f"starting with '{lesson_id}:' explaining why it is safe in "
+                    f"this plan's context.")
 
     def _sanitise_plan(self, plan: TestPlan,
                        scenario: ValidatedScenario | None = None) -> TestPlan:
@@ -292,7 +353,31 @@ class PlannerAgent(BaseAgent):
         self._validate_stage_discipline(plan)
         if scenario is not None:
             self._validate_stage_coverage(plan, scenario)
+            self._apply_navigation_guidance(plan, scenario)
         return plan
+
+    @staticmethod
+    def _apply_navigation_guidance(plan: TestPlan,
+                                   scenario: ValidatedScenario) -> None:
+        """Scenario-declared navigation settings win over the LLM's copy.
+
+        run-20261015-113636: the YAML set require_focus on every waypoint, but
+        the generated plan dropped the key, so the tool used its default and
+        the 'Game Activity' tab heading (never itself highlighted) was
+        reported as not reached. The scenario author's values are facts about
+        the UI; the model may choose WHERE the step goes, not these settings.
+        """
+        guidance = {}
+        for criterion in scenario.success_criteria:
+            nav = (criterion.parameters or {}).get("navigation_guidance")
+            if isinstance(nav, dict) and nav.get("target_text"):
+                guidance[str(nav["target_text"]).strip().lower()] = nav
+        for step in plan.steps:
+            if step.action != "guided_navigate_to_text":
+                continue
+            target = str(step.arguments.get("target_text", "")).strip().lower()
+            if target in guidance:
+                step.arguments = {**step.arguments, **guidance[target]}
 
     def _fallback_in_gameplay_plan(self, scenario: ValidatedScenario,
                                    plan: TestPlan) -> TestPlan:
