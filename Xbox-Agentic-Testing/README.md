@@ -11,6 +11,13 @@ prompts, the workflow graph, the LLM provider and every threshold live in YAML.
 python console.py run "Press A on the dashboard and confirm the screen changes"
 ```
 
+| Document | For |
+|---|---|
+| [docs/OPERATIONS.md](docs/OPERATIONS.md) | Running tests on the rig, reading results, troubleshooting |
+| [SECURITY.md](SECURITY.md) | Secrets, data sent to the LLM, prompt injection, hardware safety |
+| [CHANGELOG.md](CHANGELOG.md) | Release history |
+| [dev/README.md](dev/README.md) | Hand-run probes and calibration scripts |
+
 ---
 
 ## The problem this exists to solve
