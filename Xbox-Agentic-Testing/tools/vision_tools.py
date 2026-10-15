@@ -788,6 +788,31 @@ def _ocr(ctx: ToolContext, path: str) -> tuple[str | None, str, str]:
     picks up, and "no text found" would otherwise be reported as a successful
     read of an empty screen.
     """
+    # Same frame file, same pixels, same text: a frame was often OCR'd 2-3 times
+    # per step (executor post-read, read_screen_text, check_for_text), at ~5-9 s
+    # each on this rig. Keyed by mtime+size so an overwritten file is re-read.
+    try:
+        stat = Path(path).stat()
+        cache_key = (str(Path(path).resolve()), stat.st_mtime_ns, stat.st_size)
+    except OSError:
+        cache_key = None
+    cache = ctx.scratch.setdefault("ocr_cache", {})
+    if cache_key is not None and cache_key in cache:
+        cached = cache[cache_key]
+        ctx.scratch.update(cached.get("meta") or {})
+        return cached["result"]
+
+    result = _ocr_uncached(ctx, path)
+    if cache_key is not None and result[0] is not None:
+        if len(cache) > 256:
+            cache.clear()
+        cache[cache_key] = {"result": result, "meta": {
+            k: ctx.scratch.get(k) for k in
+            ("ocr_last_variant", "ocr_last_score", "ocr_last_attempts")}}
+    return result
+
+
+def _ocr_uncached(ctx: ToolContext, path: str) -> tuple[str | None, str, str]:
     engines = ctx.settings.list_of("verification.ocr.engines") or ["pytesseract"]
     errors: list[str] = []
 

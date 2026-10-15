@@ -61,6 +61,19 @@ _INGAME_STAGES = frozenset({
 })
 
 
+# Steps that only LOOK at the screen. They never change console state, so the
+# before/after/diff/OCR wrapper used for inputs adds time but no evidence.
+_OBSERVE_ONLY_ACTIONS = frozenset({
+    "capture_frame",
+    "wait_for_stable_screen",
+    "read_screen_text",
+    "find_text_on_screen",
+    "check_for_text",
+    "read_text_region",
+    "detect_focus_highlight",
+})
+
+
 class ExecutorAgent(BaseAgent):
     """Runs the plan against real hardware, capturing evidence throughout."""
 
@@ -428,8 +441,10 @@ class ExecutorAgent(BaseAgent):
                                 StageStatus.NOT_STARTED
                             ))
 
-        before_path = self._capture(f"{step.index}-before-{step.action}",
-                                    step.index, dry_run)
+        observe_only = step.action in _OBSERVE_ONLY_ACTIONS
+        before_path = (None if observe_only else
+                       self._capture(f"{step.index}-before-{step.action}",
+                                     step.index, dry_run))
         result.frame_before = before_path
 
         try:
@@ -454,7 +469,13 @@ class ExecutorAgent(BaseAgent):
             source_tool=step.action,
         ))
 
-        if step.verify and not dry_run:
+        if observe_only and not dry_run:
+            # The step itself captured/read the screen and changed nothing, so
+            # its own frame and text are the evidence. Wrapping it in a second
+            # capture + stability wait + diff + OCR (as for inputs) cost ~5.8 s
+            # x 21 steps in run-20261015-113636 for no new information.
+            self._adopt_own_observation(result, tool_result)
+        elif step.verify and not dry_run:
             self._observe(step, result)
             self._read_text(result)
         if result.error:
@@ -465,6 +486,29 @@ class ExecutorAgent(BaseAgent):
 
         result.duration_seconds = round(time.time() - started, 2)
         return result
+
+    def _adopt_own_observation(self, result: StepResult,
+                               tool_result: dict[str, Any]) -> None:
+        """Use an observe-only step's own frame/text as its evidence."""
+        frame = (tool_result.get("frame_path")
+                 or self.context.tools.context.scratch.get("last_frame_path"))
+        result.frame_after = frame
+        result.frame_before = frame
+        text = tool_result.get("text") or tool_result.get("screen_text")
+        if text:
+            result.ocr_text = str(text)
+            result.ocr_engine = str(tool_result.get("engine") or "")
+            result.evidence.append(Evidence(
+                kind=EvidenceKind.OCR_TEXT,
+                summary=f"Read {len(str(text).splitlines())} line(s) of on-screen text",
+                detail={"text": str(text)[:2000]},
+                frame_path=frame, source_tool=result.action))
+        elif frame:
+            # Let the verifier still see text for this frame (cached OCR).
+            self._read_text(result)
+        result.observation = (
+            f"Observed the screen ({result.action}); no input was sent."
+            if not result.error else result.observation)
 
     @staticmethod
     def _step_proved_stage_progress(step: PlannedStep, result: StepResult) -> bool:
