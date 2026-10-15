@@ -93,3 +93,7 @@ addopts = "-ra"
 [tool.coverage.run]
 source = ["core", "agents", "tools", "graph"]
 omit = ["*/__init__.py"]
+parallel = true
+
+[tool.coverage.report]
+skip_empty = true

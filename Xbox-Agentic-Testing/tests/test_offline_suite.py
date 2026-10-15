@@ -29,8 +29,14 @@ SCRIPTS = sorted(OFFLINE.glob("test_*.py"))
 @pytest.mark.parametrize("script", SCRIPTS, ids=[s.stem for s in SCRIPTS])
 def test_offline_script(script: Path) -> None:
     env = {**os.environ, "PYTHONIOENCODING": "utf-8", "LEARNING_ENABLED": "true"}
+    # Under `pytest --cov`, run the script under coverage too (parallel data
+    # file) so modules only exercised by offline scripts are not reported 0%.
+    command = [sys.executable, str(script)]
+    if os.environ.get("COV_CORE_SOURCE") is not None or "--cov" in " ".join(sys.argv):
+        command = [sys.executable, "-m", "coverage", "run", "--parallel-mode",
+                   "--rcfile", str(PROJECT / "pyproject.toml"), str(script)]
     proc = subprocess.run(
-        [sys.executable, str(script)], cwd=PROJECT, env=env,
+        command, cwd=PROJECT, env=env,
         capture_output=True, text=True, encoding="utf-8", errors="replace",
         timeout=300)
     if proc.returncode != 0:

@@ -50,5 +50,16 @@ jobs:
       - name: Type-check (mypy, core + agents)
         run: mypy
 
-      - name: Run offline tests
-        run: python -m pytest -v
+      - name: Run offline tests (with coverage)
+        run: |
+          python -m pytest -v --cov --cov-report=
+          python -m coverage combine -q
+          python -m coverage report --skip-empty
+          python -m coverage xml -o coverage.xml
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: Xbox-Agentic-Testing/coverage.xml

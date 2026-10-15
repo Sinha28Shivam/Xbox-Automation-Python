@@ -1,0 +1,116 @@
+{
+  "healthy": true,
+  "components": [
+    {
+      "name": "adapter:gimx",
+      "ok": true,
+      "detail": "loaded from <HOME>\\Desktop\\InstrumentsStore\\xboxArudino\\Xbox-Automation-Python\\gimx-session\\gimx_session.py",
+      "metrics": {
+        "path": "<HOME>\\Desktop\\InstrumentsStore\\xboxArudino\\Xbox-Automation-Python\\gimx-session\\gimx_session.py"
+      },
+      "remediation": null
+    },
+    {
+      "name": "adapter:pad",
+      "ok": true,
+      "detail": "loaded from <HOME>\\Desktop\\InstrumentsStore\\xboxArudino\\Xbox-Automation-Python\\test-controller\\test_controller.py",
+      "metrics": {
+        "path": "<HOME>\\Desktop\\InstrumentsStore\\xboxArudino\\Xbox-Automation-Python\\test-controller\\test_controller.py"
+      },
+      "remediation": null
+    },
+    {
+      "name": "adapter:capture",
+      "ok": true,
+      "detail": "loaded from <HOME>\\Desktop\\InstrumentsStore\\xboxArudino\\Xbox-Automation-Python\\capture\\capture.py",
+      "metrics": {
+        "path": "<HOME>\\Desktop\\InstrumentsStore\\xboxArudino\\Xbox-Automation-Python\\capture\\capture.py"
+      },
+      "remediation": null
+    },
+    {
+      "name": "gimx",
+      "ok": true,
+      "detail": "GIMX server is reachable over UDP",
+      "metrics": {
+        "processes": [
+          15684
+        ],
+        "udp_address": "127.0.0.1:51914",
+        "serial_port": "COM8"
+      },
+      "remediation": null
+    },
+    {
+      "name": "capture",
+      "ok": true,
+      "detail": "frame 1920x1080  std=61.35  tones=256",
+      "metrics": {
+        "present": true,
+        "opens": true,
+        "signal": true,
+        "frame_size": "1920x1080",
+        "resolved_index": 0,
+        "index_source": "exact name match: 'AVerMedia ExtremeCap UVC'"
+      },
+      "remediation": null
+    }
+  ],
+  "blocking_issues": [],
+  "warnings": [
+    "GIMX is reachable, but reachable is NOT authenticated. If nobody held the Guide button for 2s, every event will be accepted and none will reach the console. Only an observed screen change settles this."
+  ],
+  "recoverable": false,
+  "gimx_reachable": true,
+  "gimx_authenticated": null,
+  "capture_has_signal": true,
+  "summary": "Rig is ready: GIMX reachable and a live video signal present. 1 caveat(s) recorded.",
+  "evidence": [
+    {
+      "kind": "device_state",
+      "summary": "GIMX reachable=True, processes=[15684]",
+      "detail": {
+        "ok": true,
+        "processes": [
+          15684
+        ],
+        "process_running": true,
+        "reachable": true,
+        "authenticated": null,
+        "udp_address": "127.0.0.1:51914",
+        "serial_port": "COM8",
+        "caveat": "'reachable' means the GIMX server answered UDP. It does NOT mean the session was authenticated with the Guide button. Unauthenticated sessions accept every event and deliver none."
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T07:27:13.476851+00:00",
+      "source_tool": "check_gimx_session"
+    },
+    {
+      "kind": "device_state",
+      "summary": "Capture present=True opens=True signal=True",
+      "detail": {
+        "ok": true,
+        "device_present": true,
+        "device_opens": true,
+        "has_signal": true,
+        "ready": true,
+        "conflicting_apps": [],
+        "messages": [
+          "frame 1920x1080  std=61.35  tones=256"
+        ],
+        "device_identity_ok": true,
+        "device_warning": null,
+        "frame_size": "1920x1080",
+        "expected_size": "1920x1080",
+        "resolved_index": 0,
+        "index_source": "exact name match: 'AVerMedia ExtremeCap UVC'"
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T07:27:20.683583+00:00",
+      "source_tool": "check_capture_device"
+    }
+  ],
+  "checked_at": "2026-10-15T07:27:20.683997+00:00"
+}

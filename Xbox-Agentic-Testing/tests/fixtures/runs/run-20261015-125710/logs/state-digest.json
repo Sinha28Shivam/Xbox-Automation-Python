@@ -1,0 +1,94 @@
+{
+  "messages": [
+    {
+      "role": "health",
+      "text": "Rig is ready: GIMX reachable and a live video signal present. 1 caveat(s) recorded.",
+      "level": "info"
+    },
+    {
+      "role": "health",
+      "text": "completed in 9.3s"
+    },
+    {
+      "role": "scenario_validator",
+      "text": "Scenario 'Entry point for Game Activity' validated with 6 success criteria.",
+      "level": "info"
+    },
+    {
+      "role": "scenario_validator",
+      "text": "completed in 0.01s"
+    },
+    {
+      "role": "planner",
+      "text": "Plan revision 1: 41 steps"
+    },
+    {
+      "role": "planner",
+      "text": "completed in 38.16s"
+    },
+    {
+      "role": "executor",
+      "text": "Executed 41/41 steps; 41 dispatched; screen changed at least once: True.",
+      "level": "info"
+    },
+    {
+      "role": "executor",
+      "text": "completed in 241.35s"
+    },
+    {
+      "role": "verifier",
+      "text": "PASS: All five required success criteria were met with strong visual evidence. The run successfully navigated from the Xbox dashboard through the Guide to Game Activity, opened and verified Achievements, Stats, and the official club page, each displaying the game name and relevant content, and returned to the dashboard. No error dialogs appeared.",
+      "level": "info"
+    },
+    {
+      "role": "verifier",
+      "text": "completed in 27.65s"
+    }
+  ],
+  "errors": [],
+  "agent_outputs": {
+    "health": {
+      "ok": true,
+      "healthy": true,
+      "blocking": [],
+      "adapters_ok": true
+    },
+    "scenario_validator": {
+      "ok": true,
+      "valid": true,
+      "issues": []
+    },
+    "planner": {
+      "ok": true,
+      "steps": 41,
+      "revision": 1,
+      "assumptions": [
+        "L001-20261015112419: Avoided by using guided_navigate_to_text for all menu navigation instead of blind directional presses, which prevents lag-induced missed presses. The Guide will be opened fresh from the dashboard (not already open), so no replan-induced double-press of Guide will occur.",
+        "The console is powered on and showing the Xbox dashboard with a focused game tile",
+        "The selected game is installed and represented by the focused dashboard tile",
+        "The user is signed in to Xbox",
+        "The GIMX session is authenticated (guide_auth special action was run before this scenario)",
+        "The capture card is connected and no other application is using it",
+        "The Guide overlay is not currently open at the start of this scenario",
+        "Pressing the Guide button from the dashboard will open the Guide overlay",
+        "The Guide menu structure includes a 'Game Activity' option reachable by navigating right from the initial position",
+        "Game Activity contains selectable options for 'Achievements', 'Stats', and 'Go to official club'",
+        "Each destination page displays the selected game's name and relevant content",
+        "Pressing B will return from any destination back to Game Activity",
+        "Pressing B from Game Activity will return to the dashboard"
+      ]
+    },
+    "executor": {
+      "ok": true,
+      "aborted": false,
+      "steps_run": 41,
+      "observed_any_change": true
+    },
+    "verifier": {
+      "ok": true,
+      "verdict": "pass",
+      "passed": true,
+      "should_replan": false
+    }
+  }
+}

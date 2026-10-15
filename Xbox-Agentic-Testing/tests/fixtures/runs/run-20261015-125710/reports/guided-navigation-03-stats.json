@@ -1,0 +1,107 @@
+{
+  "target_text": "Stats",
+  "direction": "down",
+  "found": true,
+  "attempts": [
+    {
+      "attempt": 1,
+      "direction": "down",
+      "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-down-0.png",
+      "screen_text": "A\n64,800 6\n12:29 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+      "visible_lines": [
+        "A",
+        "64,800 6",
+        "12:29 AM",
+        "Game activity",
+        "Hold for power options",
+        "Achievements",
+        "Turn achievement tracker on",
+        "TF 4/32 20/1000",
+        "More achievements",
+        "Stats",
+        "Friends who play",
+        "Looking for Group",
+        "7 tor Il",
+        "Events",
+        "Tel Go to official club",
+        "Minecraft Dungeons II"
+      ],
+      "text_visible": true,
+      "already_open": false,
+      "focused": false,
+      "focused_label": "Achievements\n1/32 © 20/1000",
+      "matched": false,
+      "matched_lines": [
+        "Stats"
+      ],
+      "dispatched": true
+    },
+    {
+      "attempt": 2,
+      "direction": "down",
+      "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-down-1.png",
+      "screen_text": "A\n64,800 6\n12:29 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+      "visible_lines": [
+        "A",
+        "64,800 6",
+        "12:29 AM",
+        "Game activity",
+        "Hold for power options",
+        "Achievements",
+        "4",
+        "I",
+        "20s 1000",
+        "More achievements",
+        "Stats",
+        "Friends who play",
+        "Looking for Group",
+        "7 tor Il",
+        "Events",
+        "Tel Go to official club",
+        "Minecraft Dungeons II"
+      ],
+      "text_visible": true,
+      "already_open": false,
+      "focused": false,
+      "focused_label": "More achievements",
+      "matched": false,
+      "matched_lines": [
+        "Stats"
+      ],
+      "dispatched": true
+    },
+    {
+      "attempt": 3,
+      "direction": "down",
+      "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-down-2.png",
+      "screen_text": "A\n64,800 6\n12:29 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+      "visible_lines": [
+        "A",
+        "64,800 6",
+        "12:29 AM",
+        "Game activity",
+        "Hold for power options",
+        "Achievements",
+        "4",
+        "I",
+        "20s 1000",
+        "More achievements",
+        "Stats",
+        "Friends who play",
+        "Looking for Group",
+        "7 tor Il",
+        "Events",
+        "Tel Go to official club",
+        "Minecraft Dungeons II"
+      ],
+      "text_visible": true,
+      "already_open": false,
+      "focused": true,
+      "focused_label": "Stats",
+      "matched": true,
+      "matched_lines": [
+        "Stats"
+      ]
+    }
+  ]
+}

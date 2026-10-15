@@ -1,0 +1,171 @@
+{
+  "target_text": "Go to official club",
+  "direction": "down",
+  "found": true,
+  "attempts": [
+    {
+      "attempt": 1,
+      "direction": "down",
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-0.png",
+      "screen_text": "A\n64,800 & 6\n11:11 PM\nGame activity\nfe) Hold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+      "visible_lines": [
+        "A",
+        "64,800 & 6",
+        "11:11 PM",
+        "Game activity",
+        "fe) Hold for power options",
+        "Achievements",
+        "4",
+        "I",
+        "20s 1000",
+        "More achievements",
+        "Stats",
+        "Friends who play",
+        "Looking for Group",
+        "7 tor Il",
+        "Events",
+        "Tel Go to official club",
+        "Minecraft Dungeons II"
+      ],
+      "text_visible": true,
+      "focused": false,
+      "focused_label": "Stats",
+      "matched": false,
+      "matched_lines": [
+        "Tel Go to official club"
+      ],
+      "dispatched": true
+    },
+    {
+      "attempt": 2,
+      "direction": "down",
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-1.png",
+      "screen_text": "A\n64,800 6\n11:11 PM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+      "visible_lines": [
+        "A",
+        "64,800 6",
+        "11:11 PM",
+        "Game activity",
+        "Hold for power options",
+        "Achievements",
+        "4",
+        "I",
+        "20s 1000",
+        "More achievements",
+        "Stats",
+        "Friends who play",
+        "Looking for Group",
+        "7 tor Il",
+        "Events",
+        "Tel Go to official club",
+        "Minecraft Dungeons II"
+      ],
+      "text_visible": true,
+      "focused": false,
+      "focused_label": "Friends who play",
+      "matched": false,
+      "matched_lines": [
+        "Tel Go to official club"
+      ],
+      "dispatched": true
+    },
+    {
+      "attempt": 3,
+      "direction": "down",
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-2.png",
+      "screen_text": "A\n64,800 & 6\n11:11 PM\nGame activity\nfe) Hold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 posts for Dungeons Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+      "visible_lines": [
+        "A",
+        "64,800 & 6",
+        "11:11 PM",
+        "Game activity",
+        "fe) Hold for power options",
+        "Achievements",
+        "4",
+        "I",
+        "20s 1000",
+        "More achievements",
+        "Stats",
+        "Friends who play",
+        "Looking for Group",
+        "7 posts for Dungeons Il",
+        "Events",
+        "Tel Go to official club",
+        "Minecraft Dungeons II"
+      ],
+      "text_visible": true,
+      "focused": false,
+      "focused_label": "Looking for Group\n7 posts for Minecraft Dungeons II",
+      "matched": false,
+      "matched_lines": [
+        "Tel Go to official club"
+      ],
+      "dispatched": true
+    },
+    {
+      "attempt": 4,
+      "direction": "down",
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-3.png",
+      "screen_text": "A\n64,800 & 6\n11:12 PM\nGame activity\nfe) Hold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+      "visible_lines": [
+        "A",
+        "64,800 & 6",
+        "11:12 PM",
+        "Game activity",
+        "fe) Hold for power options",
+        "Achievements",
+        "4",
+        "I",
+        "20s 1000",
+        "More achievements",
+        "Stats",
+        "Friends who play",
+        "Looking for Group",
+        "7 tor Il",
+        "Events",
+        "Tel Go to official club",
+        "Minecraft Dungeons II"
+      ],
+      "text_visible": true,
+      "focused": false,
+      "focused_label": "Events",
+      "matched": false,
+      "matched_lines": [
+        "Tel Go to official club"
+      ],
+      "dispatched": true
+    },
+    {
+      "attempt": 5,
+      "direction": "down",
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-4.png",
+      "screen_text": "A\n64,800 & 6\n11:12 PM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nGo to official club\nMinecraft Dungeons II",
+      "visible_lines": [
+        "A",
+        "64,800 & 6",
+        "11:12 PM",
+        "Game activity",
+        "Hold for power options",
+        "Achievements",
+        "4",
+        "I",
+        "20s 1000",
+        "More achievements",
+        "Stats",
+        "Friends who play",
+        "Looking for Group",
+        "7 tor Il",
+        "Events",
+        "Go to official club",
+        "Minecraft Dungeons II"
+      ],
+      "text_visible": true,
+      "focused": true,
+      "focused_label": "@ Go to official club",
+      "matched": true,
+      "matched_lines": [
+        "Go to official club"
+      ]
+    }
+  ]
+}

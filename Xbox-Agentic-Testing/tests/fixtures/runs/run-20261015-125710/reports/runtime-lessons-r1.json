@@ -1,0 +1,23 @@
+{
+  "lessons": [
+    "L001-20261015112419"
+  ],
+  "rules": {
+    "guide_already_open": [
+      "L001-20261015112419"
+    ]
+  },
+  "decisions": [
+    {
+      "rule": "guide_already_open",
+      "lessons": [
+        "L001-20261015112419"
+      ],
+      "action": "proceed",
+      "reason": "Guide overlay is not open; pressing Guide is safe.",
+      "frame_path": "<RUNS>\\run-20261015-125710\\frames\\2-lesson-check.png",
+      "screen_preview": "The Guy | 10% | Q g | 12:27 AM | # | - | / | \\ | i | - | ~ | 4 | an | a | KET | e | ‘sy | UE . | is | Se FE | 5 | - | Minecraft Dungeons | twitch | I] | Pray | ",
+      "step_index": 2
+    }
+  ]
+}

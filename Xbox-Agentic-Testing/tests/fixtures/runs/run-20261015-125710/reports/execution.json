@@ -1,0 +1,3810 @@
+{
+  "scenario_id": "entry-point-game-activity",
+  "completed": true,
+  "aborted": false,
+  "abort_reason": null,
+  "steps": [
+    {
+      "index": 0,
+      "action": "capture_frame",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (capture_frame); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "capture_frame dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "width": 1920,
+            "height": 1080,
+            "blank": false,
+            "stats": {
+              "mean": 55.672,
+              "std": 61.193,
+              "tones": 256.0
+            },
+            "note": null
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:27:58.972613+00:00",
+          "source_tool": "capture_frame"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 41 line(s) via pytesseract: 10%; Q g; 12:27 AM; #",
+          "detail": {
+            "text": "10%\nQ g\n12:27 AM\n#\n-\n/\na\n\\\ni\nVA\nms\n-\n~\n=\n~\noe\na\nis\n4\n-\nMinecraft Dungeons\ntwitch\nI]\nPray\n=- XI\nNi\nxs\n—\nie,\nTK\n=\nhd\ntg) GAME PASS\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE Now",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:28:03.043129+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "preflight",
+      "stage_goal": "Confirm starting state before opening the Guide",
+      "stage_status": "proven",
+      "progress_signal": "Dashboard visible with focused game tile",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "10%\nQ g\n12:27 AM\n#\n-\n/\na\n\\\ni\nVA\nms\n-\n~\n=\n~\noe\na\nis\n4\n-\nMinecraft Dungeons\ntwitch\nI]\nPray\n=- XI\nNi\nxs\n—\nie,\nTK\n=\nhd\ntg) GAME PASS\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE Now",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 4.18,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:27:58.862979+00:00"
+    },
+    {
+      "index": 1,
+      "action": "read_screen_text",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (read_screen_text); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "read_screen_text dispatched=True",
+          "detail": {
+            "ok": true,
+            "text": "10%\nQ g\n12:27 AM\n#\n-\n/\na\n\\\ni\nVA\nms\n-\n~\n=\n~\noe\na\nis\n4\n-\nMinecraft Dungeons\ntwitch\nI]\nPray\n=- XI\nNi\nxs\n—\nie,\nTK\n=\nhd\ntg) GAME PASS\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE Now",
+            "engine": "pytesseract",
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "line_count": 41,
+            "ocr_variant": "bright_text",
+            "ocr_score": 0.766,
+            "ocr_attempts": [
+              {
+                "variant": "raw",
+                "score": 0.724,
+                "chars": 205
+              },
+              {
+                "variant": "upscale_otsu",
+                "score": 0.735,
+                "chars": 255
+              },
+              {
+                "variant": "upscale_otsu_inverted",
+                "score": 0.743,
+                "chars": 250
+              },
+              {
+                "variant": "bright_text",
+                "score": 0.766,
+                "chars": 214
+              },
+              {
+                "variant": "warm_text",
+                "score": 0.494,
+                "chars": 32
+              }
+            ],
+            "caveat": "OCR on console UIs is unreliable - stylised fonts, motion and transparency all hurt accuracy. Absent text is NOT strong evidence that the text is absent from the screen."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:28:03.044647+00:00",
+          "source_tool": "read_screen_text"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 41 line(s) of on-screen text",
+          "detail": {
+            "text": "10%\nQ g\n12:27 AM\n#\n-\n/\na\n\\\ni\nVA\nms\n-\n~\n=\n~\noe\na\nis\n4\n-\nMinecraft Dungeons\ntwitch\nI]\nPray\n=- XI\nNi\nxs\n—\nie,\nTK\n=\nhd\ntg) GAME PASS\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE Now"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:28:03.044647+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "preflight",
+      "stage_goal": "Confirm starting state before opening the Guide",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "10%\nQ g\n12:27 AM\n#\n-\n/\na\n\\\ni\nVA\nms\n-\n~\n=\n~\noe\na\nis\n4\n-\nMinecraft Dungeons\ntwitch\nI]\nPray\n=- XI\nNi\nxs\n—\nie,\nTK\n=\nhd\ntg) GAME PASS\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE Now",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 0.0,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:28:03.043628+00:00"
+    },
+    {
+      "index": 2,
+      "action": "press_button",
+      "arguments": {
+        "button": "guide"
+      },
+      "dispatched": true,
+      "error": null,
+      "observation": "Screen changed (delta 39.637). Expected: The Guide overlay appears on screen, showing the top-level Guide menu with options visible [OCR: ‘a | 64,800 6 | 12:28 AM]",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "press_button dispatched=True",
+          "detail": {
+            "ok": true,
+            "button": "guide",
+            "kind": "button",
+            "times": 1,
+            "dispatched": true,
+            "duration_seconds": 0.469,
+            "caveat": "dispatched=true only means GIMX accepted the event. It is NOT evidence that the console reacted. Capture a frame and compare to confirm."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:28:07.583672+00:00",
+          "source_tool": "press_button"
+        },
+        {
+          "kind": "screen_diff",
+          "summary": "Screen changed (delta 39.637). Expected: The Guide overlay appears on screen, showing the top-level Guide menu with options visible",
+          "detail": {
+            "ok": true,
+            "changed": true,
+            "delta": 39.6373,
+            "threshold": 0.5,
+            "before_path": "<RUNS>\\run-20261015-125710\\frames\\step-002_2-before-press_button.png",
+            "after_path": "<RUNS>\\run-20261015-125710\\frames\\2-after-press_button.png",
+            "interpretation": "The screen changed, so the console did receive and act on input."
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\2-after-press_button.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:28:08.918142+00:00",
+          "source_tool": "verify_screen_changed"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 23 line(s) via pytesseract: ‘a; 64,800 6; 12:28 AM; Hold for power options",
+          "detail": {
+            "text": "‘a\n64,800 6\n12:28 AM\nHold for power options\nHome\n(n)\nShare last capture\n© More options\n0%\nMy games & apps\n~\n, Minecraft Dungeons II\nste, :\nAssassin's Creed Origins\nNIS\n~\nRoblox - Xbox\n~\nax\n“2 Minecraft\nXS\nOo BES B a\nq)",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\2-after-press_button.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:28:12.087356+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "game_discovery",
+      "stage_goal": "Open the Guide and prepare to navigate to Game Activity",
+      "stage_status": "proven",
+      "progress_signal": "Guide overlay is open",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\step-002_2-before-press_button.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\2-after-press_button.png",
+      "screen_delta": 39.6373,
+      "ocr_text": "‘a\n64,800 6\n12:28 AM\nHold for power options\nHome\n(n)\nShare last capture\n© More options\n0%\nMy games & apps\n~\n, Minecraft Dungeons II\nste, :\nAssassin's Creed Origins\nNIS\n~\nRoblox - Xbox\n~\nax\n“2 Minecraft\nXS\nOo BES B a\nq)",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 5.08,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:28:07.009475+00:00"
+    },
+    {
+      "index": 3,
+      "action": "wait_for_stable_screen",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (wait_for_stable_screen); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "wait_for_stable_screen dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+            "waited_seconds": 0.65
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:28:12.735572+00:00",
+          "source_tool": "wait_for_stable_screen"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 23 line(s) via pytesseract: ‘a; 64,800 6; 12:28 AM; Hold for power options",
+          "detail": {
+            "text": "‘a\n64,800 6\n12:28 AM\nHold for power options\nHome\n(n)\nShare last capture\n© More options\n0%\nMy games & apps\n~\n, Minecraft Dungeons II\nste, :\nAssassin's Creed Origins\nNIS\n~\nRoblox - Xbox\n~\nax\n“2 Minecraft\nXS\nOo BES B a\nq)",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:28:15.764850+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "game_discovery",
+      "stage_goal": "Open the Guide and prepare to navigate to Game Activity",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+      "screen_delta": null,
+      "ocr_text": "‘a\n64,800 6\n12:28 AM\nHold for power options\nHome\n(n)\nShare last capture\n© More options\n0%\nMy games & apps\n~\n, Minecraft Dungeons II\nste, :\nAssassin's Creed Origins\nNIS\n~\nRoblox - Xbox\n~\nax\n“2 Minecraft\nXS\nOo BES B a\nq)",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 3.68,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:28:12.087753+00:00"
+    },
+    {
+      "index": 4,
+      "action": "capture_frame",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (capture_frame); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "capture_frame dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "width": 1920,
+            "height": 1080,
+            "blank": false,
+            "stats": {
+              "mean": 30.416,
+              "std": 34.498,
+              "tones": 250.0
+            },
+            "note": null
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:28:15.864478+00:00",
+          "source_tool": "capture_frame"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 23 line(s) via pytesseract: ‘a; 64,800 6; 12:28 AM; Hold for power options",
+          "detail": {
+            "text": "‘a\n64,800 6\n12:28 AM\nHold for power options\nHome\n(n)\nShare last capture\n© More options\n0%\nMy games & apps\n~\n, Minecraft Dungeons II\nste, :\nAssassin's Creed Origins\nNIS\n~\nRoblox - Xbox\n~\nax\n“2 Minecraft\nXS\nOo BES B a\nq)",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:28:18.946626+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "game_discovery",
+      "stage_goal": "Open the Guide and prepare to navigate to Game Activity",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "‘a\n64,800 6\n12:28 AM\nHold for power options\nHome\n(n)\nShare last capture\n© More options\n0%\nMy games & apps\n~\n, Minecraft Dungeons II\nste, :\nAssassin's Creed Origins\nNIS\n~\nRoblox - Xbox\n~\nax\n“2 Minecraft\nXS\nOo BES B a\nq)",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 3.18,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:28:15.765850+00:00"
+    },
+    {
+      "index": 5,
+      "action": "detect_focus_highlight",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (detect_focus_highlight); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "detect_focus_highlight dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "expected_label": "",
+            "selected_label": "(n)\nHome",
+            "highlight_bbox": {
+              "x": 83,
+              "y": 180,
+              "width": 528,
+              "height": 112
+            },
+            "crop_path": "<RUNS>\\run-20261015-125710\\frames\\focus-crop-0.png",
+            "detections": [
+              {
+                "bbox": {
+                  "x": 83,
+                  "y": 180,
+                  "width": 528,
+                  "height": 112
+                },
+                "area": 59136,
+                "area_ratio": 0.029,
+                "crop_path": "<RUNS>\\run-20261015-125710\\frames\\focus-crop-0.png",
+                "text": "(n)\nHome",
+                "engine": "pytesseract",
+                "matches_expected": false,
+                "green_pixels": 9794,
+                "fill_ratio": 0.166
+              },
+              {
+                "bbox": {
+                  "x": 1154,
+                  "y": 789,
+                  "width": 79,
+                  "height": 20
+                },
+                "area": 1580,
+                "area_ratio": 0.001,
+                "crop_path": "<RUNS>\\run-20261015-125710\\frames\\focus-crop-2.png",
+                "text": "",
+                "engine": "pytesseract",
+                "matches_expected": false,
+                "green_pixels": 727,
+                "fill_ratio": 0.46
+              },
+              {
+                "bbox": {
+                  "x": 117,
+                  "y": 819,
+                  "width": 60,
+                  "height": 27
+                },
+                "area": 1620,
+                "area_ratio": 0.001,
+                "crop_path": "<RUNS>\\run-20261015-125710\\frames\\focus-crop-1.png",
+                "text": "X",
+                "engine": "pytesseract",
+                "matches_expected": false,
+                "green_pixels": 901,
+                "fill_ratio": 0.556
+              },
+              {
+                "bbox": {
+                  "x": 137,
+                  "y": 957,
+                  "width": 29,
+                  "height": 30
+                },
+                "area": 870,
+                "area_ratio": 0.0,
+                "crop_path": "<RUNS>\\run-20261015-125710\\frames\\focus-crop-3.png",
+                "text": "t",
+                "engine": "pytesseract",
+                "matches_expected": false,
+                "green_pixels": 699,
+                "fill_ratio": 0.803
+              },
+              {
+                "bbox": {
+                  "x": 310,
+                  "y": 53,
+                  "width": 29,
+                  "height": 29
+                },
+                "area": 841,
+                "area_ratio": 0.0,
+                "crop_path": "<RUNS>\\run-20261015-125710\\frames\\focus-crop-4.png",
+                "text": "1",
+                "engine": "pytesseract",
+                "matches_expected": false,
+                "green_pixels": 680,
+                "fill_ratio": 0.809
+              }
+            ],
+            "rejected_oversized": [],
+            "matched": true,
+            "engine": "pytesseract"
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:28:24.705919+00:00",
+          "source_tool": "detect_focus_highlight"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 23 line(s) via pytesseract: ‘a; 64,800 6; 12:28 AM; Hold for power options",
+          "detail": {
+            "text": "‘a\n64,800 6\n12:28 AM\nHold for power options\nHome\n(n)\nShare last capture\n© More options\n0%\nMy games & apps\n~\n, Minecraft Dungeons II\nste, :\nAssassin's Creed Origins\nNIS\n~\nRoblox - Xbox\n~\nax\n“2 Minecraft\nXS\nOo BES B a\nq)",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:28:24.706418+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "game_discovery",
+      "stage_goal": "Open the Guide and prepare to navigate to Game Activity",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [
+        "If the highlighted item is a game title rather than a top-level menu option, indicating the Guide opened inside a flyout"
+      ],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "‘a\n64,800 6\n12:28 AM\nHold for power options\nHome\n(n)\nShare last capture\n© More options\n0%\nMy games & apps\n~\n, Minecraft Dungeons II\nste, :\nAssassin's Creed Origins\nNIS\n~\nRoblox - Xbox\n~\nax\n“2 Minecraft\nXS\nOo BES B a\nq)",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 5.76,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:28:18.947125+00:00"
+    },
+    {
+      "index": 6,
+      "action": "guided_navigate_to_text",
+      "arguments": {
+        "target_text": "Game Activity",
+        "direction": "right",
+        "max_presses": 3,
+        "interval": 0.8,
+        "require_focus": false
+      },
+      "dispatched": true,
+      "error": null,
+      "observation": "Screen changed (delta 5.481). Expected: The Guide displays the Game Activity section with the selected game's name and Game Activity controls visible (e.g., 'Achievements', 'Stats', 'Go to official club' options) [OCR: A | 64,800 6 | 12:28 AM]",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "guided_navigate_to_text dispatched=True",
+          "detail": {
+            "ok": true,
+            "target_text": "Game Activity",
+            "found": true,
+            "matched_lines": [
+              "Game activity"
+            ],
+            "attempts": [
+              {
+                "attempt": 1,
+                "direction": "right",
+                "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-right-0.png",
+                "screen_text": "‘a\n64,800 6\n12:28 AM\nHold for power options\nHome\n(n)\nShare last capture\n© More options\n0%\nMy games & apps\n~\n, Minecraft Dungeons II\nste, :\nAssassin's Creed Origins\nNIS\n~\nRoblox - Xbox\n~\nax\n“2 Minecraft\nXS\nOo BES B a\nq)",
+                "visible_lines": [
+                  "‘a",
+                  "64,800 6",
+                  "12:28 AM",
+                  "Hold for power options",
+                  "Home",
+                  "(n)",
+                  "Share last capture",
+                  "© More options",
+                  "0%",
+                  "My games & apps",
+                  "~",
+                  ", Minecraft Dungeons II",
+                  "ste, :",
+                  "Assassin's Creed Origins",
+                  "NIS",
+                  "~",
+                  "Roblox - Xbox",
+                  "~",
+                  "ax",
+                  "“2 Minecraft",
+                  "XS",
+                  "Oo BES B a",
+                  "q)"
+                ],
+                "text_visible": false,
+                "already_open": false,
+                "focused": false,
+                "focused_label": "",
+                "matched": false,
+                "matched_lines": [],
+                "dispatched": true
+              },
+              {
+                "attempt": 2,
+                "direction": "right",
+                "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-right-1.png",
+                "screen_text": "People\n12:28 AM\nHold for power options\nron mobile\nFriend requests\ndl\nNo requests to view\nx\nGamerscore leaderboard\nRank 1 with + @ 20 this month\n4\nOE\nFriends & community updates\na\nLooking for Group\nBE\n9 posts for Minecraft Dungeons II\nXI\nef\nRecently played with\ner\nAME PASS\nFind someone\nay\nFlight Simulator\nWar: E-D\nNational Championship\nSPONSORED",
+                "visible_lines": [
+                  "People",
+                  "12:28 AM",
+                  "Hold for power options",
+                  "ron mobile",
+                  "Friend requests",
+                  "dl",
+                  "No requests to view",
+                  "x",
+                  "Gamerscore leaderboard",
+                  "Rank 1 with + @ 20 this month",
+                  "4",
+                  "OE",
+                  "Friends & community updates",
+                  "a",
+                  "Looking for Group",
+                  "BE",
+                  "9 posts for Minecraft Dungeons II",
+                  "XI",
+                  "ef",
+                  "Recently played with",
+                  "er",
+                  "AME PASS",
+                  "Find someone",
+                  "ay",
+                  "Flight Simulator",
+                  "War: E-D",
+                  "National Championship",
+                  "SPONSORED"
+                ],
+                "text_visible": false,
+                "already_open": false,
+                "focused": false,
+                "focused_label": "",
+                "matched": false,
+                "matched_lines": [],
+                "dispatched": true
+              },
+              {
+                "attempt": 3,
+                "direction": "right",
+                "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-right-2.png",
+                "screen_text": "64,800 6\n12:28 AM\nParties & chats\nHold for power options\nStart a party\nDiscord\nFoe |\nTalk\nChats\nunread\n|\nBeginning in November, XBox\nGame Pass will...\nNew chat\nChat requests\nom Report in-game voice chat",
+                "visible_lines": [
+                  "64,800 6",
+                  "12:28 AM",
+                  "Parties & chats",
+                  "Hold for power options",
+                  "Start a party",
+                  "Discord",
+                  "Foe |",
+                  "Talk",
+                  "Chats",
+                  "unread",
+                  "|",
+                  "Beginning in November, XBox",
+                  "Game Pass will...",
+                  "New chat",
+                  "Chat requests",
+                  "om Report in-game voice chat"
+                ],
+                "text_visible": false,
+                "already_open": false,
+                "focused": false,
+                "focused_label": "",
+                "matched": false,
+                "matched_lines": [],
+                "dispatched": true
+              },
+              {
+                "attempt": 4,
+                "direction": "right",
+                "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-right-3.png",
+                "screen_text": "A\n64,800 6\n12:28 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+                "visible_lines": [
+                  "A",
+                  "64,800 6",
+                  "12:28 AM",
+                  "Game activity",
+                  "Hold for power options",
+                  "Achievements",
+                  "Turn achievement tracker on",
+                  "TF 4/32 20/1000",
+                  "More achievements",
+                  "Stats",
+                  "Friends who play",
+                  "Looking for Group",
+                  "7 tor Il",
+                  "Events",
+                  "Tel Go to official club",
+                  "Minecraft Dungeons II"
+                ],
+                "text_visible": true,
+                "already_open": false,
+                "focused": true,
+                "focused_label": "",
+                "matched": true,
+                "matched_lines": [
+                  "Game activity"
+                ]
+              }
+            ],
+            "attempts_used": 4,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-right-3.png",
+            "focused": true,
+            "already_open": false,
+            "observation": "'Game Activity' is visible; navigation stopped before another input was sent."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:28:45.169974+00:00",
+          "source_tool": "guided_navigate_to_text"
+        },
+        {
+          "kind": "screen_diff",
+          "summary": "Screen changed (delta 5.481). Expected: The Guide displays the Game Activity section with the selected game's name and Game Activity controls visible (e.g., 'Achievements', 'Stats', 'Go to official club' options)",
+          "detail": {
+            "ok": true,
+            "changed": true,
+            "delta": 5.4805,
+            "threshold": 0.5,
+            "before_path": "<RUNS>\\run-20261015-125710\\frames\\step-006_6-before-guided_navigate_to_text.png",
+            "after_path": "<RUNS>\\run-20261015-125710\\frames\\6-after-guided_navigate_to_text.png",
+            "interpretation": "The screen changed, so the console did receive and act on input."
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\6-after-guided_navigate_to_text.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:28:45.892645+00:00",
+          "source_tool": "verify_screen_changed"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 16 line(s) via pytesseract: A; 64,800 6; 12:28 AM; Game activity",
+          "detail": {
+            "text": "A\n64,800 6\n12:28 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\6-after-guided_navigate_to_text.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:28:49.406145+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "menu_detection",
+      "stage_goal": "Reach the selected game's Game Activity section",
+      "stage_status": "proven",
+      "progress_signal": "Game Activity section is visible with game name and activity options",
+      "replan_on": [
+        "Game Activity not found after 3 right presses",
+        "An error dialog or 'Something went wrong' message appears"
+      ],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\step-006_6-before-guided_navigate_to_text.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\6-after-guided_navigate_to_text.png",
+      "screen_delta": 5.4805,
+      "ocr_text": "A\n64,800 6\n12:28 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 24.7,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:28:24.706917+00:00"
+    },
+    {
+      "index": 7,
+      "action": "capture_frame",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (capture_frame); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "capture_frame dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "width": 1920,
+            "height": 1080,
+            "blank": false,
+            "stats": {
+              "mean": 30.257,
+              "std": 32.9,
+              "tones": 237.0
+            },
+            "note": null
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:28:49.496441+00:00",
+          "source_tool": "capture_frame"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 16 line(s) via pytesseract: A; 64,800 6; 12:28 AM; Game activity",
+          "detail": {
+            "text": "A\n64,800 6\n12:28 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:28:52.934768+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "menu_detection",
+      "stage_goal": "Reach the selected game's Game Activity section",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "A\n64,800 6\n12:28 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 3.53,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:28:49.406648+00:00"
+    },
+    {
+      "index": 8,
+      "action": "read_screen_text",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (read_screen_text); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "read_screen_text dispatched=True",
+          "detail": {
+            "ok": true,
+            "text": "A\n64,800 6\n12:28 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "engine": "pytesseract",
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "line_count": 16,
+            "ocr_variant": "bright_text",
+            "ocr_score": 0.893,
+            "ocr_attempts": [
+              {
+                "variant": "raw",
+                "score": 0.846,
+                "chars": 303
+              },
+              {
+                "variant": "upscale_otsu",
+                "score": 0.801,
+                "chars": 364
+              },
+              {
+                "variant": "upscale_otsu_inverted",
+                "score": 0.806,
+                "chars": 364
+              },
+              {
+                "variant": "bright_text",
+                "score": 0.893,
+                "chars": 234
+              }
+            ],
+            "caveat": "OCR on console UIs is unreliable - stylised fonts, motion and transparency all hurt accuracy. Absent text is NOT strong evidence that the text is absent from the screen."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:28:52.936267+00:00",
+          "source_tool": "read_screen_text"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 16 line(s) of on-screen text",
+          "detail": {
+            "text": "A\n64,800 6\n12:28 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:28:52.936267+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "menu_detection",
+      "stage_goal": "Reach the selected game's Game Activity section",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "A\n64,800 6\n12:28 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 0.0,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:28:52.935265+00:00"
+    },
+    {
+      "index": 9,
+      "action": "guided_navigate_to_text",
+      "arguments": {
+        "target_text": "Achievements",
+        "direction": "down",
+        "max_attempts": 8,
+        "interval": 0.8,
+        "require_focus": true
+      },
+      "dispatched": true,
+      "error": null,
+      "observation": "Screen did NOT change (delta 0.000). Expected: The Achievements option is highlighted (green focus indicator visible) in the Game Activity menu [OCR: A | 64,800 6 | 12:28 AM]",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "guided_navigate_to_text dispatched=True",
+          "detail": {
+            "ok": true,
+            "target_text": "Achievements",
+            "found": true,
+            "matched_lines": [
+              "Achievements",
+              "More achievements"
+            ],
+            "attempts": [
+              {
+                "attempt": 1,
+                "direction": "down",
+                "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-down-0.png",
+                "screen_text": "A\n64,800 6\n12:28 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+                "visible_lines": [
+                  "A",
+                  "64,800 6",
+                  "12:28 AM",
+                  "Game activity",
+                  "Hold for power options",
+                  "Achievements",
+                  "Turn achievement tracker on",
+                  "TF 4/32 20/1000",
+                  "More achievements",
+                  "Stats",
+                  "Friends who play",
+                  "Looking for Group",
+                  "7 tor Il",
+                  "Events",
+                  "Tel Go to official club",
+                  "Minecraft Dungeons II"
+                ],
+                "text_visible": true,
+                "already_open": false,
+                "focused": true,
+                "focused_label": "Achievements\n1/32 © 20/1000",
+                "matched": true,
+                "matched_lines": [
+                  "Achievements",
+                  "More achievements"
+                ]
+              }
+            ],
+            "attempts_used": 1,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-down-0.png",
+            "focused": true,
+            "already_open": false,
+            "observation": "'Achievements' is the highlighted item; navigation stopped before another input was sent."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:29:00.340767+00:00",
+          "source_tool": "guided_navigate_to_text"
+        },
+        {
+          "kind": "frame_stats",
+          "summary": "Screen did NOT change (delta 0.000). Expected: The Achievements option is highlighted (green focus indicator visible) in the Game Activity menu",
+          "detail": {
+            "ok": true,
+            "changed": false,
+            "delta": 0.0,
+            "threshold": 0.5,
+            "before_path": "<RUNS>\\run-20261015-125710\\frames\\step-009_9-before-guided_navigate_to_text.png",
+            "after_path": "<RUNS>\\run-20261015-125710\\frames\\9-after-guided_navigate_to_text.png",
+            "interpretation": "The screen did NOT change. Either the input never reached the console (unauthenticated GIMX session is the usual cause), or it reached it and the console ignored it - a possible defect. These are different failures; do not treat them as one."
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\9-after-guided_navigate_to_text.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:29:01.078880+00:00",
+          "source_tool": "verify_screen_changed"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 16 line(s) via pytesseract: A; 64,800 6; 12:28 AM; Game activity",
+          "detail": {
+            "text": "A\n64,800 6\n12:28 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\9-after-guided_navigate_to_text.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:29:04.618563+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "level_navigation",
+      "stage_goal": "Navigate to and select the Achievements destination",
+      "stage_status": "proven",
+      "progress_signal": "Achievements option is focused",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\step-009_9-before-guided_navigate_to_text.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\9-after-guided_navigate_to_text.png",
+      "screen_delta": 0.0,
+      "ocr_text": "A\n64,800 6\n12:28 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 11.68,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:28:52.936770+00:00"
+    },
+    {
+      "index": 10,
+      "action": "press_button",
+      "arguments": {
+        "button": "a"
+      },
+      "dispatched": true,
+      "error": null,
+      "observation": "Screen changed (delta 7.189). Expected: The Achievements page opens, displaying the selected game's name and achievement content (progress, unlocked achievements, or achievements heading) [OCR: Achievements | 64,800 6 | Dundecns Il]",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "press_button dispatched=True",
+          "detail": {
+            "ok": true,
+            "button": "a",
+            "kind": "button",
+            "times": 1,
+            "dispatched": true,
+            "duration_seconds": 0.484,
+            "caveat": "dispatched=true only means GIMX accepted the event. It is NOT evidence that the console reacted. Capture a frame and compare to confirm."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:29:05.199235+00:00",
+          "source_tool": "press_button"
+        },
+        {
+          "kind": "screen_diff",
+          "summary": "Screen changed (delta 7.189). Expected: The Achievements page opens, displaying the selected game's name and achievement content (progress, unlocked achievements, or achievements heading)",
+          "detail": {
+            "ok": true,
+            "changed": true,
+            "delta": 7.1894,
+            "threshold": 0.5,
+            "before_path": "<RUNS>\\run-20261015-125710\\frames\\step-010_10-before-press_button.png",
+            "after_path": "<RUNS>\\run-20261015-125710\\frames\\10-after-press_button.png",
+            "interpretation": "The screen changed, so the console did receive and act on input."
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\10-after-press_button.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:29:06.392037+00:00",
+          "source_tool": "verify_screen_changed"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 21 line(s) via pytesseract: Achievements; 64,800 6; Dundecns Il; 12:29 AM",
+          "detail": {
+            "text": "Achievements\n64,800 6\nDundecns Il\n12:29 AM\n2\n1\n20/1000)\nMythic Achievement\n2\nAchievement tracker\nDefault\nKa-BOOM!\n40\nTrack Record\n@ 60\nExpert Explorer\n40\nVenerable Voyager\n@ 60\nTreasure Hunter\n20",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\10-after-press_button.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:29:09.790025+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "level_launch",
+      "stage_goal": "Open the Achievements page and verify game name and achievement content",
+      "stage_status": "proven",
+      "progress_signal": "Achievements page is open with game name and achievement content visible",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\step-010_10-before-press_button.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\10-after-press_button.png",
+      "screen_delta": 7.1894,
+      "ocr_text": "Achievements\n64,800 6\nDundecns Il\n12:29 AM\n2\n1\n20/1000)\nMythic Achievement\n2\nAchievement tracker\nDefault\nKa-BOOM!\n40\nTrack Record\n@ 60\nExpert Explorer\n40\nVenerable Voyager\n@ 60\nTreasure Hunter\n20",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 5.17,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:29:04.619062+00:00"
+    },
+    {
+      "index": 11,
+      "action": "wait_for_stable_screen",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (wait_for_stable_screen); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "wait_for_stable_screen dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+            "waited_seconds": 0.65
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:29:10.439378+00:00",
+          "source_tool": "wait_for_stable_screen"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 21 line(s) via pytesseract: Achievements; 64,800 6; Dundecns Il; 12:29 AM",
+          "detail": {
+            "text": "Achievements\n64,800 6\nDundecns Il\n12:29 AM\n2\n1\n20/1000)\nMythic Achievement\n2\nAchievement tracker\nDefault\nKa-BOOM!\n40\nTrack Record\n@ 60\nExpert Explorer\n40\nVenerable Voyager\n@ 60\nTreasure Hunter\n20",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:29:13.709292+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "level_launch",
+      "stage_goal": "Open the Achievements page and verify game name and achievement content",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+      "screen_delta": null,
+      "ocr_text": "Achievements\n64,800 6\nDundecns Il\n12:29 AM\n2\n1\n20/1000)\nMythic Achievement\n2\nAchievement tracker\nDefault\nKa-BOOM!\n40\nTrack Record\n@ 60\nExpert Explorer\n40\nVenerable Voyager\n@ 60\nTreasure Hunter\n20",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 3.92,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:29:09.790025+00:00"
+    },
+    {
+      "index": 12,
+      "action": "capture_frame",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (capture_frame); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "capture_frame dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "width": 1920,
+            "height": 1080,
+            "blank": false,
+            "stats": {
+              "mean": 29.674,
+              "std": 31.723,
+              "tones": 239.0
+            },
+            "note": null
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:29:13.835689+00:00",
+          "source_tool": "capture_frame"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 21 line(s) via pytesseract: Achievements; 64,800 6; Dundecns Il; 12:29 AM",
+          "detail": {
+            "text": "Achievements\n64,800 6\nDundecns Il\n12:29 AM\n2\n1\n20/1000)\nMythic Achievement\n2\nAchievement tracker\nDefault\nKa-BOOM!\n40\nTrack Record\n@ 60\nExpert Explorer\n40\nVenerable Voyager\n@ 60\nTreasure Hunter\n20",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:29:17.327591+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "level_launch",
+      "stage_goal": "Open the Achievements page and verify game name and achievement content",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "Achievements\n64,800 6\nDundecns Il\n12:29 AM\n2\n1\n20/1000)\nMythic Achievement\n2\nAchievement tracker\nDefault\nKa-BOOM!\n40\nTrack Record\n@ 60\nExpert Explorer\n40\nVenerable Voyager\n@ 60\nTreasure Hunter\n20",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 3.62,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:29:13.710292+00:00"
+    },
+    {
+      "index": 13,
+      "action": "read_screen_text",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (read_screen_text); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "read_screen_text dispatched=True",
+          "detail": {
+            "ok": true,
+            "text": "Achievements\n64,800 6\nDundecns Il\n12:29 AM\n2\n1\n20/1000)\nMythic Achievement\n2\nAchievement tracker\nDefault\nKa-BOOM!\n40\nTrack Record\n@ 60\nExpert Explorer\n40\nVenerable Voyager\n@ 60\nTreasure Hunter\n20",
+            "engine": "pytesseract",
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "line_count": 21,
+            "ocr_variant": "bright_text",
+            "ocr_score": 0.874,
+            "ocr_attempts": [
+              {
+                "variant": "raw",
+                "score": 0.819,
+                "chars": 310
+              },
+              {
+                "variant": "upscale_otsu",
+                "score": 0.803,
+                "chars": 372
+              },
+              {
+                "variant": "upscale_otsu_inverted",
+                "score": 0.805,
+                "chars": 370
+              },
+              {
+                "variant": "bright_text",
+                "score": 0.874,
+                "chars": 195
+              }
+            ],
+            "caveat": "OCR on console UIs is unreliable - stylised fonts, motion and transparency all hurt accuracy. Absent text is NOT strong evidence that the text is absent from the screen."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:29:17.328631+00:00",
+          "source_tool": "read_screen_text"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 21 line(s) of on-screen text",
+          "detail": {
+            "text": "Achievements\n64,800 6\nDundecns Il\n12:29 AM\n2\n1\n20/1000)\nMythic Achievement\n2\nAchievement tracker\nDefault\nKa-BOOM!\n40\nTrack Record\n@ 60\nExpert Explorer\n40\nVenerable Voyager\n@ 60\nTreasure Hunter\n20"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:29:17.328631+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "level_launch",
+      "stage_goal": "Open the Achievements page and verify game name and achievement content",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "Achievements\n64,800 6\nDundecns Il\n12:29 AM\n2\n1\n20/1000)\nMythic Achievement\n2\nAchievement tracker\nDefault\nKa-BOOM!\n40\nTrack Record\n@ 60\nExpert Explorer\n40\nVenerable Voyager\n@ 60\nTreasure Hunter\n20",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 0.0,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:29:17.328093+00:00"
+    },
+    {
+      "index": 14,
+      "action": "check_for_text",
+      "arguments": {
+        "text_patterns": [
+          "Something went wrong",
+          "unavailable",
+          "error",
+          "not available"
+        ],
+        "match_type": "any"
+      },
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (check_for_text); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "check_for_text dispatched=True",
+          "detail": {
+            "ok": true,
+            "patterns": [
+              "Something went wrong",
+              "unavailable",
+              "error",
+              "not available"
+            ],
+            "match_type": "any",
+            "found": [],
+            "matched": false,
+            "checked": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "engine": "pytesseract",
+            "matched_lines": [],
+            "screen_text": "Achievements\n64,800 6\nDundecns Il\n12:29 AM\n2\n1\n20/1000)\nMythic Achievement\n2\nAchievement tracker\nDefault\nKa-BOOM!\n40\nTrack Record\n@ 60\nExpert Explorer\n40\nVenerable Voyager\n@ 60\nTreasure Hunter\n20",
+            "caveat": "OCR on console UIs is unreliable - stylised fonts, motion and transparency all hurt accuracy. Absent text is NOT strong evidence that the text is absent from the screen."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:29:17.333680+00:00",
+          "source_tool": "check_for_text"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 21 line(s) of on-screen text",
+          "detail": {
+            "text": "Achievements\n64,800 6\nDundecns Il\n12:29 AM\n2\n1\n20/1000)\nMythic Achievement\n2\nAchievement tracker\nDefault\nKa-BOOM!\n40\nTrack Record\n@ 60\nExpert Explorer\n40\nVenerable Voyager\n@ 60\nTreasure Hunter\n20"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:29:17.333680+00:00",
+          "source_tool": "check_for_text"
+        }
+      ],
+      "stage": "level_launch",
+      "stage_goal": "Open the Achievements page and verify game name and achievement content",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "Achievements\n64,800 6\nDundecns Il\n12:29 AM\n2\n1\n20/1000)\nMythic Achievement\n2\nAchievement tracker\nDefault\nKa-BOOM!\n40\nTrack Record\n@ 60\nExpert Explorer\n40\nVenerable Voyager\n@ 60\nTreasure Hunter\n20",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 0.0,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:29:17.329094+00:00"
+    },
+    {
+      "index": 15,
+      "action": "press_button",
+      "arguments": {
+        "button": "b"
+      },
+      "dispatched": true,
+      "error": null,
+      "observation": "Screen changed (delta 7.022). Expected: The Game Activity section is displayed again with the options (Achievements, Stats, Go to official club) visible [OCR: A | 64,800 6 | 12:29 AM]",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "press_button dispatched=True",
+          "detail": {
+            "ok": true,
+            "button": "b",
+            "kind": "button",
+            "times": 1,
+            "dispatched": true,
+            "duration_seconds": 0.482,
+            "caveat": "dispatched=true only means GIMX accepted the event. It is NOT evidence that the console reacted. Capture a frame and compare to confirm."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:29:17.904504+00:00",
+          "source_tool": "press_button"
+        },
+        {
+          "kind": "screen_diff",
+          "summary": "Screen changed (delta 7.022). Expected: The Game Activity section is displayed again with the options (Achievements, Stats, Go to official club) visible",
+          "detail": {
+            "ok": true,
+            "changed": true,
+            "delta": 7.0217,
+            "threshold": 0.5,
+            "before_path": "<RUNS>\\run-20261015-125710\\frames\\step-015_15-before-press_button.png",
+            "after_path": "<RUNS>\\run-20261015-125710\\frames\\15-after-press_button.png",
+            "interpretation": "The screen changed, so the console did receive and act on input."
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\15-after-press_button.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:29:18.753387+00:00",
+          "source_tool": "verify_screen_changed"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 16 line(s) via pytesseract: A; 64,800 6; 12:29 AM; Game activity",
+          "detail": {
+            "text": "A\n64,800 6\n12:29 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\15-after-press_button.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:29:22.287468+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "pause_checkpoint",
+      "stage_goal": "Return to Game Activity after viewing Achievements",
+      "stage_status": "proven",
+      "progress_signal": "Game Activity section is visible again",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\step-015_15-before-press_button.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\15-after-press_button.png",
+      "screen_delta": 7.0217,
+      "ocr_text": "A\n64,800 6\n12:29 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 4.95,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:29:17.334207+00:00"
+    },
+    {
+      "index": 16,
+      "action": "wait_for_stable_screen",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (wait_for_stable_screen); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "wait_for_stable_screen dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+            "waited_seconds": 0.65
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:29:22.939003+00:00",
+          "source_tool": "wait_for_stable_screen"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 16 line(s) via pytesseract: A; 64,800 6; 12:29 AM; Game activity",
+          "detail": {
+            "text": "A\n64,800 6\n12:29 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:29:26.494167+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "pause_checkpoint",
+      "stage_goal": "Return to Game Activity after viewing Achievements",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+      "screen_delta": null,
+      "ocr_text": "A\n64,800 6\n12:29 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 4.21,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:29:22.287967+00:00"
+    },
+    {
+      "index": 17,
+      "action": "capture_frame",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (capture_frame); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "capture_frame dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "width": 1920,
+            "height": 1080,
+            "blank": false,
+            "stats": {
+              "mean": 30.234,
+              "std": 32.839,
+              "tones": 237.0
+            },
+            "note": null
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:29:26.581885+00:00",
+          "source_tool": "capture_frame"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 16 line(s) via pytesseract: A; 64,800 6; 12:29 AM; Game activity",
+          "detail": {
+            "text": "A\n64,800 6\n12:29 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:29:30.098619+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "pause_checkpoint",
+      "stage_goal": "Return to Game Activity after viewing Achievements",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "A\n64,800 6\n12:29 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 3.6,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:29:26.494668+00:00"
+    },
+    {
+      "index": 18,
+      "action": "guided_navigate_to_text",
+      "arguments": {
+        "target_text": "Stats",
+        "direction": "down",
+        "max_attempts": 8,
+        "interval": 0.8,
+        "require_focus": true
+      },
+      "dispatched": true,
+      "error": null,
+      "observation": "Screen changed (delta 1.660). Expected: The Stats option is highlighted (green focus indicator visible) in the Game Activity menu [OCR: A | 64,800 6 | 12:29 AM]",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "guided_navigate_to_text dispatched=True",
+          "detail": {
+            "ok": true,
+            "target_text": "Stats",
+            "found": true,
+            "matched_lines": [
+              "Stats"
+            ],
+            "attempts": [
+              {
+                "attempt": 1,
+                "direction": "down",
+                "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-down-0.png",
+                "screen_text": "A\n64,800 6\n12:29 AM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+                "visible_lines": [
+                  "A",
+                  "64,800 6",
+                  "12:29 AM",
+                  "Game activity",
+                  "Hold for power options",
+                  "Achievements",
+                  "Turn achievement tracker on",
+                  "TF 4/32 20/1000",
+                  "More achievements",
+                  "Stats",
+                  "Friends who play",
+                  "Looking for Group",
+                  "7 tor Il",
+                  "Events",
+                  "Tel Go to official club",
+                  "Minecraft Dungeons II"
+                ],
+                "text_visible": true,
+                "already_open": false,
+                "focused": false,
+                "focused_label": "Achievements\n1/32 © 20/1000",
+                "matched": false,
+                "matched_lines": [
+                  "Stats"
+                ],
+                "dispatched": true
+              },
+              {
+                "attempt": 2,
+                "direction": "down",
+                "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-down-1.png",
+                "screen_text": "A\n64,800 6\n12:29 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+                "visible_lines": [
+                  "A",
+                  "64,800 6",
+                  "12:29 AM",
+                  "Game activity",
+                  "Hold for power options",
+                  "Achievements",
+                  "4",
+                  "I",
+                  "20s 1000",
+                  "More achievements",
+                  "Stats",
+                  "Friends who play",
+                  "Looking for Group",
+                  "7 tor Il",
+                  "Events",
+                  "Tel Go to official club",
+                  "Minecraft Dungeons II"
+                ],
+                "text_visible": true,
+                "already_open": false,
+                "focused": false,
+                "focused_label": "More achievements",
+                "matched": false,
+                "matched_lines": [
+                  "Stats"
+                ],
+                "dispatched": true
+              },
+              {
+                "attempt": 3,
+                "direction": "down",
+                "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-down-2.png",
+                "screen_text": "A\n64,800 6\n12:29 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+                "visible_lines": [
+                  "A",
+                  "64,800 6",
+                  "12:29 AM",
+                  "Game activity",
+                  "Hold for power options",
+                  "Achievements",
+                  "4",
+                  "I",
+                  "20s 1000",
+                  "More achievements",
+                  "Stats",
+                  "Friends who play",
+                  "Looking for Group",
+                  "7 tor Il",
+                  "Events",
+                  "Tel Go to official club",
+                  "Minecraft Dungeons II"
+                ],
+                "text_visible": true,
+                "already_open": false,
+                "focused": true,
+                "focused_label": "Stats",
+                "matched": true,
+                "matched_lines": [
+                  "Stats"
+                ]
+              }
+            ],
+            "attempts_used": 3,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-down-2.png",
+            "focused": true,
+            "already_open": false,
+            "observation": "'Stats' is the highlighted item; navigation stopped before another input was sent."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:29:55.903268+00:00",
+          "source_tool": "guided_navigate_to_text"
+        },
+        {
+          "kind": "screen_diff",
+          "summary": "Screen changed (delta 1.660). Expected: The Stats option is highlighted (green focus indicator visible) in the Game Activity menu",
+          "detail": {
+            "ok": true,
+            "changed": true,
+            "delta": 1.6599,
+            "threshold": 0.5,
+            "before_path": "<RUNS>\\run-20261015-125710\\frames\\step-018_18-before-guided_navigate_to_text.png",
+            "after_path": "<RUNS>\\run-20261015-125710\\frames\\18-after-guided_navigate_to_text.png",
+            "interpretation": "The screen changed, so the console did receive and act on input."
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\18-after-guided_navigate_to_text.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:29:56.678703+00:00",
+          "source_tool": "verify_screen_changed"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 17 line(s) via pytesseract: A; 64,800 6; 12:29 AM; Game activity",
+          "detail": {
+            "text": "A\n64,800 6\n12:29 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\18-after-guided_navigate_to_text.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:30:00.084449+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "level_navigation",
+      "stage_goal": "Navigate to and select the Stats destination",
+      "stage_status": "proven",
+      "progress_signal": "Stats option is focused",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\step-018_18-before-guided_navigate_to_text.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\18-after-guided_navigate_to_text.png",
+      "screen_delta": 1.6599,
+      "ocr_text": "A\n64,800 6\n12:29 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 29.99,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:29:30.099119+00:00"
+    },
+    {
+      "index": 19,
+      "action": "press_button",
+      "arguments": {
+        "button": "a"
+      },
+      "dispatched": true,
+      "error": null,
+      "observation": "Screen changed (delta 4.975). Expected: The Stats page opens, displaying the selected game's name and game statistics content [OCR: Stats | ( | & 6]",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "press_button dispatched=True",
+          "detail": {
+            "ok": true,
+            "button": "a",
+            "kind": "button",
+            "times": 1,
+            "dispatched": true,
+            "duration_seconds": 0.479,
+            "caveat": "dispatched=true only means GIMX accepted the event. It is NOT evidence that the console reacted. Capture a frame and compare to confirm."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:30:00.658615+00:00",
+          "source_tool": "press_button"
+        },
+        {
+          "kind": "screen_diff",
+          "summary": "Screen changed (delta 4.975). Expected: The Stats page opens, displaying the selected game's name and game statistics content",
+          "detail": {
+            "ok": true,
+            "changed": true,
+            "delta": 4.9748,
+            "threshold": 0.5,
+            "before_path": "<RUNS>\\run-20261015-125710\\frames\\step-019_19-before-press_button.png",
+            "after_path": "<RUNS>\\run-20261015-125710\\frames\\19-after-press_button.png",
+            "interpretation": "The screen changed, so the console did receive and act on input."
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\19-after-press_button.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:30:01.661735+00:00",
+          "source_tool": "verify_screen_changed"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 33 line(s) via pytesseract: Stats; (; & 6; Minecraft Dungeons II",
+          "detail": {
+            "text": "Stats\n(\n& 6\nMinecraft Dungeons II\n12:29 AM\nGai\nAch\n1\nMor\nee\nStat\n-A4\nFrier\nLool\n=\n7 pc\nA\ntae\nPa\nEver\na\n4) =.\nNl\n3\nGAME PASS\npA\nben\nTHUNDER\nRc. ey\nar: E-Day\nFlight Simulator\nNational Champranship Air\nPLAY FREE NOW",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\19-after-press_button.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:30:04.274644+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "level_launch",
+      "stage_goal": "Open the Stats page and verify game name and statistics content",
+      "stage_status": "proven",
+      "progress_signal": "Stats page is open with game name and statistics content visible",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\step-019_19-before-press_button.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\19-after-press_button.png",
+      "screen_delta": 4.9748,
+      "ocr_text": "Stats\n(\n& 6\nMinecraft Dungeons II\n12:29 AM\nGai\nAch\n1\nMor\nee\nStat\n-A4\nFrier\nLool\n=\n7 pc\nA\ntae\nPa\nEver\na\n4) =.\nNl\n3\nGAME PASS\npA\nben\nTHUNDER\nRc. ey\nar: E-Day\nFlight Simulator\nNational Champranship Air\nPLAY FREE NOW",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 4.19,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:30:00.084949+00:00"
+    },
+    {
+      "index": 20,
+      "action": "wait_for_stable_screen",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (wait_for_stable_screen); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "wait_for_stable_screen dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+            "waited_seconds": 0.77
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:30:05.045293+00:00",
+          "source_tool": "wait_for_stable_screen"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 7 line(s) via pytesseract: Stats; 64,800 6; Dundecns Il; 12:30 AM",
+          "detail": {
+            "text": "Stats\n64,800 6\nDundecns Il\n12:30 AM\nTime played\n7h 40m\nRank 1 of 1 friend",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:30:08.484994+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "level_launch",
+      "stage_goal": "Open the Stats page and verify game name and statistics content",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+      "screen_delta": null,
+      "ocr_text": "Stats\n64,800 6\nDundecns Il\n12:30 AM\nTime played\n7h 40m\nRank 1 of 1 friend",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 4.21,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:30:04.275137+00:00"
+    },
+    {
+      "index": 21,
+      "action": "capture_frame",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (capture_frame); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "capture_frame dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "width": 1920,
+            "height": 1080,
+            "blank": false,
+            "stats": {
+              "mean": 28.633,
+              "std": 28.827,
+              "tones": 212.0
+            },
+            "note": null
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:30:08.574173+00:00",
+          "source_tool": "capture_frame"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 7 line(s) via pytesseract: Stats; 64,800 6; Dundecns Il; 12:30 AM",
+          "detail": {
+            "text": "Stats\n64,800 6\nDundecns Il\n12:30 AM\nTime played\n7h 40m\nRank 1 of 1 friend",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:30:12.258613+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "level_launch",
+      "stage_goal": "Open the Stats page and verify game name and statistics content",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "Stats\n64,800 6\nDundecns Il\n12:30 AM\nTime played\n7h 40m\nRank 1 of 1 friend",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 3.77,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:30:08.485417+00:00"
+    },
+    {
+      "index": 22,
+      "action": "read_screen_text",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (read_screen_text); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "read_screen_text dispatched=True",
+          "detail": {
+            "ok": true,
+            "text": "Stats\n64,800 6\nDundecns Il\n12:30 AM\nTime played\n7h 40m\nRank 1 of 1 friend",
+            "engine": "pytesseract",
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "line_count": 7,
+            "ocr_variant": "bright_text",
+            "ocr_score": 0.882,
+            "ocr_attempts": [
+              {
+                "variant": "raw",
+                "score": 0.839,
+                "chars": 185
+              },
+              {
+                "variant": "upscale_otsu",
+                "score": 0.768,
+                "chars": 250
+              },
+              {
+                "variant": "upscale_otsu_inverted",
+                "score": 0.788,
+                "chars": 240
+              },
+              {
+                "variant": "bright_text",
+                "score": 0.882,
+                "chars": 73
+              },
+              {
+                "variant": "warm_text",
+                "score": 0.0,
+                "chars": 0
+              }
+            ],
+            "caveat": "OCR on console UIs is unreliable - stylised fonts, motion and transparency all hurt accuracy. Absent text is NOT strong evidence that the text is absent from the screen."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:30:12.259619+00:00",
+          "source_tool": "read_screen_text"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 7 line(s) of on-screen text",
+          "detail": {
+            "text": "Stats\n64,800 6\nDundecns Il\n12:30 AM\nTime played\n7h 40m\nRank 1 of 1 friend"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:30:12.259619+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "level_launch",
+      "stage_goal": "Open the Stats page and verify game name and statistics content",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "Stats\n64,800 6\nDundecns Il\n12:30 AM\nTime played\n7h 40m\nRank 1 of 1 friend",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 0.0,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:30:12.258613+00:00"
+    },
+    {
+      "index": 23,
+      "action": "check_for_text",
+      "arguments": {
+        "text_patterns": [
+          "Something went wrong",
+          "unavailable",
+          "error",
+          "not available"
+        ],
+        "match_type": "any"
+      },
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (check_for_text); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "check_for_text dispatched=True",
+          "detail": {
+            "ok": true,
+            "patterns": [
+              "Something went wrong",
+              "unavailable",
+              "error",
+              "not available"
+            ],
+            "match_type": "any",
+            "found": [],
+            "matched": false,
+            "checked": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "engine": "pytesseract",
+            "matched_lines": [],
+            "screen_text": "Stats\n64,800 6\nDundecns Il\n12:30 AM\nTime played\n7h 40m\nRank 1 of 1 friend",
+            "caveat": "OCR on console UIs is unreliable - stylised fonts, motion and transparency all hurt accuracy. Absent text is NOT strong evidence that the text is absent from the screen."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:30:12.264134+00:00",
+          "source_tool": "check_for_text"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 7 line(s) of on-screen text",
+          "detail": {
+            "text": "Stats\n64,800 6\nDundecns Il\n12:30 AM\nTime played\n7h 40m\nRank 1 of 1 friend"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:30:12.264134+00:00",
+          "source_tool": "check_for_text"
+        }
+      ],
+      "stage": "level_launch",
+      "stage_goal": "Open the Stats page and verify game name and statistics content",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "Stats\n64,800 6\nDundecns Il\n12:30 AM\nTime played\n7h 40m\nRank 1 of 1 friend",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 0.0,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:30:12.260118+00:00"
+    },
+    {
+      "index": 24,
+      "action": "press_button",
+      "arguments": {
+        "button": "b"
+      },
+      "dispatched": true,
+      "error": null,
+      "observation": "Screen changed (delta 6.396). Expected: The Game Activity section is displayed again with the options (Achievements, Stats, Go to official club) visible [OCR: A | 64,800 6 | 12:30 AM]",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "press_button dispatched=True",
+          "detail": {
+            "ok": true,
+            "button": "b",
+            "kind": "button",
+            "times": 1,
+            "dispatched": true,
+            "duration_seconds": 0.483,
+            "caveat": "dispatched=true only means GIMX accepted the event. It is NOT evidence that the console reacted. Capture a frame and compare to confirm."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:30:12.841973+00:00",
+          "source_tool": "press_button"
+        },
+        {
+          "kind": "screen_diff",
+          "summary": "Screen changed (delta 6.396). Expected: The Game Activity section is displayed again with the options (Achievements, Stats, Go to official club) visible",
+          "detail": {
+            "ok": true,
+            "changed": true,
+            "delta": 6.3958,
+            "threshold": 0.5,
+            "before_path": "<RUNS>\\run-20261015-125710\\frames\\step-024_24-before-press_button.png",
+            "after_path": "<RUNS>\\run-20261015-125710\\frames\\24-after-press_button.png",
+            "interpretation": "The screen changed, so the console did receive and act on input."
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\24-after-press_button.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:30:13.684061+00:00",
+          "source_tool": "verify_screen_changed"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 17 line(s) via pytesseract: A; 64,800 6; 12:30 AM; Game activity",
+          "detail": {
+            "text": "A\n64,800 6\n12:30 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\24-after-press_button.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:30:17.469537+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "pause_checkpoint",
+      "stage_goal": "Return to Game Activity after viewing Stats",
+      "stage_status": "proven",
+      "progress_signal": "Game Activity section is visible again",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\step-024_24-before-press_button.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\24-after-press_button.png",
+      "screen_delta": 6.3958,
+      "ocr_text": "A\n64,800 6\n12:30 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 5.2,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:30:12.264614+00:00"
+    },
+    {
+      "index": 25,
+      "action": "wait_for_stable_screen",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (wait_for_stable_screen); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "wait_for_stable_screen dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+            "waited_seconds": 0.71
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:30:18.177958+00:00",
+          "source_tool": "wait_for_stable_screen"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 17 line(s) via pytesseract: A; 64,800 6; 12:30 AM; Game activity",
+          "detail": {
+            "text": "A\n64,800 6\n12:30 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:30:22.249425+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "pause_checkpoint",
+      "stage_goal": "Return to Game Activity after viewing Stats",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+      "screen_delta": null,
+      "ocr_text": "A\n64,800 6\n12:30 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 4.78,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:30:17.470549+00:00"
+    },
+    {
+      "index": 26,
+      "action": "capture_frame",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (capture_frame); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "capture_frame dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "width": 1920,
+            "height": 1080,
+            "blank": false,
+            "stats": {
+              "mean": 29.866,
+              "std": 32.282,
+              "tones": 239.0
+            },
+            "note": null
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:30:22.393735+00:00",
+          "source_tool": "capture_frame"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 17 line(s) via pytesseract: A; 64,800 6; 12:30 AM; Game activity",
+          "detail": {
+            "text": "A\n64,800 6\n12:30 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:30:26.033486+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "pause_checkpoint",
+      "stage_goal": "Return to Game Activity after viewing Stats",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "A\n64,800 6\n12:30 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 3.78,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:30:22.249922+00:00"
+    },
+    {
+      "index": 27,
+      "action": "guided_navigate_to_text",
+      "arguments": {
+        "target_text": "Go to official club",
+        "direction": "down",
+        "max_attempts": 8,
+        "interval": 0.8,
+        "require_focus": true
+      },
+      "dispatched": true,
+      "error": null,
+      "observation": "Screen changed (delta 1.600). Expected: The 'Go to official club' option is highlighted (green focus indicator visible) in the Game Activity menu [OCR: A | 64,800 6 | 12:31 AM]",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "guided_navigate_to_text dispatched=True",
+          "detail": {
+            "ok": true,
+            "target_text": "Go to official club",
+            "found": true,
+            "matched_lines": [
+              "Go to official club"
+            ],
+            "attempts": [
+              {
+                "attempt": 1,
+                "direction": "down",
+                "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-down-0.png",
+                "screen_text": "A\n64,800 6\n12:30 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+                "visible_lines": [
+                  "A",
+                  "64,800 6",
+                  "12:30 AM",
+                  "Game activity",
+                  "Hold for power options",
+                  "Achievements",
+                  "4",
+                  "I",
+                  "20s 1000",
+                  "More achievements",
+                  "Stats",
+                  "Friends who play",
+                  "Looking for Group",
+                  "7 tor Il",
+                  "Events",
+                  "Tel Go to official club",
+                  "Minecraft Dungeons II"
+                ],
+                "text_visible": true,
+                "already_open": false,
+                "focused": false,
+                "focused_label": "Stats",
+                "matched": false,
+                "matched_lines": [
+                  "Tel Go to official club"
+                ],
+                "dispatched": true
+              },
+              {
+                "attempt": 2,
+                "direction": "down",
+                "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-down-1.png",
+                "screen_text": "A\n64,800 6\n12:30 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+                "visible_lines": [
+                  "A",
+                  "64,800 6",
+                  "12:30 AM",
+                  "Game activity",
+                  "Hold for power options",
+                  "Achievements",
+                  "4",
+                  "I",
+                  "20s 1000",
+                  "More achievements",
+                  "Stats",
+                  "Friends who play",
+                  "Looking for Group",
+                  "7 tor Il",
+                  "Events",
+                  "Tel Go to official club",
+                  "Minecraft Dungeons II"
+                ],
+                "text_visible": true,
+                "already_open": false,
+                "focused": false,
+                "focused_label": "Friends who play",
+                "matched": false,
+                "matched_lines": [
+                  "Tel Go to official club"
+                ],
+                "dispatched": true
+              },
+              {
+                "attempt": 3,
+                "direction": "down",
+                "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-down-2.png",
+                "screen_text": "A\n64,800 6\n12:30 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 posts for Dungeons Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+                "visible_lines": [
+                  "A",
+                  "64,800 6",
+                  "12:30 AM",
+                  "Game activity",
+                  "Hold for power options",
+                  "Achievements",
+                  "4",
+                  "I",
+                  "20s 1000",
+                  "More achievements",
+                  "Stats",
+                  "Friends who play",
+                  "Looking for Group",
+                  "7 posts for Dungeons Il",
+                  "Events",
+                  "Tel Go to official club",
+                  "Minecraft Dungeons II"
+                ],
+                "text_visible": true,
+                "already_open": false,
+                "focused": false,
+                "focused_label": "Looking for Group\n7 posts for Minecraft Dungeons II",
+                "matched": false,
+                "matched_lines": [
+                  "Tel Go to official club"
+                ],
+                "dispatched": true
+              },
+              {
+                "attempt": 4,
+                "direction": "down",
+                "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-down-3.png",
+                "screen_text": "A\n64,800 6\n12:30 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+                "visible_lines": [
+                  "A",
+                  "64,800 6",
+                  "12:30 AM",
+                  "Game activity",
+                  "Hold for power options",
+                  "Achievements",
+                  "4",
+                  "I",
+                  "20s 1000",
+                  "More achievements",
+                  "Stats",
+                  "Friends who play",
+                  "Looking for Group",
+                  "7 tor Il",
+                  "Events",
+                  "Tel Go to official club",
+                  "Minecraft Dungeons II"
+                ],
+                "text_visible": true,
+                "already_open": false,
+                "focused": false,
+                "focused_label": "Events",
+                "matched": false,
+                "matched_lines": [
+                  "Tel Go to official club"
+                ],
+                "dispatched": true
+              },
+              {
+                "attempt": 5,
+                "direction": "down",
+                "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-down-4.png",
+                "screen_text": "A\n64,800 6\n12:31 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nGo to official club\nMinecraft Dungeons II",
+                "visible_lines": [
+                  "A",
+                  "64,800 6",
+                  "12:31 AM",
+                  "Game activity",
+                  "Hold for power options",
+                  "Achievements",
+                  "4",
+                  "I",
+                  "20s 1000",
+                  "More achievements",
+                  "Stats",
+                  "Friends who play",
+                  "Looking for Group",
+                  "7 tor Il",
+                  "Events",
+                  "Go to official club",
+                  "Minecraft Dungeons II"
+                ],
+                "text_visible": true,
+                "already_open": false,
+                "focused": true,
+                "focused_label": "@ Go to official club",
+                "matched": true,
+                "matched_lines": [
+                  "Go to official club"
+                ]
+              }
+            ],
+            "attempts_used": 5,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\guided-nav-down-4.png",
+            "focused": true,
+            "already_open": false,
+            "observation": "'Go to official club' is the highlighted item; navigation stopped before another input was sent."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:31:11.286048+00:00",
+          "source_tool": "guided_navigate_to_text"
+        },
+        {
+          "kind": "screen_diff",
+          "summary": "Screen changed (delta 1.600). Expected: The 'Go to official club' option is highlighted (green focus indicator visible) in the Game Activity menu",
+          "detail": {
+            "ok": true,
+            "changed": true,
+            "delta": 1.6001,
+            "threshold": 0.5,
+            "before_path": "<RUNS>\\run-20261015-125710\\frames\\step-027_27-before-guided_navigate_to_text.png",
+            "after_path": "<RUNS>\\run-20261015-125710\\frames\\27-after-guided_navigate_to_text.png",
+            "interpretation": "The screen changed, so the console did receive and act on input."
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\27-after-guided_navigate_to_text.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:31:12.025502+00:00",
+          "source_tool": "verify_screen_changed"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 17 line(s) via pytesseract: A; 64,800 6; 12:31 AM; Game activity",
+          "detail": {
+            "text": "A\n64,800 6\n12:31 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nGo to official club\nMinecraft Dungeons II",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\27-after-guided_navigate_to_text.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:31:15.634555+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "level_navigation",
+      "stage_goal": "Navigate to and select the Go to official club destination",
+      "stage_status": "proven",
+      "progress_signal": "Go to official club option is focused",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\step-027_27-before-guided_navigate_to_text.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\27-after-guided_navigate_to_text.png",
+      "screen_delta": 1.6001,
+      "ocr_text": "A\n64,800 6\n12:31 AM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nGo to official club\nMinecraft Dungeons II",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 49.6,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:30:26.033985+00:00"
+    },
+    {
+      "index": 28,
+      "action": "press_button",
+      "arguments": {
+        "button": "a"
+      },
+      "dispatched": true,
+      "error": null,
+      "observation": "Screen changed (delta 22.067). Expected: The official club page opens, displaying the selected game's official club identity and content",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "press_button dispatched=True",
+          "detail": {
+            "ok": true,
+            "button": "a",
+            "kind": "button",
+            "times": 1,
+            "dispatched": true,
+            "duration_seconds": 0.487,
+            "caveat": "dispatched=true only means GIMX accepted the event. It is NOT evidence that the console reacted. Capture a frame and compare to confirm."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:31:16.222059+00:00",
+          "source_tool": "press_button"
+        },
+        {
+          "kind": "screen_diff",
+          "summary": "Screen changed (delta 22.067). Expected: The official club page opens, displaying the selected game's official club identity and content",
+          "detail": {
+            "ok": true,
+            "changed": true,
+            "delta": 22.067,
+            "threshold": 0.5,
+            "before_path": "<RUNS>\\run-20261015-125710\\frames\\step-028_28-before-press_button.png",
+            "after_path": "<RUNS>\\run-20261015-125710\\frames\\28-after-press_button.png",
+            "interpretation": "The screen changed, so the console did receive and act on input."
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\28-after-press_button.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:31:17.246173+00:00",
+          "source_tool": "verify_screen_changed"
+        }
+      ],
+      "stage": "level_launch",
+      "stage_goal": "Open the official club page and verify game name and official club content",
+      "stage_status": "proven",
+      "progress_signal": "Official club page is open with game name and club content visible",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\step-028_28-before-press_button.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\28-after-press_button.png",
+      "screen_delta": 22.067,
+      "ocr_text": null,
+      "ocr_engine": null,
+      "duration_seconds": 3.8,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:31:15.635051+00:00"
+    },
+    {
+      "index": 29,
+      "action": "wait_for_stable_screen",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (wait_for_stable_screen); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "wait_for_stable_screen dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+            "waited_seconds": 0.8
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:31:20.241445+00:00",
+          "source_tool": "wait_for_stable_screen"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 23 line(s) via pytesseract: Welcome; Feed; Multiplayer; Progress",
+          "detail": {
+            "text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n9\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:31:24.264228+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "level_launch",
+      "stage_goal": "Open the official club page and verify game name and official club content",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+      "screen_delta": null,
+      "ocr_text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n9\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 4.83,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:31:19.438633+00:00"
+    },
+    {
+      "index": 30,
+      "action": "capture_frame",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (capture_frame); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "capture_frame dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "width": 1920,
+            "height": 1080,
+            "blank": false,
+            "stats": {
+              "mean": 32.503,
+              "std": 38.127,
+              "tones": 256.0
+            },
+            "note": null
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:31:24.349928+00:00",
+          "source_tool": "capture_frame"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 23 line(s) via pytesseract: Welcome; Feed; Multiplayer; Progress",
+          "detail": {
+            "text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n9\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:31:28.509287+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "level_launch",
+      "stage_goal": "Open the official club page and verify game name and official club content",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n9\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 4.24,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:31:24.264730+00:00"
+    },
+    {
+      "index": 31,
+      "action": "read_screen_text",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (read_screen_text); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "read_screen_text dispatched=True",
+          "detail": {
+            "ok": true,
+            "text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n9\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K",
+            "engine": "pytesseract",
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "line_count": 23,
+            "ocr_variant": "bright_text",
+            "ocr_score": 0.93,
+            "ocr_attempts": [
+              {
+                "variant": "raw",
+                "score": 0.906,
+                "chars": 559
+              },
+              {
+                "variant": "upscale_otsu",
+                "score": 0.912,
+                "chars": 579
+              },
+              {
+                "variant": "upscale_otsu_inverted",
+                "score": 0.9,
+                "chars": 591
+              },
+              {
+                "variant": "bright_text",
+                "score": 0.93,
+                "chars": 547
+              },
+              {
+                "variant": "warm_text",
+                "score": 0.288,
+                "chars": 10
+              }
+            ],
+            "caveat": "OCR on console UIs is unreliable - stylised fonts, motion and transparency all hurt accuracy. Absent text is NOT strong evidence that the text is absent from the screen."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:31:28.510202+00:00",
+          "source_tool": "read_screen_text"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 23 line(s) of on-screen text",
+          "detail": {
+            "text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n9\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:31:28.510202+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "level_launch",
+      "stage_goal": "Open the official club page and verify game name and official club content",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n9\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 0.0,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:31:28.510202+00:00"
+    },
+    {
+      "index": 32,
+      "action": "check_for_text",
+      "arguments": {
+        "text_patterns": [
+          "Something went wrong",
+          "unavailable",
+          "error",
+          "not available"
+        ],
+        "match_type": "any"
+      },
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (check_for_text); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "check_for_text dispatched=True",
+          "detail": {
+            "ok": true,
+            "patterns": [
+              "Something went wrong",
+              "unavailable",
+              "error",
+              "not available"
+            ],
+            "match_type": "any",
+            "found": [],
+            "matched": false,
+            "checked": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "engine": "pytesseract",
+            "matched_lines": [],
+            "screen_text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n9\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K",
+            "caveat": "OCR on console UIs is unreliable - stylised fonts, motion and transparency all hurt accuracy. Absent text is NOT strong evidence that the text is absent from the screen."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:31:28.513756+00:00",
+          "source_tool": "check_for_text"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 23 line(s) of on-screen text",
+          "detail": {
+            "text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n9\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:31:28.513756+00:00",
+          "source_tool": "check_for_text"
+        }
+      ],
+      "stage": "level_launch",
+      "stage_goal": "Open the official club page and verify game name and official club content",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n9\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 0.0,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:31:28.511213+00:00"
+    },
+    {
+      "index": 33,
+      "action": "press_button",
+      "arguments": {
+        "button": "b"
+      },
+      "dispatched": true,
+      "error": null,
+      "observation": "Screen changed (delta 46.258). Expected: The Game Activity section is displayed again with the options (Achievements, Stats, Go to official club) visible [OCR: TidierPlayer353 | 10% | Q]",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "press_button dispatched=True",
+          "detail": {
+            "ok": true,
+            "button": "b",
+            "kind": "button",
+            "times": 1,
+            "dispatched": true,
+            "duration_seconds": 0.478,
+            "caveat": "dispatched=true only means GIMX accepted the event. It is NOT evidence that the console reacted. Capture a frame and compare to confirm."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:31:29.087536+00:00",
+          "source_tool": "press_button"
+        },
+        {
+          "kind": "screen_diff",
+          "summary": "Screen changed (delta 46.258). Expected: The Game Activity section is displayed again with the options (Achievements, Stats, Go to official club) visible",
+          "detail": {
+            "ok": true,
+            "changed": true,
+            "delta": 46.258,
+            "threshold": 0.5,
+            "before_path": "<RUNS>\\run-20261015-125710\\frames\\step-033_33-before-press_button.png",
+            "after_path": "<RUNS>\\run-20261015-125710\\frames\\33-after-press_button.png",
+            "interpretation": "The screen changed, so the console did receive and act on input."
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\33-after-press_button.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:31:30.318690+00:00",
+          "source_tool": "verify_screen_changed"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 42 line(s) via pytesseract: TidierPlayer353; 10%; Q; 12:31AM",
+          "detail": {
+            "text": "TidierPlayer353\n10%\nQ\n12:31AM\n@ 4800 8199090\n~\n#\n-\nMINECRAES\n/\ni\nVA\n~\n=\nfo\nt\n+\nar\nae “RINE t\nhe\nmers\nREBLOX\nMinecraft Dungeons\ntwitch 3\nI]\nXIS\nBEAK\nPray\nXl\nNl\n—\nMi,\nhd\nwee\nra)\nTHUNDER\nta) GAME PASS\n6\nGears of War: E-Day\nFlight Simulator\nBrowse the store\nPLAY FREE NOW",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\33-after-press_button.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:31:35.025758+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "pause_checkpoint",
+      "stage_goal": "Return to Game Activity after viewing official club",
+      "stage_status": "proven",
+      "progress_signal": "Game Activity section is visible again",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\step-033_33-before-press_button.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\33-after-press_button.png",
+      "screen_delta": 46.258,
+      "ocr_text": "TidierPlayer353\n10%\nQ\n12:31AM\n@ 4800 8199090\n~\n#\n-\nMINECRAES\n/\ni\nVA\n~\n=\nfo\nt\n+\nar\nae “RINE t\nhe\nmers\nREBLOX\nMinecraft Dungeons\ntwitch 3\nI]\nXIS\nBEAK\nPray\nXl\nNl\n—\nMi,\nhd\nwee\nra)\nTHUNDER\nta) GAME PASS\n6\nGears of War: E-Day\nFlight Simulator\nBrowse the store\nPLAY FREE NOW",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 6.51,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:31:28.514222+00:00"
+    },
+    {
+      "index": 34,
+      "action": "wait_for_stable_screen",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (wait_for_stable_screen); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "wait_for_stable_screen dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+            "waited_seconds": 0.68
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:31:35.702932+00:00",
+          "source_tool": "wait_for_stable_screen"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 43 line(s) via pytesseract: The Guy; 10%; Q g; 12:31AM",
+          "detail": {
+            "text": "The Guy\n10%\nQ g\n12:31AM\n#\n-\n/\n\\\ni\nf\n-\n~\n4\nan\na\nKET\ne\n‘sy\nUE .\nis\nSe FE\n-\nMinecraft Dungeons\ntwitch\nI]\n@ Pray\nXl\nNl\n7 xs\n—\n=\nie,\nTK\nwnt\nfA\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE NOW",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:31:40.137594+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "pause_checkpoint",
+      "stage_goal": "Return to Game Activity after viewing official club",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+      "screen_delta": null,
+      "ocr_text": "The Guy\n10%\nQ g\n12:31AM\n#\n-\n/\n\\\ni\nf\n-\n~\n4\nan\na\nKET\ne\n‘sy\nUE .\nis\nSe FE\n-\nMinecraft Dungeons\ntwitch\nI]\n@ Pray\nXl\nNl\n7 xs\n—\n=\nie,\nTK\nwnt\nfA\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE NOW",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 5.11,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:31:35.026677+00:00"
+    },
+    {
+      "index": 35,
+      "action": "capture_frame",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (capture_frame); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "capture_frame dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "width": 1920,
+            "height": 1080,
+            "blank": false,
+            "stats": {
+              "mean": 55.877,
+              "std": 61.358,
+              "tones": 256.0
+            },
+            "note": null
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:31:40.247731+00:00",
+          "source_tool": "capture_frame"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 43 line(s) via pytesseract: The Guy; 10%; Q g; 12:31AM",
+          "detail": {
+            "text": "The Guy\n10%\nQ g\n12:31AM\n#\n-\n/\n\\\ni\nf\n-\n~\n4\nan\na\nKET\ne\n‘sy\nUE .\nis\nSe FE\n-\nMinecraft Dungeons\ntwitch\nI]\n@ Pray\nXl\nNl\n7 xs\n—\n=\nie,\nTK\nwnt\nfA\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE NOW",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:31:44.731987+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "pause_checkpoint",
+      "stage_goal": "Return to Game Activity after viewing official club",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "The Guy\n10%\nQ g\n12:31AM\n#\n-\n/\n\\\ni\nf\n-\n~\n4\nan\na\nKET\ne\n‘sy\nUE .\nis\nSe FE\n-\nMinecraft Dungeons\ntwitch\nI]\n@ Pray\nXl\nNl\n7 xs\n—\n=\nie,\nTK\nwnt\nfA\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE NOW",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 4.59,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:31:40.138100+00:00"
+    },
+    {
+      "index": 36,
+      "action": "press_button",
+      "arguments": {
+        "button": "b"
+      },
+      "dispatched": true,
+      "error": null,
+      "observation": "Screen did NOT change (delta 0.147). Expected: The Xbox dashboard is displayed with the selected game tile or dashboard shell visible [OCR: 10% | Q g | 12:31AM]",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "press_button dispatched=True",
+          "detail": {
+            "ok": true,
+            "button": "b",
+            "kind": "button",
+            "times": 1,
+            "dispatched": true,
+            "duration_seconds": 0.496,
+            "caveat": "dispatched=true only means GIMX accepted the event. It is NOT evidence that the console reacted. Capture a frame and compare to confirm."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:31:45.347466+00:00",
+          "source_tool": "press_button"
+        },
+        {
+          "kind": "frame_stats",
+          "summary": "Screen did NOT change (delta 0.147). Expected: The Xbox dashboard is displayed with the selected game tile or dashboard shell visible",
+          "detail": {
+            "ok": true,
+            "changed": false,
+            "delta": 0.1474,
+            "threshold": 0.5,
+            "before_path": "<RUNS>\\run-20261015-125710\\frames\\step-036_36-before-press_button.png",
+            "after_path": "<RUNS>\\run-20261015-125710\\frames\\36-after-press_button.png",
+            "interpretation": "The screen did NOT change. Either the input never reached the console (unauthenticated GIMX session is the usual cause), or it reached it and the console ignored it - a possible defect. These are different failures; do not treat them as one."
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\36-after-press_button.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:31:46.119546+00:00",
+          "source_tool": "verify_screen_changed"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 41 line(s) via pytesseract: 10%; Q g; 12:31AM; @ 4,800",
+          "detail": {
+            "text": "10%\nQ g\n12:31AM\n@ 4,800\n#\n-\n/\na\n\\\ni\nVA\n-\n~\n=\n~\noe\na\nis\n4\n-\nMinecraft Dungeons\ntwitch\nI]\n@ Pray\nXl\nNl\nBa xs\n—\nie,\nTK\n=\nhd\ntg) GAME PASS\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE Now",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\36-after-press_button.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:31:50.535065+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "main_menu_return",
+      "stage_goal": "Return to the Xbox dashboard and verify it is visible",
+      "stage_status": "proven",
+      "progress_signal": "Dashboard is visible",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\step-036_36-before-press_button.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\36-after-press_button.png",
+      "screen_delta": 0.1474,
+      "ocr_text": "10%\nQ g\n12:31AM\n@ 4,800\n#\n-\n/\na\n\\\ni\nVA\n-\n~\n=\n~\noe\na\nis\n4\n-\nMinecraft Dungeons\ntwitch\nI]\n@ Pray\nXl\nNl\nBa xs\n—\nie,\nTK\n=\nhd\ntg) GAME PASS\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE Now",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 5.8,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:31:44.731987+00:00"
+    },
+    {
+      "index": 37,
+      "action": "wait_for_stable_screen",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (wait_for_stable_screen); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "wait_for_stable_screen dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+            "waited_seconds": 0.67
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:31:51.209820+00:00",
+          "source_tool": "wait_for_stable_screen"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 43 line(s) via pytesseract: The Guy; 10%; Q g; 12:31AM",
+          "detail": {
+            "text": "The Guy\n10%\nQ g\n12:31AM\n#\n-\n/\n\\\ni\nf\n-\n~\n4\nan\na\nKET\ne\n‘sy\nUE .\nis\nSe FE\n-\nMinecraft Dungeons\ntwitch\nI]\n@ Pray\nXl\nNl\n7 xs\n—\n=\nie,\nTK\nwnt\nfA\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE NOW",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:31:55.637153+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "main_menu_return",
+      "stage_goal": "Return to the Xbox dashboard and verify it is visible",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+      "screen_delta": null,
+      "ocr_text": "The Guy\n10%\nQ g\n12:31AM\n#\n-\n/\n\\\ni\nf\n-\n~\n4\nan\na\nKET\ne\n‘sy\nUE .\nis\nSe FE\n-\nMinecraft Dungeons\ntwitch\nI]\n@ Pray\nXl\nNl\n7 xs\n—\n=\nie,\nTK\nwnt\nfA\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE NOW",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 5.1,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:31:50.535485+00:00"
+    },
+    {
+      "index": 38,
+      "action": "capture_frame",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (capture_frame); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "capture_frame dispatched=True",
+          "detail": {
+            "ok": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "width": 1920,
+            "height": 1080,
+            "blank": false,
+            "stats": {
+              "mean": 55.877,
+              "std": 61.358,
+              "tones": 256.0
+            },
+            "note": null
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:31:55.750786+00:00",
+          "source_tool": "capture_frame"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 43 line(s) via pytesseract: The Guy; 10%; Q g; 12:31AM",
+          "detail": {
+            "text": "The Guy\n10%\nQ g\n12:31AM\n#\n-\n/\n\\\ni\nf\n-\n~\n4\nan\na\nKET\ne\n‘sy\nUE .\nis\nSe FE\n-\nMinecraft Dungeons\ntwitch\nI]\n@ Pray\nXl\nNl\n7 xs\n—\n=\nie,\nTK\nwnt\nfA\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE NOW",
+            "engine": "pytesseract"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 0.75,
+          "timestamp": "2026-10-15T07:32:00.187792+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "main_menu_return",
+      "stage_goal": "Return to the Xbox dashboard and verify it is visible",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "The Guy\n10%\nQ g\n12:31AM\n#\n-\n/\n\\\ni\nf\n-\n~\n4\nan\na\nKET\ne\n‘sy\nUE .\nis\nSe FE\n-\nMinecraft Dungeons\ntwitch\nI]\n@ Pray\nXl\nNl\n7 xs\n—\n=\nie,\nTK\nwnt\nfA\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE NOW",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 4.55,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:31:55.637653+00:00"
+    },
+    {
+      "index": 39,
+      "action": "read_screen_text",
+      "arguments": {},
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (read_screen_text); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "read_screen_text dispatched=True",
+          "detail": {
+            "ok": true,
+            "text": "The Guy\n10%\nQ g\n12:31AM\n#\n-\n/\n\\\ni\nf\n-\n~\n4\nan\na\nKET\ne\n‘sy\nUE .\nis\nSe FE\n-\nMinecraft Dungeons\ntwitch\nI]\n@ Pray\nXl\nNl\n7 xs\n—\n=\nie,\nTK\nwnt\nfA\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE NOW",
+            "engine": "pytesseract",
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "line_count": 43,
+            "ocr_variant": "bright_text",
+            "ocr_score": 0.754,
+            "ocr_attempts": [
+              {
+                "variant": "raw",
+                "score": 0.751,
+                "chars": 211
+              },
+              {
+                "variant": "upscale_otsu",
+                "score": 0.745,
+                "chars": 256
+              },
+              {
+                "variant": "upscale_otsu_inverted",
+                "score": 0.744,
+                "chars": 278
+              },
+              {
+                "variant": "bright_text",
+                "score": 0.754,
+                "chars": 223
+              },
+              {
+                "variant": "warm_text",
+                "score": 0.494,
+                "chars": 32
+              }
+            ],
+            "caveat": "OCR on console UIs is unreliable - stylised fonts, motion and transparency all hurt accuracy. Absent text is NOT strong evidence that the text is absent from the screen."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:32:00.188791+00:00",
+          "source_tool": "read_screen_text"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 43 line(s) of on-screen text",
+          "detail": {
+            "text": "The Guy\n10%\nQ g\n12:31AM\n#\n-\n/\n\\\ni\nf\n-\n~\n4\nan\na\nKET\ne\n‘sy\nUE .\nis\nSe FE\n-\nMinecraft Dungeons\ntwitch\nI]\n@ Pray\nXl\nNl\n7 xs\n—\n=\nie,\nTK\nwnt\nfA\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE NOW"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:32:00.188791+00:00",
+          "source_tool": "read_screen_text"
+        }
+      ],
+      "stage": "main_menu_return",
+      "stage_goal": "Return to the Xbox dashboard and verify it is visible",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "The Guy\n10%\nQ g\n12:31AM\n#\n-\n/\n\\\ni\nf\n-\n~\n4\nan\na\nKET\ne\n‘sy\nUE .\nis\nSe FE\n-\nMinecraft Dungeons\ntwitch\nI]\n@ Pray\nXl\nNl\n7 xs\n—\n=\nie,\nTK\nwnt\nfA\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE NOW",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 0.0,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:32:00.188291+00:00"
+    },
+    {
+      "index": 40,
+      "action": "check_for_text",
+      "arguments": {
+        "text_patterns": [
+          "Something went wrong",
+          "unavailable",
+          "error",
+          "not available"
+        ],
+        "match_type": "any"
+      },
+      "dispatched": true,
+      "error": null,
+      "observation": "Observed the screen (check_for_text); no input was sent.",
+      "evidence": [
+        {
+          "kind": "command_ack",
+          "summary": "check_for_text dispatched=True",
+          "detail": {
+            "ok": true,
+            "patterns": [
+              "Something went wrong",
+              "unavailable",
+              "error",
+              "not available"
+            ],
+            "match_type": "any",
+            "found": [],
+            "matched": false,
+            "checked": true,
+            "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+            "engine": "pytesseract",
+            "matched_lines": [],
+            "screen_text": "The Guy\n10%\nQ g\n12:31AM\n#\n-\n/\n\\\ni\nf\n-\n~\n4\nan\na\nKET\ne\n‘sy\nUE .\nis\nSe FE\n-\nMinecraft Dungeons\ntwitch\nI]\n@ Pray\nXl\nNl\n7 xs\n—\n=\nie,\nTK\nwnt\nfA\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE NOW",
+            "caveat": "OCR on console UIs is unreliable - stylised fonts, motion and transparency all hurt accuracy. Absent text is NOT strong evidence that the text is absent from the screen."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:32:00.191970+00:00",
+          "source_tool": "check_for_text"
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "Read 43 line(s) of on-screen text",
+          "detail": {
+            "text": "The Guy\n10%\nQ g\n12:31AM\n#\n-\n/\n\\\ni\nf\n-\n~\n4\nan\na\nKET\ne\n‘sy\nUE .\nis\nSe FE\n-\nMinecraft Dungeons\ntwitch\nI]\n@ Pray\nXl\nNl\n7 xs\n—\n=\nie,\nTK\nwnt\nfA\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE NOW"
+          },
+          "frame_path": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T07:32:00.191970+00:00",
+          "source_tool": "check_for_text"
+        }
+      ],
+      "stage": "main_menu_return",
+      "stage_goal": "Return to the Xbox dashboard and verify it is visible",
+      "stage_status": "proven",
+      "progress_signal": "",
+      "replan_on": [],
+      "frame_before": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "frame_after": "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+      "screen_delta": null,
+      "ocr_text": "The Guy\n10%\nQ g\n12:31AM\n#\n-\n/\n\\\ni\nf\n-\n~\n4\nan\na\nKET\ne\n‘sy\nUE .\nis\nSe FE\n-\nMinecraft Dungeons\ntwitch\nI]\n@ Pray\nXl\nNl\n7 xs\n—\n=\nie,\nTK\nwnt\nfA\nwee\nra)\nTHUNDER\n6\nBrowse the store\nGears of War: E-Day\nFlight simulator\nPLAY FREE NOW",
+      "ocr_engine": "pytesseract",
+      "duration_seconds": 0.0,
+      "attempts": 1,
+      "started_at": "2026-10-15T07:32:00.189292+00:00"
+    }
+  ],
+  "total_steps": 41,
+  "dispatched_steps": 41,
+  "duration_seconds": 241.33,
+  "action_log": [
+    {
+      "time": 1792049287.1514702,
+      "name": "guide",
+      "gimx": "PS",
+      "value": 1,
+      "status": "sent"
+    },
+    {
+      "time": 1792049287.3330822,
+      "name": "guide:release",
+      "gimx": "PS",
+      "value": 0,
+      "status": "sent"
+    },
+    {
+      "time": 1792049309.1090078,
+      "name": "right",
+      "gimx": "right",
+      "value": 1,
+      "status": "sent"
+    },
+    {
+      "time": 1792049309.2907515,
+      "name": "right:release",
+      "gimx": "right",
+      "value": 0,
+      "status": "sent"
+    },
+    {
+      "time": 1792049314.5276318,
+      "name": "right",
+      "gimx": "right",
+      "value": 1,
+      "status": "sent"
+    },
+    {
+      "time": 1792049314.707504,
+      "name": "right:release",
+      "gimx": "right",
+      "value": 0,
+      "status": "sent"
+    },
+    {
+      "time": 1792049319.771795,
+      "name": "right",
+      "gimx": "right",
+      "value": 1,
+      "status": "sent"
+    },
+    {
+      "time": 1792049319.9510446,
+      "name": "right:release",
+      "gimx": "right",
+      "value": 0,
+      "status": "sent"
+    },
+    {
+      "time": 1792049344.7603312,
+      "name": "a",
+      "gimx": "cross",
+      "value": 1,
+      "status": "sent"
+    },
+    {
+      "time": 1792049344.9488833,
+      "name": "a:release",
+      "gimx": "cross",
+      "value": 0,
+      "status": "sent"
+    },
+    {
+      "time": 1792049357.4669325,
+      "name": "b",
+      "gimx": "circle",
+      "value": 1,
+      "status": "sent"
+    },
+    {
+      "time": 1792049357.653546,
+      "name": "b:release",
+      "gimx": "circle",
+      "value": 0,
+      "status": "sent"
+    },
+    {
+      "time": 1792049377.518358,
+      "name": "down",
+      "gimx": "down",
+      "value": 1,
+      "status": "sent"
+    },
+    {
+      "time": 1792049377.6998036,
+      "name": "down:release",
+      "gimx": "down",
+      "value": 0,
+      "status": "sent"
+    },
+    {
+      "time": 1792049386.7429082,
+      "name": "down",
+      "gimx": "down",
+      "value": 1,
+      "status": "sent"
+    },
+    {
+      "time": 1792049386.9241338,
+      "name": "down:release",
+      "gimx": "down",
+      "value": 0,
+      "status": "sent"
+    },
+    {
+      "time": 1792049400.223148,
+      "name": "a",
+      "gimx": "cross",
+      "value": 1,
+      "status": "sent"
+    },
+    {
+      "time": 1792049400.4079726,
+      "name": "a:release",
+      "gimx": "cross",
+      "value": 0,
+      "status": "sent"
+    },
+    {
+      "time": 1792049412.4043326,
+      "name": "b",
+      "gimx": "circle",
+      "value": 1,
+      "status": "sent"
+    },
+    {
+      "time": 1792049412.591446,
+      "name": "b:release",
+      "gimx": "circle",
+      "value": 0,
+      "status": "sent"
+    },
+    {
+      "time": 1792049434.404289,
+      "name": "down",
+      "gimx": "down",
+      "value": 1,
+      "status": "sent"
+    },
+    {
+      "time": 1792049434.5861468,
+      "name": "down:release",
+      "gimx": "down",
+      "value": 0,
+      "status": "sent"
+    },
+    {
+      "time": 1792049443.7669988,
+      "name": "down",
+      "gimx": "down",
+      "value": 1,
+      "status": "sent"
+    },
+    {
+      "time": 1792049443.9507222,
+      "name": "down:release",
+      "gimx": "down",
+      "value": 0,
+      "status": "sent"
+    },
+    {
+      "time": 1792049452.60379,
+      "name": "down",
+      "gimx": "down",
+      "value": 1,
+      "status": "sent"
+    },
+    {
+      "time": 1792049452.7856274,
+      "name": "down:release",
+      "gimx": "down",
+      "value": 0,
+      "status": "sent"
+    },
+    {
+      "time": 1792049462.0706124,
+      "name": "down",
+      "gimx": "down",
+      "value": 1,
+      "status": "sent"
+    },
+    {
+      "time": 1792049462.2518272,
+      "name": "down:release",
+      "gimx": "down",
+      "value": 0,
+      "status": "sent"
+    },
+    {
+      "time": 1792049475.7852209,
+      "name": "a",
+      "gimx": "cross",
+      "value": 1,
+      "status": "sent"
+    },
+    {
+      "time": 1792049475.971523,
+      "name": "a:release",
+      "gimx": "cross",
+      "value": 0,
+      "status": "sent"
+    },
+    {
+      "time": 1792049488.6531157,
+      "name": "b",
+      "gimx": "circle",
+      "value": 1,
+      "status": "sent"
+    },
+    {
+      "time": 1792049488.8367348,
+      "name": "b:release",
+      "gimx": "circle",
+      "value": 0,
+      "status": "sent"
+    },
+    {
+      "time": 1792049504.898926,
+      "name": "b",
+      "gimx": "circle",
+      "value": 1,
+      "status": "sent"
+    },
+    {
+      "time": 1792049505.0967724,
+      "name": "b:release",
+      "gimx": "circle",
+      "value": 0,
+      "status": "sent"
+    }
+  ],
+  "notes": [],
+  "current_stage": "main_menu_return",
+  "last_proven_stage": "main_menu_return",
+  "stage_transitions": [
+    {
+      "from_stage": null,
+      "to_stage": "preflight",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:28:03.043129+00:00"
+    },
+    {
+      "from_stage": "preflight",
+      "to_stage": "preflight",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:28:03.044647+00:00"
+    },
+    {
+      "from_stage": "preflight",
+      "to_stage": "game_discovery",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\2-after-press_button.png"
+      ],
+      "timestamp": "2026-10-15T07:28:12.087356+00:00"
+    },
+    {
+      "from_stage": "game_discovery",
+      "to_stage": "game_discovery",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\stable.png"
+      ],
+      "timestamp": "2026-10-15T07:28:15.765350+00:00"
+    },
+    {
+      "from_stage": "game_discovery",
+      "to_stage": "game_discovery",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:28:18.947125+00:00"
+    },
+    {
+      "from_stage": "game_discovery",
+      "to_stage": "game_discovery",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:28:24.706418+00:00"
+    },
+    {
+      "from_stage": "game_discovery",
+      "to_stage": "menu_detection",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\6-after-guided_navigate_to_text.png"
+      ],
+      "timestamp": "2026-10-15T07:28:49.406145+00:00"
+    },
+    {
+      "from_stage": "menu_detection",
+      "to_stage": "menu_detection",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:28:52.934768+00:00"
+    },
+    {
+      "from_stage": "menu_detection",
+      "to_stage": "menu_detection",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:28:52.936267+00:00"
+    },
+    {
+      "from_stage": "menu_detection",
+      "to_stage": "level_navigation",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\9-after-guided_navigate_to_text.png"
+      ],
+      "timestamp": "2026-10-15T07:29:04.618563+00:00"
+    },
+    {
+      "from_stage": "level_navigation",
+      "to_stage": "level_launch",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\10-after-press_button.png"
+      ],
+      "timestamp": "2026-10-15T07:29:09.790025+00:00"
+    },
+    {
+      "from_stage": "level_launch",
+      "to_stage": "level_launch",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\stable.png"
+      ],
+      "timestamp": "2026-10-15T07:29:13.709292+00:00"
+    },
+    {
+      "from_stage": "level_launch",
+      "to_stage": "level_launch",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:29:17.327591+00:00"
+    },
+    {
+      "from_stage": "level_launch",
+      "to_stage": "level_launch",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:29:17.328631+00:00"
+    },
+    {
+      "from_stage": "level_launch",
+      "to_stage": "level_launch",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:29:17.333680+00:00"
+    },
+    {
+      "from_stage": "level_launch",
+      "to_stage": "pause_checkpoint",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\15-after-press_button.png"
+      ],
+      "timestamp": "2026-10-15T07:29:22.287468+00:00"
+    },
+    {
+      "from_stage": "pause_checkpoint",
+      "to_stage": "pause_checkpoint",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\stable.png"
+      ],
+      "timestamp": "2026-10-15T07:29:26.494167+00:00"
+    },
+    {
+      "from_stage": "pause_checkpoint",
+      "to_stage": "pause_checkpoint",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:29:30.098619+00:00"
+    },
+    {
+      "from_stage": "pause_checkpoint",
+      "to_stage": "level_navigation",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\18-after-guided_navigate_to_text.png"
+      ],
+      "timestamp": "2026-10-15T07:30:00.084449+00:00"
+    },
+    {
+      "from_stage": "level_navigation",
+      "to_stage": "level_launch",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\19-after-press_button.png"
+      ],
+      "timestamp": "2026-10-15T07:30:04.274644+00:00"
+    },
+    {
+      "from_stage": "level_launch",
+      "to_stage": "level_launch",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\stable.png"
+      ],
+      "timestamp": "2026-10-15T07:30:08.484994+00:00"
+    },
+    {
+      "from_stage": "level_launch",
+      "to_stage": "level_launch",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:30:12.258613+00:00"
+    },
+    {
+      "from_stage": "level_launch",
+      "to_stage": "level_launch",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:30:12.259619+00:00"
+    },
+    {
+      "from_stage": "level_launch",
+      "to_stage": "level_launch",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:30:12.264134+00:00"
+    },
+    {
+      "from_stage": "level_launch",
+      "to_stage": "pause_checkpoint",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\24-after-press_button.png"
+      ],
+      "timestamp": "2026-10-15T07:30:17.469537+00:00"
+    },
+    {
+      "from_stage": "pause_checkpoint",
+      "to_stage": "pause_checkpoint",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\stable.png"
+      ],
+      "timestamp": "2026-10-15T07:30:22.249425+00:00"
+    },
+    {
+      "from_stage": "pause_checkpoint",
+      "to_stage": "pause_checkpoint",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:30:26.033486+00:00"
+    },
+    {
+      "from_stage": "pause_checkpoint",
+      "to_stage": "level_navigation",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\27-after-guided_navigate_to_text.png"
+      ],
+      "timestamp": "2026-10-15T07:31:15.634555+00:00"
+    },
+    {
+      "from_stage": "level_navigation",
+      "to_stage": "level_launch",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\28-after-press_button.png"
+      ],
+      "timestamp": "2026-10-15T07:31:19.438134+00:00"
+    },
+    {
+      "from_stage": "level_launch",
+      "to_stage": "level_launch",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\stable.png"
+      ],
+      "timestamp": "2026-10-15T07:31:24.264228+00:00"
+    },
+    {
+      "from_stage": "level_launch",
+      "to_stage": "level_launch",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:31:28.509287+00:00"
+    },
+    {
+      "from_stage": "level_launch",
+      "to_stage": "level_launch",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:31:28.510202+00:00"
+    },
+    {
+      "from_stage": "level_launch",
+      "to_stage": "level_launch",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:31:28.513756+00:00"
+    },
+    {
+      "from_stage": "level_launch",
+      "to_stage": "pause_checkpoint",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\33-after-press_button.png"
+      ],
+      "timestamp": "2026-10-15T07:31:35.026260+00:00"
+    },
+    {
+      "from_stage": "pause_checkpoint",
+      "to_stage": "pause_checkpoint",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\stable.png"
+      ],
+      "timestamp": "2026-10-15T07:31:40.137594+00:00"
+    },
+    {
+      "from_stage": "pause_checkpoint",
+      "to_stage": "pause_checkpoint",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:31:44.731987+00:00"
+    },
+    {
+      "from_stage": "pause_checkpoint",
+      "to_stage": "main_menu_return",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\36-after-press_button.png"
+      ],
+      "timestamp": "2026-10-15T07:31:50.535065+00:00"
+    },
+    {
+      "from_stage": "main_menu_return",
+      "to_stage": "main_menu_return",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\stable.png"
+      ],
+      "timestamp": "2026-10-15T07:31:55.637153+00:00"
+    },
+    {
+      "from_stage": "main_menu_return",
+      "to_stage": "main_menu_return",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:32:00.187792+00:00"
+    },
+    {
+      "from_stage": "main_menu_return",
+      "to_stage": "main_menu_return",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:32:00.188791+00:00"
+    },
+    {
+      "from_stage": "main_menu_return",
+      "to_stage": "main_menu_return",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ],
+      "timestamp": "2026-10-15T07:32:00.191970+00:00"
+    }
+  ],
+  "stage_summary": [
+    {
+      "stage": "preflight",
+      "status": "proven",
+      "summary": "Observed the screen (read_screen_text); no input was sent.",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ]
+    },
+    {
+      "stage": "game_discovery",
+      "status": "proven",
+      "summary": "Observed the screen (detect_focus_highlight); no input was sent.",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\2-after-press_button.png",
+        "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ]
+    },
+    {
+      "stage": "menu_detection",
+      "status": "proven",
+      "summary": "Observed the screen (read_screen_text); no input was sent.",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\6-after-guided_navigate_to_text.png",
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ]
+    },
+    {
+      "stage": "level_navigation",
+      "status": "proven",
+      "summary": "Screen changed (delta 1.600). Expected: The 'Go to official club' option is highlighted (green focus indicator visible) in the Game Activity menu [OCR: A | 64,800 6 | 12:31 AM]",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\9-after-guided_navigate_to_text.png",
+        "<RUNS>\\run-20261015-125710\\frames\\18-after-guided_navigate_to_text.png",
+        "<RUNS>\\run-20261015-125710\\frames\\27-after-guided_navigate_to_text.png"
+      ]
+    },
+    {
+      "stage": "level_launch",
+      "status": "proven",
+      "summary": "Observed the screen (check_for_text); no input was sent.",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\10-after-press_button.png",
+        "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+        "<RUNS>\\run-20261015-125710\\frames\\19-after-press_button.png",
+        "<RUNS>\\run-20261015-125710\\frames\\28-after-press_button.png"
+      ]
+    },
+    {
+      "stage": "pause_checkpoint",
+      "status": "proven",
+      "summary": "Observed the screen (capture_frame); no input was sent.",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\15-after-press_button.png",
+        "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png",
+        "<RUNS>\\run-20261015-125710\\frames\\24-after-press_button.png",
+        "<RUNS>\\run-20261015-125710\\frames\\33-after-press_button.png"
+      ]
+    },
+    {
+      "stage": "main_menu_return",
+      "status": "proven",
+      "summary": "Observed the screen (check_for_text); no input was sent.",
+      "evidence": [
+        "<RUNS>\\run-20261015-125710\\frames\\36-after-press_button.png",
+        "<RUNS>\\run-20261015-125710\\frames\\stable.png",
+        "<RUNS>\\run-20261015-125710\\frames\\frame.png"
+      ]
+    }
+  ]
+}
