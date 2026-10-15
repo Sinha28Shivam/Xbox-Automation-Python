@@ -25,6 +25,7 @@ from __future__ import annotations
 from typing import Any
 
 from agents.base import BaseAgent
+from core.lesson_store import record_failure
 from core.schemas import FailureClass, Hypothesis, RootCauseAnalysis, Severity
 from core.state import AgenticState, note
 
@@ -70,8 +71,25 @@ class RCAAgent(BaseAgent):
         self.context.artifacts.save_json(
             "rca.json", rca.model_dump(mode="json"))
 
+        lesson = None
+        if not state.get("dry_run"):
+            plan = state.get("plan")
+            lesson = record_failure(
+                self.context.artifacts.run_dir, scenario_id,
+                rca=rca, execution=execution, verification=verification,
+                run_id=str(state.get("run_id", "")),
+                revision=int(getattr(plan, "revision", 1) or 1),
+                run_dir=self.context.artifacts.run_dir,
+                tags=getattr(scenario, "tags", None),
+                shared_tags=self.context.settings.list_of("learning.shared_tags") or None)
+            if lesson:
+                self.context.artifacts.save_json(
+                    f"lesson-recorded-r{getattr(plan, 'revision', 1)}.json", lesson)
+
         summary = (f"Root cause ({rca.failure_class.value}, "
-                   f"confidence {rca.confidence:.0%}): {rca.primary_cause}")
+                   f"confidence {rca.confidence:.0%}): {rca.primary_cause}"
+                   + (f" | lesson {lesson['id']} recorded "
+                      f"(seen {lesson.get('occurrences', 1)}x)" if lesson else ""))
 
         return {
             "rca": rca,
@@ -132,6 +150,23 @@ class RCAAgent(BaseAgent):
             rca.recommendations.insert(
                 0, "Re-authenticate the GIMX session (hold Guide for 2s) and "
                    "confirm on the TV that input moves the selection.")
+
+        # An abort raised by our OWN safety guard is an automation outcome by
+        # definition: the console did what it was told, and the framework then
+        # declined to continue. Twice (run-20261014-162340, run-20261015-113636)
+        # RCA filed this as product_defect, which would raise a bug against a
+        # healthy console - and would also stop the lesson steering the plan.
+        abort = (execution.abort_reason or "") if execution is not None else ""
+        if rca.failure_class == FailureClass.PRODUCT_DEFECT and any(
+                marker in abort for marker in (
+                    "Blind tapping prevented", "Selection blocked",
+                    "Run timeout exceeded")):
+            rca.failure_class = FailureClass.AUTOMATION_DEFECT
+            rca.product_bug_suspected = False
+            rca.ruled_out.append(
+                "Product defect ruled out: the run was stopped by the "
+                f"framework's own guard ('{abort[:120]}'), not by the console "
+                "misbehaving.")
 
         if rca.severity == Severity.CRITICAL and rca.confidence < 0.5:
             # A confident-sounding critical claim on weak evidence is worse

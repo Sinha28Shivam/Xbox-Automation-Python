@@ -166,6 +166,14 @@ class DungeonsEntity(_LooseBools):
         description="True for an enemy that is attacking or closing on a "
                     "villager. The system prioritises killing these to "
                     "complete rescue objectives.")
+    x: float | None = Field(
+        default=None, ge=0.0, le=1.0,
+        description="Horizontal screen position of its centre, 0 = left edge, "
+                    "1 = right edge. Fill for every enemy.")
+    y: float | None = Field(
+        default=None, ge=0.0, le=1.0,
+        description="Vertical screen position of its centre, 0 = top edge, "
+                    "1 = bottom edge. Fill for every enemy.")
 
 
 _HEADING = Literal["up", "down", "left", "right",
@@ -286,9 +294,19 @@ from the hero), and a short `command.reason`.
 OBSERVATION RULES
 - Classify the screen first. "YOU ARE DOWNED / REVIVING" = death.
   Mission-complete / results screen = mission_complete, quoting the text.
-- Fill enemies / enemy_adjacent / enemy_count / enemy_direction carefully
-  (enemy_count = enemies within ~3 hero-widths). Set enemy_direction
-  whenever ANY enemy is visible.
+- THE HERO: the camera keeps the player hero at the screen centre, inside
+  the yellow ring drawn on the frame. The hero may wear red armour - it is
+  NEVER an enemy. Do not list it in `enemies` or `entities`.
+- ENEMIES: illagers/pillagers/vindicators (grey faces, often red or dark
+  robes, crossbows or axes), zombies, skeletons, spiders, creepers. Scan the
+  WHOLE frame, edges included - crossbow pillagers attack from far away. A
+  red screen tint, red damage numbers or arrows flying at the hero mean an
+  attacker is on screen: find it.
+- For every enemy give `x` and `y` (screen position 0-1 of its centre) and
+  list it in `entities`. The system computes direction, distance and
+  adjacency from those positions; your enemy_direction / enemy_adjacent /
+  enemy_count are only a fallback. If none are visible, say 'none' and list
+  none - never guess.
 - Health is read from the heart gauge by the system; leave health_percent
   at your best guess. Fill potion_ready from the potion icon.
 - ALWAYS fill `entities` with everything notable: enemies, villagers,
@@ -432,7 +450,11 @@ def _initial_counters() -> dict[str, Any]:
             "rescue_approaches": 0, "model_yields": 0, "interactions": 0,
             "health_mismatches": 0, "wall_escapes": 0, "map_steers": 0,
             "occluded_cycles": 0, "map_travel_px": 0, "_blocked_streak": 0,
-            "_escape_idx": 0, "_nav_grace": 0, "_detour": None}
+            "_escape_idx": 0, "_nav_grace": 0, "_detour": None,
+            "engagements": 0, "unconfirmed_sightings": 0, "blind_hits": 0,
+            "held_engagements": 0, "self_sightings": 0,
+            "_sightings": 0, "_engage_left": 0, "_last_enemy_dir": None,
+            "_seen_age": 0, "_hint": ""}
 
 
 def _next_artifact(counters: dict[str, Any]) -> DungeonsMove:
@@ -564,12 +586,214 @@ def _read_nav(frame: Any) -> dict[str, Any]:
             "shift": shift, "occluded": _hero_occluded(frame)}
 
 
+# ===========================================================================
+# Combat perception
+#
+# Run 20261012-143117 showed the vision model (a) calling the red-armoured
+# hero an "illager" (cycles 27/29 - it shot at itself), (b) missing pillagers
+# that were draining health (cycle 14: "no enemies" while hp 90->63->20), and
+# (c) flip-flopping combat/navigator every cycle. Fixes, all deterministic:
+#   * the hero is marked on the frame the model sees, and enemy geometry is
+#     computed from model-given screen positions with the hero zone excluded
+#   * a measured health drop is treated as proof of an attack
+#   * engagement must be confirmed over 2 frames (or by damage) and then
+#     persists for a few cycles
+#   * an Xbox notification over the heart gauge invalidates the health read
+# ===========================================================================
+# The camera keeps the hero at screen centre; the feet sit slightly low.
+_HERO_XY = (0.5, 0.48)
+_HERO_RING_R = 0.065            # fraction of frame height, drawn for the model
+# An "enemy" this close to centre is the hero itself (red armour misread).
+_SELF_RADIUS = 0.06
+_ADJACENT_RADIUS = 0.17         # ~2 hero-widths at the default zoom
+_NEAR_RADIUS = 0.26             # ~3 hero-widths: counted in enemy_count
+_CONFIRM_FRAMES = 2             # sightings before a non-adjacent engagement
+_ENGAGE_HOLD = 3                # cycles an engagement survives a missed read
+_BLIND_MEMORY = 8               # cycles a last sighting still aims a blind hit
+_DAMAGE_DROP = 8                # health % lost since last cycle = being hit
+# Xbox "toast" notification over the HUD: saturated green fills the bottom
+# bar. Measured: 0.67 on a toast frame, <= 0.021 on every other frame.
+_TOAST_BOX = (650 / 1920, 900 / 1080, 1280 / 1920, 1010 / 1080)
+_TOAST_GREEN = 0.25
+
+
+def _prepare_vision_frame(frame: Any) -> Any:
+    """Copy of the frame with a yellow ring + label around the hero.
+
+    Only the model sees this; saved frames and pixel reads use the raw one.
+    """
+    if frame is None or getattr(frame, "ndim", 0) != 3:
+        return frame
+    out = frame.copy()
+    h, w = out.shape[:2]
+    cx, cy = int(w * _HERO_XY[0]), int(h * _HERO_XY[1])
+    r = int(h * _HERO_RING_R)
+    cv2.circle(out, (cx, cy), r, (0, 255, 255), 3, cv2.LINE_AA)
+    cv2.putText(out, "YOU", (cx - 28, cy - r - 10), cv2.FONT_HERSHEY_SIMPLEX,
+                0.9, (0, 255, 255), 2, cv2.LINE_AA)
+    return out
+
+
+def _toast_visible(frame: Any) -> bool:
+    if frame is None or getattr(frame, "ndim", 0) != 3:
+        return False
+    c = _box(frame, _TOAST_BOX).astype(np.int32)
+    b, g, r = c[..., 0], c[..., 1], c[..., 2]
+    green = (g > 80) & (g > r * 1.6) & (g > b * 1.6) & (r < 90)
+    return float(green.mean()) >= _TOAST_GREEN
+
+
+def _enemy_geometry(decision: DungeonsFrameDecision) -> dict[str, Any] | None:
+    """Recompute enemy fields from positioned enemy entities.
+
+    Returns None when the model gave no positions (its own fields are then
+    used as-is). Enemies inside the hero zone are dropped as self-sightings.
+    """
+    enemies = [e for e in decision.entities if e.category == "enemy"]
+    placed = [e for e in enemies if e.x is not None and e.y is not None]
+    if not placed:
+        return None
+    hx, hy = _HERO_XY
+    real, dropped = [], 0
+    for e in placed:
+        # Screen is 16:9; scale x so distances are in frame-height units.
+        dx, dy = (e.x - hx) * 16 / 9, e.y - hy
+        dist = math.hypot(dx, dy)
+        if dist < _SELF_RADIUS:
+            dropped += 1
+            continue
+        e.direction = _heading_of(dx, dy)
+        e.distance_estimate = ("very_close" if dist <= _ADJACENT_RADIUS else
+                               "close" if dist <= _NEAR_RADIUS else "far")
+        real.append((dist, e))
+    unplaced = [e for e in enemies if e.x is None or e.y is None]
+    decision.entities = ([e for e in decision.entities if e.category != "enemy"]
+                         + [e for _, e in real] + unplaced)
+    real.sort(key=lambda t: t[0])
+    return {"dropped_self": dropped,
+            "count_near": sum(1 for d, _ in real if d <= _NEAR_RADIUS),
+            "adjacent": bool(real) and real[0][0] <= _ADJACENT_RADIUS,
+            "direction": real[0][1].direction if real else "none",
+            "nearest": round(real[0][0], 3) if real else None,
+            "visible": len(real) + len(unplaced)}
+
+
+def _apply_enemy_geometry(decision: DungeonsFrameDecision) -> None:
+    geo = _enemy_geometry(decision)
+    decision._nav["enemy_geo"] = geo
+    if geo is None:
+        return
+    if geo["dropped_self"]:
+        print(f"  [combat] ignored {geo['dropped_self']} 'enemy' at the hero "
+              f"position (self-sighting)", flush=True)
+    decision.enemy_direction = geo["direction"]
+    decision.enemy_adjacent = geo["adjacent"]
+    decision.enemy_count = geo["count_near"]
+    if geo["direction"] == "none" and geo["visible"] == 0:
+        decision.enemies = "none"
+
+
+def _combat_state(decision: DungeonsFrameDecision,
+                  counters: dict[str, Any]) -> None:
+    """Confirm, persist or drop the engagement; infer unseen attackers.
+
+    Mutates enemy_direction/enemy_adjacent so every downstream combat rule
+    (reflex, rescue, crowd) sees the filtered picture.
+    """
+    seen = decision.enemy_direction != "none"
+    hit = bool(decision._nav.get("damage"))
+    if seen:
+        counters["_sightings"] = counters.get("_sightings", 0) + 1
+        counters["_last_enemy_dir"] = decision.enemy_direction
+        counters["_seen_age"] = 0
+    else:
+        counters["_sightings"] = 0
+        counters["_seen_age"] = counters.get("_seen_age", 0) + 1
+    engaged = counters.get("_engage_left", 0) > 0
+    if seen and (decision.enemy_adjacent or hit or engaged
+                 or counters["_sightings"] >= _CONFIRM_FRAMES):
+        counters["_engage_left"] = _ENGAGE_HOLD
+        counters["engagements"] += 0 if engaged else 1
+        return
+    if seen:
+        # One unconfirmed, non-adjacent sighting: not worth a crossbow volley
+        # that might be aimed at scenery. Navigation continues.
+        counters["unconfirmed_sightings"] += 1
+        decision.enemy_direction = "none"
+        decision.enemy_adjacent = False
+        return
+    if hit:
+        # Health is dropping but the model sees nobody: something is hitting
+        # us. Fight toward where the last enemy was, else just break contact.
+        counters["blind_hits"] += 1
+        counters["_engage_left"] = _ENGAGE_HOLD
+        last = (counters.get("_last_enemy_dir")
+                if counters.get("_seen_age", 0) <= _BLIND_MEMORY else None)
+        decision._nav["blind_attacker"] = last or "unknown"
+        if last:
+            decision.enemy_direction = last
+            decision.enemy_adjacent = True
+        return
+    if engaged:
+        counters["_engage_left"] -= 1
+        last = counters.get("_last_enemy_dir")
+        if last:
+            # Missed one read mid-fight: keep pressing toward the target
+            # instead of turning back to the minimap.
+            counters["held_engagements"] += 1
+            decision.enemy_direction = last
+            decision._nav["held"] = True
+        return
+    if counters.get("_seen_age", 0) > _BLIND_MEMORY:
+        counters["_last_enemy_dir"] = None
+
+
+def _perceive(decision: DungeonsFrameDecision, counters: dict[str, Any]) -> None:
+    """Per-cycle combat bookkeeping shared by the single and multi-agent paths.
+
+    Must run BEFORE the potion check, which overwrites _last_health.
+    """
+    geo = decision._nav.get("enemy_geo") or {}
+    counters["self_sightings"] += geo.get("dropped_self", 0)
+    hp, prev = decision.health_percent, counters.get("_last_health", 100)
+    hit = (not decision._nav.get("toast") and hp > 0
+           and prev - hp >= _DAMAGE_DROP)
+    decision._nav["damage"] = prev - hp if hit else 0
+    _combat_state(decision, counters)
+    counters["_hint"] = (
+        f"Health just dropped {prev}% -> {hp}% but no attacker was found: an "
+        f"enemy IS on screen (check the edges for crossbow pillagers)."
+        if hit and decision._nav.get("blind_attacker") else "")
+
+
+def _blind_defence(decision: DungeonsFrameDecision,
+                   counters: dict[str, Any]) -> list[DungeonsMove] | None:
+    """Hit by an attacker nobody has located: roll out of the line of fire."""
+    if decision._nav.get("blind_attacker") != "unknown":
+        return None
+    heading = _PERPENDICULAR.get(counters.get("_prev_move_dir") or "up", "left")
+    return [DungeonsMove(action="dodge", direction=heading,
+                         purpose="Taking damage from an unseen attacker: roll."),
+            DungeonsMove(action="move", direction=heading, duration=0.8,
+                         purpose="Unseen attacker: keep moving off the line.")]
+
+
 def _annotate(decision: DungeonsFrameDecision, frame: Any) -> None:
     if frame is not None and getattr(frame, "ndim", 0) == 3:
         nav = _read_nav(frame)
         decision._nav = nav
         if nav["bearing"]:
             decision.objective_bearing = nav["bearing"]
+    _apply_enemy_geometry(decision)
+    if _toast_visible(frame):
+        # The heart gauge is under the notification: any pixel read is junk
+        # (it read 23% at full health and burned a potion).
+        decision._nav["toast"] = True
+        decision._nav["hud"] = True   # a toast only appears over gameplay
+        decision.health_mismatch = "heart gauge hidden by an Xbox notification"
+        print("  [health] Xbox notification over the HUD - health read skipped",
+              flush=True)
+        return
     hp = _pixel_health(frame)
     if hp is None:
         return
@@ -614,6 +838,8 @@ def _confirm_success(decision: DungeonsFrameDecision, counters: dict[str, Any]) 
 def _potion_check(decision: DungeonsFrameDecision,
                   counters: dict[str, Any]) -> list[DungeonsMove] | None:
     """Health monitor: drink when health is low or just dropped sharply."""
+    if decision._nav.get("toast"):
+        return None  # health unreadable this frame; keep the old baseline
     hp = decision.health_percent
     if decision.health_low:
         hp = min(hp, _POTION_THRESHOLD - 1)
@@ -815,6 +1041,7 @@ def _forced_moves(decision: DungeonsFrameDecision,
     if state != "in_mission":
         return None
     _update_nav(decision, counters)
+    _perceive(decision, counters)
     enemy_dir = decision.enemy_direction
     # Priority order: survival (potion) > rescue > yield-to-model > combat.
     potion = _potion_check(decision, counters)
@@ -823,6 +1050,9 @@ def _forced_moves(decision: DungeonsFrameDecision,
     rescue = _rescue_moves(decision, counters)
     if rescue:
         return rescue
+    blind = _blind_defence(decision, counters)
+    if blind:
+        return blind
     if _yield_to_model(decision) and decision.moves:
         counters["model_yields"] = counters.get("model_yields", 0) + 1
         return None
@@ -945,6 +1175,12 @@ def _cycle_extra_fields(decision: DungeonsFrameDecision) -> dict[str, Any]:
             "map_bearing": decision._nav.get("bearing"),
             "map_shift": decision._nav.get("shift"),
             "hero_occluded": decision._nav.get("occluded"),
+            "enemy_direction": decision.enemy_direction,
+            "enemy_geo": decision._nav.get("enemy_geo"),
+            "damage": decision._nav.get("damage"),
+            "blind_attacker": decision._nav.get("blind_attacker"),
+            "held_engagement": bool(decision._nav.get("held")),
+            "toast": bool(decision._nav.get("toast")),
             "entities": [e.model_dump() for e in decision.entities]}
 
 
@@ -958,13 +1194,21 @@ _SUMMARY_KEYS = ("deaths", "melee", "dodges", "reflex_attacks", "ranged",
                  "artifacts", "retreats", "potions", "min_health",
                  "potions_confirmed", "rescue_attacks", "rescue_interacts",
                  "rescue_approaches", "model_yields", "interactions",
-                 "wall_escapes", "map_steers", "occluded_cycles", "map_travel_px")
+                 "wall_escapes", "map_steers", "occluded_cycles", "map_travel_px",
+                 "engagements", "unconfirmed_sightings", "blind_hits",
+                 "held_engagements", "self_sightings")
 
 
 def _extra_session_text(counters: dict[str, Any]) -> str:
-    return ("Deaths so far: {deaths}; melee swings: {melee}; ranged: {ranged}; "
+    text = ("Deaths so far: {deaths}; melee swings: {melee}; ranged: {ranged}; "
             "artifacts: {artifacts}; dodges: {dodges}; potions: {potions}\n").format(
                 **{k: counters.get(k, 0) for k in _SUMMARY_KEYS})
+    if counters.get("_engage_left", 0) > 0 and counters.get("_last_enemy_dir"):
+        text += (f"In combat: last enemy was {counters['_last_enemy_dir']} of "
+                 f"the hero - re-locate it.\n")
+    if counters.get("_hint"):
+        text += f"WARNING: {counters['_hint']}\n"
+    return text
 
 
 def _summarize(counters: dict[str, Any]) -> dict[str, Any]:
@@ -994,6 +1238,7 @@ PROFILE = GameProfile(
     extra_session_text=_extra_session_text,
     print_extra=_print_extra,
     annotate_decision=_annotate,
+    prepare_vision_frame=_prepare_vision_frame,
     confirm_success=_confirm_success,
     cycle_extra_fields=_cycle_extra_fields,
     summarize=_summarize,

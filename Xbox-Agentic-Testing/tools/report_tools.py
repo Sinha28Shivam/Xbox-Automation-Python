@@ -5,8 +5,8 @@ WHAT WAS DELETED, AND WHY
 -------------------------
 This module used to emit four formats of a step-by-step run record - json,
 markdown, html and junit - with ~800 lines of template code behind them. All
-of that has been REMOVED. The framework now produces exactly one report, the
-GAME MECHANICS report in gameplay/mechanics_report.py, which answers the
+of that has been REMOVED. The framework now produces a canonical professional dashboard alongside the
+specialized GAME MECHANICS report in gameplay/mechanics_report.py, which answers the
 question actually being asked of it:
 
     "which game mechanics were proven to work, and with what evidence?"
@@ -61,7 +61,8 @@ def _write_mechanics_report(ctx: ToolContext) -> Any:
         "Build the game-mechanics report for a gameplay session: a per-"
         "mechanic PASS / FAILED / NOT TESTED / INCONCLUSIVE verdict backed "
         "by before-and-after screenshots, the measured frame delta and an AI "
-        "audit of each frame pair. Writes markdown, html and json.")
+        "audit of each frame pair. Writes markdown, html, json and the "
+        "canonical reports/execution-report.html dashboard.")
 
 
 def _write_scenario_report(ctx: ToolContext) -> Any:

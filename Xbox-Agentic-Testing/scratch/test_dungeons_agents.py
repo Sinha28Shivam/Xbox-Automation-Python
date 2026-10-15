@@ -66,8 +66,10 @@ a, mv = run(c, enemy_direction="down", villager_in_danger=True,
             entities=[ent("enemy", "zombie", "left", threatens_villager=True)])
 assert a == "combat" and mv == [("fight", "left")], (a, mv)
 
-# Ranged enemy only -> combat shoots.
+# Ranged enemy: one far sighting is not confirmed (no shot); the second is.
 c = PROFILE.initial_counters()
+a, mv = run(c, command=TO_COMBAT, enemy_direction="up")
+assert a == "navigator", (a, mv)
 a, mv = run(c, command=TO_COMBAT, enemy_direction="up")
 assert a == "combat" and ("ranged", "up") in mv, (a, mv)
 

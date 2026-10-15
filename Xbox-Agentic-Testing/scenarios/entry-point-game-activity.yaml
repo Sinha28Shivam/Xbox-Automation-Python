@@ -1,0 +1,128 @@
+id: entry-point-game-activity
+title: "Entry point for Game Activity"
+description: >
+  From the Xbox dashboard, open the Guide and enter the selected game's Game
+  Activity view. Navigate through Achievements, Stats, and Go to official club,
+  verifying each destination before returning to the dashboard. The selected
+  game's name must remain visible wherever the destination screen identifies
+  the game.
+
+goal: >
+  Open the Guide, press Right to reach the selected game's Game Activity
+  section, open Achievements and verify the selected game name and achievement
+  content, return and open Stats and verify game statistics, return and open
+  Go to official club and verify the game's official club, then return to the
+  dashboard and verify the dashboard is visible.
+
+console: xbox_one
+
+preconditions:
+  - The console is powered on and showing the Xbox dashboard
+  - The selected game is installed and represented by the focused dashboard tile
+  - The user is signed in to Xbox
+  - The GIMX session is authenticated
+  - The capture card is connected and no other application is using it
+  - If the Guide overlay is already open (for example after a replan), do not
+    press Guide again, because that closes it; press B until the Guide's top
+    level is visible, then continue from there
+
+success_criteria:
+  - description: >
+      The Xbox Guide overlay opens and the selected game's Game Activity
+      section is reached by pressing Right from the initial Guide position.
+      The Game Activity heading or equivalent game activity controls are
+      visibly present.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: Xbox Guide with the selected game's Game Activity section
+      navigation: Guide, Right
+      navigation_guidance:
+        target_text: Game Activity
+        direction: right
+        max_presses: 3
+        interval: 0.8
+        # Tab heading: it is never itself the green-highlighted item.
+        require_focus: false
+    required: true
+
+  - description: >
+      The Achievements destination is opened from Game Activity. The selected
+      game's name and achievement content, such as achievement progress,
+      unlocked achievements, or the achievements heading, are visible.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: selected game's Achievements page
+      navigation_guidance:
+        target_text: Achievements
+        direction: down
+        max_attempts: 8
+        interval: 0.8
+        require_focus: true
+      required_visible:
+        - selected game name
+        - achievements content
+    required: true
+
+  - description: >
+      After returning to Game Activity, the Stats destination is opened and
+      the selected game's statistics content is visible.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: selected game's Stats page
+      navigation_guidance:
+        target_text: Stats
+        direction: down
+        max_attempts: 8
+        interval: 0.8
+        require_focus: true
+      required_visible:
+        - selected game name
+        - game statistics
+    required: true
+
+  - description: >
+      After returning to Game Activity, Go to official club is opened and the
+      selected game's official club page or official club identity is visible.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: selected game's official club
+      navigation_guidance:
+        target_text: Go to official club
+        direction: down
+        max_attempts: 8
+        interval: 0.8
+        require_focus: true
+      required_visible:
+        - selected game name
+        - official club
+    required: true
+
+  - description: >
+      After returning from the official club, the Xbox dashboard is visible
+      again and the selected game tile or dashboard shell is recognizable.
+    check_type: vision_judgement
+    parameters:
+      expected_screen: Xbox dashboard
+      required_visible:
+        - dashboard
+    required: true
+
+  - description: >
+      No error dialog, unavailable-service message, or 'Something went wrong'
+      message appears during the Game Activity journey.
+    check_type: no_error_dialog
+    required: true
+
+tags:
+  - dashboard
+  - guide
+  - game-activity
+  - achievements
+  - stats
+  - official-club
+  - navigation
+
+# Each step costs ~4-5 s (capture, act, settle, capture); a 44-step plan
+# timed out at 180 s in run-20261014-162340.
+timeout_seconds: 600
+max_steps: 50

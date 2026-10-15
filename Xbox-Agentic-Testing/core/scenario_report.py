@@ -141,6 +141,48 @@ def analyse(run_dir: Path | str) -> dict[str, Any]:
 
     steps = execution.get("steps") or []
     agents = _agent_timeline(data["state_digest"])
+    rca = data["rca"]
+    attempts = []
+    reports_dir = run_dir / "reports"
+    for path in sorted(reports_dir.glob("execution-r*.json"),
+                       key=lambda p: int("".join(ch for ch in p.stem if ch.isdigit()) or 0)):
+        ex = _load_json(path)
+        revision = "".join(ch for ch in path.stem if ch.isdigit())
+        ver = _load_json(reports_dir / f"verification-r{revision}.json")
+        crit = ver.get("criteria") or []
+        attempts.append({
+            "revision": int(revision or 0),
+            "steps_run": len(ex.get("steps") or []),
+            "steps_planned": ex.get("total_steps", 0),
+            "duration_seconds": ex.get("duration_seconds", 0.0),
+            "aborted": bool(ex.get("aborted")),
+            "abort_reason": ex.get("abort_reason") or "",
+            "verdict": str(ver.get("verdict", "")).upper() or "-",
+            "criteria_met": sum(1 for c in crit if c.get("met") is True),
+            "criteria_total": len(crit),
+            "last_proven_stage": ex.get("last_proven_stage") or "",
+        })
+    lessons_applied = []
+    learning_checked = any(reports_dir.glob("lessons-applied-r*.json"))
+    for path in sorted(reports_dir.glob("lessons-applied-r*.json")):
+        applied = _load_json(path)
+        for lesson in applied.get("lessons") or []:
+            key = (lesson.get("id"), lesson.get("from_scenario"))
+            if key not in {(l.get("id"), l.get("from_scenario")) for l in lessons_applied}:
+                lessons_applied.append(lesson)
+    runtime_decisions = []
+    for path in sorted(reports_dir.glob("runtime-lessons-r*.json")):
+        revision = "".join(ch for ch in path.stem if ch.isdigit())
+        for d in _load_json(path).get("decisions") or []:
+            runtime_decisions.append({**d, "revision": int(revision or 0)})
+    lessons_recorded = [_load_json(p) for p in
+                        sorted(reports_dir.glob("lesson-recorded-r*.json"))]
+    navigation = []
+    for path in sorted((run_dir / "reports").glob("guided-navigation*.json")):
+        trace = _load_json(path)
+        if trace:
+            trace["file"] = path.name
+            navigation.append(trace)
 
     return {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -166,6 +208,22 @@ def analyse(run_dir: Path | str) -> dict[str, Any]:
         "criteria": results,
         "steps": steps,
         "agents": agents,
+        "aborted": bool(execution.get("aborted")),
+        "abort_reason": execution.get("abort_reason") or "",
+        "executive_summary": _load_json(run_dir / "reports" / "executive-summary.json"),
+        "rca": {
+            "failure_class": rca.get("failure_class", ""),
+            "primary_cause": rca.get("primary_cause", ""),
+            "confidence": rca.get("confidence"),
+            "recommendations": list(rca.get("recommendations") or [])[:5],
+        } if rca else {},
+        "navigation": navigation,
+        "attempts": attempts,
+        "lessons_applied": lessons_applied,
+        "learning_checked": learning_checked,
+        "runtime_decisions": runtime_decisions,
+        "lessons_recorded": [l for l in lessons_recorded if l],
+        "health_summary": data["health"].get("summary", ""),
     }
 
 
@@ -345,7 +403,12 @@ def build_report(run_dir: Path | str) -> dict[str, str]:
 
     for fmt, name, render in (
         ("markdown", "scenario-report.md", lambda: markdown(payload)),
-        ("html", "scenario-report.html", lambda: html(payload)),
+        # Both names render the same professional dashboard so no reader
+        # lands on an outdated layout.
+        ("html", "scenario-report.html",
+         lambda: _professional_dashboard(payload)),
+        ("dashboard", "execution-report.html",
+         lambda: _professional_dashboard(payload)),
         ("json", "scenario-report.json",
          lambda: json.dumps(payload, indent=2, default=str)),
     ):
@@ -357,6 +420,11 @@ def build_report(run_dir: Path | str) -> dict[str, str]:
             print(f"  [report] {fmt} failed: {exc}", flush=True)
 
     return written
+
+
+def _professional_dashboard(payload: dict[str, Any]) -> str:
+    from core.professional_report import render_dashboard
+    return render_dashboard(payload, mode="scenario")
 
 
 def main(argv: list[str] | None = None) -> int:

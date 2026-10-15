@@ -345,6 +345,9 @@ class GameProfile:
     # called with (decision, raw BGR frame) right after the model decides.
     annotate_decision: Callable[[Any, Any], None] = field(
         default=lambda decision, frame: None)
+    # Returns the frame the MODEL sees (e.g. with the hero marked). The saved
+    # evidence frame and every pixel read stay on the raw capture.
+    prepare_vision_frame: Callable[[Any], Any] = field(default=lambda frame: frame)
     cycle_extra_fields: Callable[[Any], dict[str, Any]] = field(default=lambda decision: {})
     summarize: Callable[[dict[str, Any]], dict[str, Any]] = field(default=lambda counters: {})
 
@@ -488,7 +491,7 @@ def run_gameplay_loop(
             if before_path:
                 frames.append(before_path)
 
-            image_b64 = encode_frame(before)
+            image_b64 = encode_frame(profile.prepare_vision_frame(before))
             if image_b64 is None:
                 stop_reason = "Could not JPEG-encode the frame for the vision model."
                 break

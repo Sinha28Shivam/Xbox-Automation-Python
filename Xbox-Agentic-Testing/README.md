@@ -159,6 +159,7 @@ python console.py tools           # every tool, and which touch hardware
 
 python console.py run "Open the guide and confirm the overlay appears"
 python console.py run --file scenarios/dashboard-navigation.yaml
+python console.py run --file scenarios/entry-point-game-activity.yaml
 python console.py run "..." --dry-run      # plan without touching hardware
 python console.py interactive              # REPL
 ```

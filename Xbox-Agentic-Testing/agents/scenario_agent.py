@@ -331,6 +331,7 @@ _TOOL_ACTIONS = {
     "capture_frame", "wait_for_stable_screen", "verify_screen_changed",
     "compare_frames", "read_screen_text", "find_text_on_screen",
     "check_for_text", "read_text_region", "detect_focus_highlight",
+    "guided_navigate_to_text",
     "encode_frame_for_vision", "list_captured_frames", "press_button",
     "hold_button", "move_stick", "pull_trigger", "run_macro",
     "run_special_action", "run_sequence", "type_text", "wait",

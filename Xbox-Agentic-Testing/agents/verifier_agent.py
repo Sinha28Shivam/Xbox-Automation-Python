@@ -27,6 +27,7 @@ import json
 from typing import Any
 
 from agents.base import BaseAgent
+from core.lesson_store import record_failure, resolve_all
 from core.route_store import invalidate_cached_route, save_cached_route
 from core.schemas import (
     CriterionResult,
@@ -399,19 +400,58 @@ class VerifierAgent(BaseAgent):
             return False
         return bool(result.should_replan)
 
+    def _record_replan_lesson(self, result: VerificationResult,
+                              state: AgenticState, scenario_id: str,
+                              plan: Any) -> None:
+        from core.schemas import FailureClass, RootCauseAnalysis
+        lesson = record_failure(
+            self.context.artifacts.run_dir, scenario_id,
+            rca=RootCauseAnalysis(
+                scenario_id=scenario_id,
+                failure_class=FailureClass.AUTOMATION_DEFECT,
+                primary_cause=(result.replan_hint or result.summary
+                               or "Verifier requested a replan.")[:600],
+                recommendations=[result.replan_hint] if result.replan_hint else []),
+            execution=state.get("execution"), verification=result,
+            run_id=str(state.get("run_id", "")),
+            revision=int(getattr(plan, "revision", 1) or 1),
+            run_dir=self.context.artifacts.run_dir,
+            tags=getattr(state.get("scenario"), "tags", None),
+            shared_tags=self.context.settings.list_of("learning.shared_tags") or None)
+        if lesson:
+            self.context.artifacts.save_json(
+                f"lesson-recorded-r{getattr(plan, 'revision', 1)}.json", lesson)
+
     # -- output ------------------------------------------------------------
     def _emit(self, result: VerificationResult,
               state: AgenticState) -> dict[str, Any]:
+        verification_payload = result.model_dump(mode="json")
+        self.context.artifacts.save_json("verification.json", verification_payload)
+        plan_for_revision = state.get("plan")
         self.context.artifacts.save_json(
-            "verification.json", result.model_dump(mode="json"))
+            f"verification-r{getattr(plan_for_revision, 'revision', 1)}.json",
+            verification_payload)
 
         scenario = state.get("scenario")
         plan = state.get("plan")
         if scenario is not None and plan is not None:
             if result.verdict == Verdict.PASS:
                 save_cached_route(self.context.artifacts.run_dir, scenario.id, plan)
+                if not state.get("dry_run"):
+                    resolved = resolve_all(self.context.artifacts.run_dir,
+                                           scenario.id, str(state.get("run_id", "")))
+                    if resolved:
+                        print(f"  [lessons] {resolved} open lesson(s) resolved by this PASS.",
+                              flush=True)
             elif result.verdict == Verdict.FAIL:
                 invalidate_cached_route(self.context.artifacts.run_dir, scenario.id)
+
+            # verifier -> planner (replan) skips the RCA agent, which is where
+            # lessons are normally recorded. Record here so that path cannot
+            # lose a failure. Non-replan failures go to RCA and are recorded there.
+            if (not result.passed and result.should_replan
+                    and not state.get("dry_run")):
+                self._record_replan_lesson(result, state, scenario.id, plan)
 
         return {
             "verification": result,

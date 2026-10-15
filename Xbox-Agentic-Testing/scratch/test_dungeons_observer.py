@@ -58,9 +58,11 @@ assert a == "combat" and r == "override: enemy in reach", (a, r)
 c = PROFILE.initial_counters()
 a, r, _ = run(c, command=cmd("interaction", "chest"))
 assert a == "navigator" and r == "fallback from interaction", (a, r)
+# A combat command with no enemy perceived is dropped, not shot at the ground.
 c = PROFILE.initial_counters()
 a, r, mv = run(c, command=cmd("combat", "zombie", "up"))
-assert a == "combat" and ("ranged", "up") in mv, (a, mv)    # command direction used
+assert a == "navigator" and r == "redirected from combat", (a, r, mv)
+assert c["combat_commands_dropped"] == 1, c
 
 # Stalled approach sidesteps, then gives up.
 c = PROFILE.initial_counters()

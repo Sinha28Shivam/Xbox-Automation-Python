@@ -1,0 +1,70 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Synthetic Dungeons Combat Validation - Execution Report</title><style>
+:root{--ink:#172033;--muted:#637083;--line:#e4e9f0;--panel:#fff;
+--blue:#2563eb;--green:#16a34a;--red:#dc2626;--amber:#d97706;
+--slate:#64748b;--purple:#7c3aed}
+*{box-sizing:border-box}body{margin:0;background:#f6f8fb;color:var(--ink);
+font:14px/1.55 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.page{max-width:1240px;margin:auto;padding:34px 28px 64px}
+.hero{background:linear-gradient(125deg,#fff 0%,#f4f7ff 58%,#eef7ff 100%);
+border:1px solid var(--line);border-radius:18px;padding:28px 30px;
+box-shadow:0 8px 28px #1d355711}
+h1{font-size:29px;line-height:1.2;margin:0 0 7px;letter-spacing:-.5px}
+h2{font-size:18px;margin:30px 0 12px}h3{font-size:15px;margin:0 0 7px}
+.subtitle{color:var(--muted);margin:0}.badge{display:inline-block;
+padding:4px 12px;border-radius:999px;font-weight:800;font-size:12px;
+letter-spacing:.5px;margin-left:10px;vertical-align:4px}
+.PASS{background:#dcfce7;color:#166534}.FAIL,.FAILED,.ERROR{background:#fee2e2;color:#991b1b}
+.BLOCKED,.INCONCLUSIVE{background:#fef3c7;color:#92400e}
+.SKIPPED,.NOTTESTED,.NOT-TESTED,.NOT-ENCOUNTERED{background:#e2e8f0;color:#475569}
+.OBSERVED{background:#dbeafe;color:#1d4ed8}.card{background:var(--panel);
+border:1px solid var(--line);border-radius:14px;padding:18px;
+box-shadow:0 3px 12px #1d355708}.grid{display:grid;gap:14px}
+.kpis{grid-template-columns:repeat(6,minmax(0,1fr));margin-top:18px}
+.kpi strong{display:block;font-size:24px;margin-top:3px}.label,.muted{color:var(--muted)}
+.label{text-transform:uppercase;font-size:11px;font-weight:800;letter-spacing:.7px}
+.layout{grid-template-columns:1.25fr .75fr}.two{grid-template-columns:1fr 1fr}
+.rate{height:12px;border-radius:99px;background:#e8edf3;overflow:hidden;margin:12px 0 7px}
+.rate>i{display:block;height:100%;background:linear-gradient(90deg,#22c55e,#86efac);
+border-radius:inherit}.legend{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:12px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+table{width:100%;border-collapse:collapse}th,td{padding:10px 9px;
+border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+tr:last-child td{border-bottom:0}.tag{white-space:nowrap;font-size:11px;
+font-weight:800;padding:3px 8px;border-radius:999px}.barrow{display:grid;
+grid-template-columns:125px 1fr 45px;gap:10px;align-items:center;margin:10px 0}
+.bar{height:10px;background:#edf1f5;border-radius:8px;overflow:hidden}.bar i{display:block;
+height:100%;border-radius:inherit}.quote{border-left:4px solid var(--blue);
+padding:9px 13px;background:#f5f8ff;color:#344054;border-radius:0 8px 8px 0}
+code{background:#eef2f7;padding:2px 5px;border-radius:4px;font-size:12px}
+footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);
+margin-top:32px;padding-top:15px}@media(max-width:900px){.kpis{grid-template-columns:repeat(3,1fr)}
+.layout,.two{grid-template-columns:1fr}}@media(max-width:560px){.page{padding:18px 12px}
+.kpis{grid-template-columns:repeat(2,1fr)}}
+</style></head><body>
+<main class="page"><section class="hero"><h1>Synthetic Dungeons Combat Validation
+<span class="badge PASS">PASS</span></h1>
+<p class="subtitle">Central execution report &middot; generated from persisted evidence</p>
+<div class="grid kpis">
+<div class="card kpi"><span class="label">Pass rate</span><strong>80%</strong></div>
+<div class="card kpi"><span class="label">Passed</span><strong>4</strong></div>
+<div class="card kpi"><span class="label">Failed</span><strong>1</strong></div>
+<div class="card kpi"><span class="label">Not tested</span><strong>1</strong></div>
+<div class="card kpi"><span class="label">Duration</span><strong>48.6s</strong></div>
+<div class="card kpi"><span class="label">Total checks</span><strong>6</strong></div>
+</div></section>
+<div class="grid layout"><section><h2>AI summary</h2><div class="card quote">Synthetic preview only. Combat, navigation, health and interaction checks are represented for dashboard review.</div>
+<h2>Execution status</h2><div class="card"><div class="grid two"><div class='kv'><span class='muted'>Run ID</span><br><b>preview-report-001</b></div><div class='kv'><span class='muted'>Scenario ID</span><br><b>synthetic-dungeons-combat</b></div><div class='kv'><span class='muted'>Console</span><br><b>Synthetic Xbox Rig</b></div><div class='kv'><span class='muted'>Steps</span><br><b>12/12</b></div><div class='kv'><span class='muted'>Dispatched</span><br><b>14</b></div><div class='kv'><span class='muted'>Replans</span><br><b>1</b></div></div></div></section>
+<section><h2>Outcome graph</h2><div class="card"><div class="rate"><i style="width:80.0%"></i></div>
+<div class="legend"><span><i class="dot" style="background:#16a34a"></i>Pass rate of attempted checks</span>
+<span>5 attempted</span></div><div class='barrow'><span>Passed</span><div class='bar'><i style='width:66.7%;background:#16a34a'></i></div><b>4</b></div><div class='barrow'><span>Failed</span><div class='bar'><i style='width:16.7%;background:#dc2626'></i></div><b>1</b></div><div class='barrow'><span>Not tested</span><div class='bar'><i style='width:16.7%;background:#94a3b8'></i></div><b>1</b></div></div></section></div>
+<h2>Detailed results</h2><div class="card"><table><thead><tr><th>Success criterion</th><th>Status</th><th>Confidence</th><th>Reasoning</th></tr></thead>
+<tbody><tr><td>Combat engagement</td><td><span class='tag PASS'>PASS</span></td><td>96%</td><td>Enemy was observed and damage was confirmed in a later frame.</td></tr><tr><td>Dodge response</td><td><span class='tag PASS'>PASS</span></td><td>91%</td><td>Damage event was followed by a dodge-and-move action.</td></tr><tr><td>Navigation</td><td><span class='tag PASS'>PASS</span></td><td>94%</td><td>Objective direction and movement were observed.</td></tr><tr><td>Health management</td><td><span class='tag PASS'>PASS</span></td><td>89%</td><td>Low-health state triggered the health agent.</td></tr><tr><td>Chest interaction</td><td><span class='tag FAILED'>FAILED</span></td><td>82%</td><td>Interaction was dispatched but the expected state change was not observed.</td></tr><tr><td>Mission completion</td><td><span class='tag NOT-TESTED'>NOT TESTED</span></td><td>-</td><td>The synthetic run ended before mission completion.</td></tr></tbody></table></div>
+<h2>Agent execution</h2><div class="card"><table><thead><tr><th>Agent</th>
+<th>Result / activity</th><th>Duration</th></tr></thead><tbody>
+<tr><td>Combat agent</td><td>4 decisions</td><td>11.20s</td></tr><tr><td>Navigation agent</td><td>5 decisions</td><td>18.40s</td></tr><tr><td>Health agent</td><td>2 decisions</td><td>6.10s</td></tr><tr><td>Verifier agent</td><td>6 criteria reviewed</td><td>4.80s</td></tr></tbody></table></div>
+<footer>Verdicts are read from the execution artifacts and are not recalculated by
+the presentation layer. Evidence quality and caveats remain part of the source
+report. Report type: scenario.</footer></main></body></html>
