@@ -54,7 +54,7 @@ include = ["agents*", "core*", "graph*", "tools*", "gameplay*"]
 [tool.ruff]
 line-length = 110
 target-version = "py311"
-extend-exclude = ["scratch", "scripts", "artifacts", "reports"]
+extend-exclude = ["scratch", "scripts", "artifacts", "reports", "dev"]
 
 [tool.ruff.lint]
 # Correctness first: pyflakes, pycodestyle errors, bugbear, import sanity.

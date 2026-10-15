@@ -221,7 +221,7 @@ python tests\offline\test_lesson_store.py   # one script directly
 `tests/offline/` holds standalone regression scripts (learning, runtime
 lessons, guided navigation, reporting fixes, Dungeons combat). Each is run in
 its own process by `tests/test_offline_suite.py`. CI runs the same suite on
-every push (`.github/workflows/offline-tests.yml`). Scripts in `scratch/` that
+every push (`.github/workflows/offline-tests.yml`). Scripts in `dev/` that
 drive real hardware are not part of it.
 
 ---
@@ -497,8 +497,9 @@ console-specific planner needs no changes to the framework.
 Run the diagnostic. It probes every video device and saves a frame from each,
 so you can look rather than guess:
 
-```bash
-python ../temp_code_test/agentic/diagnose_capture.py
+```powershell
+xbox-agentic health                 # reports device, resolution, std/tones
+python dev\probes\peek_small.py     # save one frame to scratch/ and look at it
 ```
 
 Reading the numbers (measured on this rig):
@@ -529,8 +530,8 @@ than an obvious failure. Smoke test 10 guards the mechanism.
 Text criteria (`text_present`, `no_error_dialog`) need OCR. Check what is
 usable on this machine:
 
-```bash
-python _check_ocr.py        # tests both engines against a real captured frame
+```powershell
+python dev\probes\check_ocr.py     # which configured engines load and run
 ```
 
 Two engines are tried in the order set by `verification.ocr.engines`:
@@ -556,16 +557,20 @@ Verified on this rig: tesseract reads the Xbox game-details page cleanly
 
 ## Development
 
-```bash
-python ../temp_code_test/agentic/smoke_test.py       # 11 wiring checks, no hardware needed
-python ../temp_code_test/agentic/test_fixes.py       # 6 regression tests for bugs found in live runs
-python _check_ocr.py        # is OCR usable? read a real frame with each engine
-python ../temp_code_test/agentic/diagnose_capture.py # probe every video device, save a frame from each
-python ../temp_code_test/agentic/inspect_run.py      # summarise the latest run: plan, steps, verdict
-python ../temp_code_test/agentic/verify_report.py    # confirm the report's screenshots actually resolve
+```powershell
+python -m pytest                        # offline suite: no hardware, no API key
+ruff check . ; mypy                     # lint + type check (also run in CI)
+pre-commit install                      # run the same gates on every commit
+xbox-agentic health                     # probe GIMX + capture on the real rig
+python dev\probes\peek_small.py         # save one small frame to scratch/
 ```
 
-`_test_fixes.py` guards three bugs that only appeared against real hardware:
+Hardware probes and calibration scripts are in `dev/` (see `dev/README.md`).
+Older diagnostics (`diagnose_capture.py`, `inspect_run.py`, `smoke_test.py`)
+exist only in a local, git-ignored `../temp_code_test/agentic/` folder on the
+original rig; they are not part of this repository.
+
+The historical regression list below is now covered by `tests/`:
 
 1. **A wrong argument name aborted the run.** The planner wrote
    `wait_for_stable_screen(stability_duration=...)`; the real parameter is

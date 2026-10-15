@@ -75,3 +75,7 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 *.egg-info/
+
+# --- local scratch output (probe frames, ad-hoc logs) ----------------------------
+# Reusable scripts live in Xbox-Agentic-Testing/dev/; scratch/ is for their output.
+Xbox-Agentic-Testing/scratch/
