@@ -31,6 +31,8 @@ from __future__ import annotations
 
 import re
 import time
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from agents.base import BaseAgent
@@ -45,7 +47,7 @@ from core.schemas import (
     StageTransition,
     StepResult,
 )
-from core import runtime_lessons
+from core import runtime_lessons, text_match
 from core.state import AgenticState, note
 
 
@@ -59,6 +61,42 @@ _INGAME_STAGES = frozenset({
     "level_select_replay",
     "achievements_review",
 })
+
+
+_SIGNATURES_PATH = Path(__file__).resolve().parents[1] / "config" / "screen_signatures.yaml"
+_SIGNATURES_FALLBACK = {
+    "store": ["buy $", "join game pass"],
+    "account_prompt": ["your account needs attention"],
+    "dashboard": ["my games & apps", "add to play later", "sponsored"],
+    "in_game": ["press a to start", "select level"],
+}
+
+
+@lru_cache(maxsize=1)
+def _screen_signatures() -> dict[str, list[str]]:
+    """Screen-identifying text from config/screen_signatures.yaml.
+
+    Games list their own signatures there, so adding a game is a YAML edit.
+    A missing or broken file falls back to a minimal built-in set rather than
+    disabling the guard.
+    """
+    try:
+        import yaml
+        data = yaml.safe_load(_SIGNATURES_PATH.read_text(encoding="utf-8")) or {}
+    except Exception as exc:
+        print(f"  [guard] screen_signatures.yaml unreadable ({exc}); using built-ins",
+              flush=True)
+        return _SIGNATURES_FALLBACK
+    lower = lambda items: [str(i).lower() for i in (items or [])]
+    in_game = lower(data.get("in_game_generic"))
+    for phrases in (data.get("games") or {}).values():
+        in_game += lower(phrases)
+    return {
+        "store": lower(data.get("store")) or _SIGNATURES_FALLBACK["store"],
+        "account_prompt": lower(data.get("account_prompt")),
+        "dashboard": lower(data.get("dashboard")) or _SIGNATURES_FALLBACK["dashboard"],
+        "in_game": in_game or _SIGNATURES_FALLBACK["in_game"],
+    }
 
 
 # Steps that only LOOK at the screen. They never change console state, so the
@@ -144,15 +182,11 @@ class ExecutorAgent(BaseAgent):
             return {"ok": True}
 
         text = (last_with_ocr.ocr_text or "").lower()
+        sigs = _screen_signatures()
 
-        # 1. Store / Purchase screen. "game details" and "choose a plan" were
-        # removed from this list: an installed title's details page (with its
-        # own Play button, reached by a single "a" press before the real
-        # launch) legitimately contains both phrases and is not a purchase
-        # wall - only phrases that unambiguously mean "you must pay" belong here.
-        store_phrases = ["buy $", "$14.99", "$11.99",
-                         "join game pass", "session limits apply", "ad-supported streaming"]
-        hit_store = next((p for p in store_phrases if p in text), None)
+        # 1. Store / Purchase screen (config/screen_signatures.yaml: store).
+        # Exact match: prices and "buy $" must not be guessed at.
+        hit_store = next((p for p in sigs["store"] if p in text), None)
         if hit_store:
             return {
                 "ok": False,
@@ -161,18 +195,15 @@ class ExecutorAgent(BaseAgent):
             }
 
         # 2. Account attention / Ownership prompt (Bypassed per user override request)
-        error_phrases = ["your account needs attention", "sign in with the account",
-                         "do you own this game", "give it another try"]
-        hit_error = next((p for p in error_phrases if p in text), None)
+        hit_error = text_match.first_match(text, sigs["account_prompt"])
         if hit_error:
             print(f"  [guard] Account attention prompt ('{hit_error}') detected - bypassing warning and continuing execution per override request.", flush=True)
 
         # 3. Dashboard screen (without game running)
-        dash_phrases = ["my games & apps", "add to play later", "sponsored"]
-        hit_dash = next((p for p in dash_phrases if p in text), None)
-        game_sigs = ["curse of brotherhood", "brotherhood", "anotherland", "press a to start", "select level",
-                     "minecraft dungeons", "mission"]
-        has_game_sig = any(sig in text for sig in game_sigs)
+        hit_dash = text_match.first_match(text, sigs["dashboard"])
+        # Fuzzy on purpose: a game signature misread by OCR ("Minecraft
+        # Dundecns") must still count, or the guard aborts a running game.
+        has_game_sig = text_match.first_match(text, sigs["in_game"]) is not None
         if hit_dash and not has_game_sig:
             return {
                 "ok": False,

@@ -168,6 +168,23 @@ class RCAAgent(BaseAgent):
                 f"framework's own guard ('{abort[:120]}'), not by the console "
                 "misbehaving.")
 
+        # A product defect is a claim about the CONSOLE, so it needs console
+        # evidence: an error dialog, or the screen not responding to input
+        # that was delivered. Without either, the likelier story is that our
+        # plan asked for the wrong thing - and filing a console bug on that
+        # basis is the expensive mistake this agent exists to prevent.
+        if rca.failure_class == FailureClass.PRODUCT_DEFECT:
+            evidence = self._product_defect_evidence(state)
+            if evidence:
+                rca.ruled_out.append(f"Product-defect evidence: {evidence}")
+            else:
+                rca.failure_class = FailureClass.AUTOMATION_DEFECT
+                rca.product_bug_suspected = False
+                rca.ruled_out.append(
+                    "Product defect not supported: no error dialog was captured "
+                    "and the console responded to input, so the plan, not the "
+                    "console, is the likelier cause.")
+
         if rca.severity == Severity.CRITICAL and rca.confidence < 0.5:
             # A confident-sounding critical claim on weak evidence is worse
             # than an honest "we are not sure yet".
@@ -176,6 +193,36 @@ class RCAAgent(BaseAgent):
                 "Severity reduced from critical: confidence was below 50%.")
 
         return rca
+
+    _ERROR_DIALOG = ("something went wrong", "error code", "0x8", "try again later",
+                     "isn't working", "couldn't", "can't connect", "unexpected error")
+
+    @classmethod
+    def _product_defect_evidence(cls, state: AgenticState) -> str:
+        """Observed console misbehaviour that could justify a product defect."""
+        execution = state.get("execution")
+        if execution is None:
+            return ""
+        for step in execution.steps:
+            text = (step.ocr_text or "").lower()
+            hit = next((p for p in cls._ERROR_DIALOG if p in text), None)
+            if hit:
+                return f"error text '{hit}' on screen after step {step.index}"
+        # Delivered input that the console ignored, while other input worked.
+        inputs = [s for s in execution.steps
+                  if s.dispatched and s.action in {"press_button", "hold_button",
+                                                   "move_stick", "run_sequence"}
+                  and s.screen_delta is not None]
+        trailing = 0
+        for s in reversed(inputs):
+            if s.screen_delta >= 0.05:
+                break
+            trailing += 1
+        responsive_before = any(s.screen_delta >= 0.05 for s in inputs[:len(inputs) - trailing])
+        if trailing >= 3 and responsive_before:
+            return (f"the last {trailing} delivered inputs produced no screen "
+                    f"change after the console had been responsive")
+        return ""
 
     # -- helpers -----------------------------------------------------------
     @staticmethod

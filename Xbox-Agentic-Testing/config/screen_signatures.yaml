@@ -1,0 +1,55 @@
+# ===========================================================================
+#  screen_signatures.yaml - text that identifies a console screen.
+#
+#  Used by the executor's in-game guard: before sending gameplay input it reads
+#  the last screen text and refuses to "blind tap" when the console is on the
+#  Store, an account prompt, or the dashboard instead of the game.
+#
+#  ADDING A GAME
+#  -------------
+#  Add an entry under `games:` with lower-case text that only appears while
+#  that game is running (title, HUD words, its own menus). Without it, the
+#  guard cannot tell the game's screen from the dashboard and may abort a
+#  valid run. No code change is needed.
+#
+#  Matching is case-insensitive and tolerant of small OCR errors
+#  (core/text_match.py), so "minecraft dungeons" also matches the OCR reading
+#  "Minecraft Dundecns".
+# ===========================================================================
+
+store:
+  # Only phrases that unambiguously mean "you must pay". "game details" and
+  # "choose a plan" were removed: an installed title's own details page
+  # contains both and is not a purchase wall.
+  - "buy $"
+  - "$14.99"
+  - "$11.99"
+  - "join game pass"
+  - "session limits apply"
+  - "ad-supported streaming"
+
+account_prompt:
+  # Logged, not blocking (operator override).
+  - "your account needs attention"
+  - "sign in with the account"
+  - "do you own this game"
+  - "give it another try"
+
+dashboard:
+  - "my games & apps"
+  - "add to play later"
+  - "sponsored"
+
+# Generic in-game words that are never on the dashboard.
+in_game_generic:
+  - "press a to start"
+  - "select level"
+
+games:
+  max-curse-of-brotherhood:
+    - "curse of brotherhood"
+    - "brotherhood"
+    - "anotherland"
+  minecraft-dungeons:
+    - "minecraft dungeons"
+    - "mission"
