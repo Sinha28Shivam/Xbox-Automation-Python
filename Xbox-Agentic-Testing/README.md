@@ -232,9 +232,14 @@ Every run writes to `artifacts/runs/<run-id>/`:
 
 ```
 frames/    step-000_before-press-a.png, step-000_after-press-a.png, ...
-logs/      agent errors, transcript, raw GIMX events
-reports/   report.json, report.md, junit.xml
+logs/      run.log (timestamped copy of everything shown on screen, plus
+           framework warnings), state-digest.json
+reports/   execution-report.html, scenario-report.json, plan/execution/
+           verification/rca JSON, lessons-applied / runtime-lessons JSON
 ```
+
+All runs also append to `artifacts/agentic.log` (`logging.log_file`).
+Set the detail with `--log-level DEBUG|INFO|WARNING|ERROR` or `LOG_LEVEL`.
 
 Frames are saved **before** the verifier sees them, so you can check the
 machine's reasoning against the same pictures it used. A verdict you cannot

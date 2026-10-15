@@ -25,6 +25,7 @@ Ctrl+C.
 
 from __future__ import annotations
 
+import os
 import sys
 from datetime import datetime, UTC
 from pathlib import Path
@@ -39,6 +40,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from core import logging_setup                                # noqa: E402
 from core.adapters import HardwareBridge                      # noqa: E402
 from core.artifacts import ArtifactStore, new_run_id          # noqa: E402
 from agents.base import AgentContext                            # noqa: E402
@@ -82,6 +84,9 @@ class TestRunner:
 
         if overrides:
             self.settings = self.settings.merged_with({"runtime": overrides})
+
+        logging_setup.configure(self.settings, level=os.environ.get("XBOX_AGENTIC_LOG_LEVEL"),
+                                base_dir=self.root)
 
         self.hardware = HardwareBridge(self.settings)
         self.llm_factory = LLMFactory(self.settings)
@@ -131,6 +136,8 @@ class TestRunner:
             started_at=started_at,
         )
 
+        if artifacts.enabled:
+            logging_setup.attach_run_log(artifacts.run_dir)
         print(f"\nRun {run_id}")
         print(f"Artifacts: {artifacts.run_dir}\n")
 
@@ -149,6 +156,9 @@ class TestRunner:
             # Always release the card, on every exit path. Leaving it held
             # blocks the next run and every other capture application.
             self.hardware.close()
+            # run.log stays attached so the CLI's verdict summary, printed
+            # after run() returns, lands in it too. close() or the next run's
+            # attach_run_log() detaches it.
 
         return final.get("report")
 
@@ -201,6 +211,7 @@ class TestRunner:
 
     def close(self) -> None:
         self.hardware.close()
+        logging_setup.detach_run_log()
 
     def __enter__(self) -> TestRunner:
         return self

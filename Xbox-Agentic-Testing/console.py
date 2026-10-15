@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -457,6 +458,10 @@ exit codes:
 
     ap.add_argument("--config-dir", default=None,
                     help="override the config directory")
+    ap.add_argument("--log-level", default=None,
+                    choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+                    help="log level for artifacts/agentic.log and each run's "
+                         "logs/run.log (default: settings logging.level)")
 
     sub = ap.add_subparsers(dest="command")
 
@@ -553,6 +558,9 @@ exit codes:
     sub.add_parser("trends", help="write artifacts/trends.html across all runs")
 
     args = ap.parse_args()
+    if args.log_level:
+        # Read by TestRunner when it configures logging.
+        os.environ["XBOX_AGENTIC_LOG_LEVEL"] = args.log_level
 
     handlers = {
         "run": cmd_run,
