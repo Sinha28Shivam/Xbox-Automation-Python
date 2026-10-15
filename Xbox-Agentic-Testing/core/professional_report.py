@@ -7,6 +7,8 @@ run or changes its status.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import html
 from typing import Any
 
@@ -123,7 +125,8 @@ def _frame_src(path: Any, run_dir: Any) -> str:
         if run_dir:
             return "../" + p.resolve().relative_to(Path(str(run_dir)).resolve()).as_posix()
         return p.as_uri()
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("core/professional_report.py:126", _exc)
         return str(path)
 
 

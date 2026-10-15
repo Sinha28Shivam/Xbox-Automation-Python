@@ -40,6 +40,8 @@ be recallable in the next.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import json
 from datetime import datetime, UTC
 from pathlib import Path
@@ -61,7 +63,8 @@ def _load(ctx: ToolContext) -> list[dict[str, Any]]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         return data if isinstance(data, list) else []
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("tools/skill_memory.py:64", _exc)
         return []
 
 

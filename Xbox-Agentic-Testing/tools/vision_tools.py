@@ -23,6 +23,8 @@ tool results small and gives humans the same images to inspect afterwards.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import base64
 import re
 import time
@@ -937,7 +939,8 @@ def _tesseract_read(image: Any, floor: float = 0.3,
     except Exception:
         try:
             return pytesseract.image_to_string(image, config=config), 0.5
-        except Exception:
+        except Exception as _exc:
+            _log_suppressed("tools/vision_tools.py:940", _exc)
             return "", 0.0
 
     words: list[tuple[str, float]] = []
@@ -989,7 +992,8 @@ def _tesseract_read(image: Any, floor: float = 0.3,
             alt_text = "\n".join(" ".join(v) for _, v in sorted(alt_lines.items()))
             if len(alt_lines) > len(lines):
                 return alt_text, _score_ocr(_filter_words(alt_words, floor))
-        except Exception:
+        except Exception as _exc:
+            _log_suppressed("tools/vision_tools.py:992", _exc)
             pass
 
     return text, _score_ocr(_filter_words(words, floor))
@@ -1016,7 +1020,8 @@ def _tesseract_best_variant(ctx: ToolContext, path: str) -> str:
     for name, prepared in _ocr_variants(image):
         try:
             text, score = _tesseract_read(prepared, floor)
-        except Exception:
+        except Exception as _exc:
+            _log_suppressed("tools/vision_tools.py:1019", _exc)
             continue
         attempts.append({"variant": name, "score": round(score, 3),
                          "chars": len(text.strip())})
@@ -1033,7 +1038,8 @@ def _tesseract_best_variant(ctx: ToolContext, path: str) -> str:
             fallback = pytesseract.image_to_string(image, config="--psm 11").strip()
             if fallback:
                 return fallback
-        except Exception:
+        except Exception as _exc:
+            _log_suppressed("tools/vision_tools.py:1036", _exc)
             pass
         ctx.scratch["ocr_last_variant"] = f"{best_name} (no confident text)"
     return best_text
@@ -1081,7 +1087,8 @@ def _warm_engine(ctx: ToolContext, name: str) -> None:
         finally:
             try:
                 tmp_path.unlink(missing_ok=True)
-            except Exception:
+            except Exception as _exc:
+                _log_suppressed("tools/vision_tools.py:1084", _exc)
                 pass
         return
 

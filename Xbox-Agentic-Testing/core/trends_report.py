@@ -13,6 +13,8 @@ recomputed.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import html
 import json
 from datetime import datetime
@@ -25,7 +27,8 @@ from core.professional_report import _CSS
 def _load(path: Path) -> dict[str, Any]:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("core/trends_report.py:28", _exc)
         return {}
 
 

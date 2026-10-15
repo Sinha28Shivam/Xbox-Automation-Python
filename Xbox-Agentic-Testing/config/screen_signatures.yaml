@@ -28,8 +28,13 @@ store:
   - "session limits apply"
   - "ad-supported streaming"
 
+# What to do when an account prompt is on screen during gameplay:
+#   warn  - log it and keep going (default; an operator override, because
+#           these prompts are often dismissable and blocking stalled runs)
+#   block - stop as "blind tapping prevented"
+account_prompt_policy: warn
+
 account_prompt:
-  # Logged, not blocking (operator override).
   - "your account needs attention"
   - "sign in with the account"
   - "do you own this game"

@@ -17,6 +17,8 @@ project already lost time to exactly that, so the tool returns
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 from typing import Any
 
 from tools.registry import ToolContext, ToolSpec, fail, make_tool, ok
@@ -216,8 +218,9 @@ def _check_device_identity(ctx: ToolContext) -> dict[str, Any]:
                 f"change. Run _diagnose_capture.py to see a frame from every "
                 f"device. (device resolved by: "
                 f"{getattr(cam, 'index_source', 'unknown')})")
-    except Exception:
+    except Exception as _exc:
         # Identity checking is a bonus; never let it break the health probe.
+        _log_suppressed("tools/hardware_tools.py:219", _exc)
         pass
     return out
 
@@ -226,7 +229,8 @@ def _controls_ok(ctx: ToolContext) -> bool:
     try:
         _ = ctx.hardware.controls
         return True
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("tools/hardware_tools.py:229", _exc)
         return False
 
 

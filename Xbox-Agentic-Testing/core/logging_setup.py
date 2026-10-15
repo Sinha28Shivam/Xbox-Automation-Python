@@ -66,6 +66,17 @@ class _StdoutTee(io.TextIOBase):
         return self._stream.fileno()
 
 
+def log_suppressed(where: str, exc: BaseException) -> None:
+    """Record an exception that a deliberate fallback is swallowing.
+
+    Many handlers intentionally degrade (unreadable JSON -> {}, missing
+    optional engine -> skip). They stay as fallbacks, but the cause is now
+    visible: run with --log-level DEBUG and every suppressed error appears in
+    run.log with its location instead of vanishing.
+    """
+    logging.getLogger("suppressed").debug("%s: %s: %s", where, type(exc).__name__, exc)
+
+
 def configure(settings: Any = None, level: str | None = None,
               base_dir: Path | None = None) -> None:
     """Configure root logging once. Safe to call again (no duplicate handlers)."""

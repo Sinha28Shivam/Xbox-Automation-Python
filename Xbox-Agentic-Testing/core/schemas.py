@@ -20,6 +20,8 @@ validator forces to False when no observational evidence exists.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 from datetime import datetime, UTC
 from enum import Enum
 from typing import Any
@@ -182,7 +184,8 @@ class Evidence(BaseModel):
                     parsed = json.loads(v_str)
                     if isinstance(parsed, dict):
                         return parsed
-                except Exception:
+                except Exception as _exc:
+                    _log_suppressed("core/schemas.py:185", _exc)
                     pass
             return {"info": v_str}
         return {"value": v}

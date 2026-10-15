@@ -6,6 +6,8 @@ timed macro actions.
 """
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import base64
 import json
 import os
@@ -121,7 +123,8 @@ class AutonomousPlayer:
             cv2.imwrite(str(tmp_path), frame, [cv2.IMWRITE_PNG_COMPRESSION, 3])
             if tmp_path.exists():
                 os.replace(tmp_path, live_path)
-        except Exception:
+        except Exception as _exc:
+            _log_suppressed("gameplay/autonomous_player.py:124", _exc)
             pass
 
         return step_filename

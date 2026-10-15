@@ -31,6 +31,8 @@ instead of a diagnosis - and the whole point of the health agent is to diagnose.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import importlib.util
 import sys
 import threading
@@ -308,7 +310,8 @@ class HardwareBridge:
             if self._capture is not None:
                 try:
                     self._capture.close()
-                except Exception:
+                except Exception as _exc:
+                    _log_suppressed("core/adapters.py:311", _exc)
                     pass
                 self._capture = None
 

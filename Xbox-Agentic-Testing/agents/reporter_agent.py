@@ -22,6 +22,8 @@ letting a green heading imply more than the evidence supports.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 from typing import Any
 
 from agents.base import BaseAgent
@@ -123,14 +125,16 @@ class ReporterAgent(BaseAgent):
                 for l in json.loads(path.read_text(encoding="utf-8")).get("lessons") or []:
                     if l.get("scope", "scenario") == "scenario":
                         applied.append(str(l.get("id")))
-            except Exception:
+            except Exception as _exc:
+                _log_suppressed("agents/reporter_agent.py:126", _exc)
                 continue
         recorded = None
         for path in sorted(reports.glob("lesson-recorded-r*.json")):
             try:
                 import json
                 recorded = json.loads(path.read_text(encoding="utf-8")).get("id")
-            except Exception:
+            except Exception as _exc:
+                _log_suppressed("agents/reporter_agent.py:133", _exc)
                 pass
         expired = note_run(
             self.context.artifacts.run_dir, scenario.id, applied, recorded,

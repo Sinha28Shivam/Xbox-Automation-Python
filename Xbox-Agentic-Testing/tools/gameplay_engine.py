@@ -23,6 +23,8 @@ evidence proves.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import base64
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -76,7 +78,8 @@ def frame_delta(ctx: ToolContext, before: Any, after: Any) -> float | None:
         try:
             import cv2
             return float(cv2.absdiff(before, after).mean())
-        except Exception:
+        except Exception as _exc:
+            _log_suppressed("tools/gameplay_engine.py:79", _exc)
             return None
 
 
@@ -89,7 +92,8 @@ _MAX_BLANK_STREAK = 8
 def is_blank_frame(frame: Any) -> bool:
     try:
         return frame is not None and float(frame.mean()) < _BLANK_MEAN
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("tools/gameplay_engine.py:92", _exc)
         return False
 
 
@@ -155,7 +159,8 @@ def _current_provider(ctx: ToolContext) -> str | None:
     try:
         from core.llm import LLMFactory
         return LLMFactory(ctx.settings).default_provider
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("tools/gameplay_engine.py:158", _exc)
         return None
 
 
@@ -232,7 +237,8 @@ def _skill_lookup(ctx: ToolContext, profile: GameProfile,
         return None  # demoted - this skill stopped earning trust
     try:
         return [profile.move_model(**m) for m in entry["moves"]]
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("tools/gameplay_engine.py:235", _exc)
         return None  # a stored shape that no longer matches the model - skip, don't crash
 
 
@@ -292,7 +298,8 @@ def _propose_next_goal(ctx: ToolContext, profile: GameProfile,
         if proposal.keep_current_goal or not proposal.next_goal.strip():
             return current_goal
         return proposal.next_goal.strip()
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("tools/gameplay_engine.py:295", _exc)
         return current_goal  # a failed proposal keeps the run going, not stuck
 
 

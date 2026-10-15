@@ -41,6 +41,8 @@ confirm.
 """
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import base64
 import difflib
 import re
@@ -464,7 +466,8 @@ class MenuNavigator:
             time.sleep(poll)
             try:
                 now = camera.grab(allow_blank=True)
-            except Exception:
+            except Exception as _exc:
+                _log_suppressed("gameplay/menu_navigator.py:467", _exc)
                 continue
             if now is None or now.shape != before.shape:
                 continue
@@ -509,7 +512,8 @@ class MenuNavigator:
             time.sleep(poll)
             try:
                 now = camera.grab(allow_blank=True)
-            except Exception:
+            except Exception as _exc:
+                _log_suppressed("gameplay/menu_navigator.py:512", _exc)
                 continue
             if now is None or now.shape != before.shape:
                 continue

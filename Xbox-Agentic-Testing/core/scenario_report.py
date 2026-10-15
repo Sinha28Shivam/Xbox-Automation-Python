@@ -16,6 +16,8 @@ USAGE
 """
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import json
 import sys
 from datetime import datetime
@@ -49,7 +51,8 @@ def _load_json(path: Path) -> dict[str, Any]:
         return {}
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("core/scenario_report.py:52", _exc)
         return {}
 
 

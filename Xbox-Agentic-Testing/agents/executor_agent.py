@@ -29,6 +29,8 @@ counted toward that streak.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import re
 import time
 from functools import lru_cache
@@ -92,7 +94,9 @@ def _screen_signatures() -> dict[str, list[str]]:
     in_game = lower(data.get("in_game_generic"))
     for phrases in (data.get("games") or {}).values():
         in_game += lower(phrases)
+    policy = str(data.get("account_prompt_policy", "warn")).lower()
     return {
+        "account_prompt_policy": [policy if policy in ("warn", "block") else "warn"],
         "store": lower(data.get("store")) or _SIGNATURES_FALLBACK["store"],
         "account_prompt": lower(data.get("account_prompt")),
         "dashboard": lower(data.get("dashboard")) or _SIGNATURES_FALLBACK["dashboard"],
@@ -134,7 +138,8 @@ class ExecutorAgent(BaseAgent):
         try:
             import json
             return list(json.loads(path.read_text(encoding="utf-8")).get("lessons") or [])
-        except Exception:
+        except Exception as _exc:
+            _log_suppressed("agents/executor_agent.py:137", _exc)
             return []
 
     def _runtime_lesson_check(self, step: PlannedStep, rules: dict[str, list[str]],
@@ -196,10 +201,19 @@ class ExecutorAgent(BaseAgent):
                 "observation": "Refused to dispatch gameplay controls on Microsoft Store screen.",
             }
 
-        # 2. Account attention / Ownership prompt (Bypassed per user override request)
+        # 2. Account attention / ownership prompt. Policy is explicit in
+        # config/screen_signatures.yaml (account_prompt_policy): "warn" keeps
+        # going (the long-standing operator override), "block" stops.
         hit_error = text_match.first_match(text, sigs["account_prompt"])
         if hit_error:
-            print(f"  [guard] Account attention prompt ('{hit_error}') detected - bypassing warning and continuing execution per override request.", flush=True)
+            if sigs.get("account_prompt_policy") == ["block"]:
+                return {
+                    "ok": False,
+                    "error": f"Blind tapping prevented: account prompt on screen ('{hit_error}').",
+                    "observation": "Refused to dispatch gameplay controls on an account prompt.",
+                }
+            print(f"  [guard] Account attention prompt ('{hit_error}') detected - continuing "
+                  f"(account_prompt_policy: warn).", flush=True)
 
         # 3. Dashboard screen (without game running)
         hit_dash = text_match.first_match(text, sigs["dashboard"])
@@ -933,7 +947,8 @@ class ExecutorAgent(BaseAgent):
         """
         try:
             return list(self.context.tools.context.hardware.pad().action_log)
-        except Exception:
+        except Exception as _exc:
+            _log_suppressed("agents/executor_agent.py:936", _exc)
             return []
 
 

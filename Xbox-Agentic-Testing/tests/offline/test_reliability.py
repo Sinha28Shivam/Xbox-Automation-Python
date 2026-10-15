@@ -43,6 +43,16 @@ assert _guard("SPONSORED\nMinecraft Dundecns\nMission select")["ok"]
 # Store wall -> blocked.
 assert not _guard("Join Game Pass\nBuy $69.99")["ok"]
 
+# Account prompt follows the explicit policy (default warn = continue).
+assert sigs["account_prompt_policy"] == ["warn"]
+assert _guard("Your account needs attention\nMinecraft Dungeons")["ok"]
+import agents.executor_agent as ex
+_screen_signatures.cache_clear()
+real = ex._screen_signatures
+ex._screen_signatures = lambda: {**real(), "account_prompt_policy": ["block"]}
+assert not _guard("Your account needs attention\nMinecraft Dungeons")["ok"]
+ex._screen_signatures = real
+
 # ---- RCA: product defect needs console evidence ----------------------------
 def _rca(execution):
     rca = RootCauseAnalysis(scenario_id="s", failure_class=FailureClass.PRODUCT_DEFECT,

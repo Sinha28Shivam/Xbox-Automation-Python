@@ -21,6 +21,8 @@ routes at artifacts/routes/ rather than inside a single run's folder.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import json
 import math
 from datetime import datetime, UTC
@@ -50,7 +52,8 @@ def _load(ctx: ToolContext) -> list[dict[str, Any]]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         return data if isinstance(data, list) else []
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("tools/location_memory.py:53", _exc)
         return []
 
 

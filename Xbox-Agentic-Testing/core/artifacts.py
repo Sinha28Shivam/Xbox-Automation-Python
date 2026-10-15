@@ -23,6 +23,8 @@ sequence reads correctly in a file listing without opening anything.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import json
 import re
 from datetime import datetime
@@ -84,7 +86,8 @@ class ArtifactStore:
         path = self.frames_dir / name
         try:
             ok = bool(cv2.imwrite(str(path), frame))
-        except Exception:
+        except Exception as _exc:
+            _log_suppressed("core/artifacts.py:87", _exc)
             return None
         if not ok:
             return None

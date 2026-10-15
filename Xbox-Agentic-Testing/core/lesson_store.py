@@ -20,6 +20,8 @@ reason a hardware run dies.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import json
 import logging
 import re
@@ -181,7 +183,8 @@ def _navigation_notes(run_dir: Path | None) -> list[str]:
     for path in sorted((Path(run_dir) / "reports").glob("guided-navigation*.json")):
         try:
             trace = json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
+        except Exception as _exc:
+            _log_suppressed("core/lesson_store.py:184", _exc)
             continue
         attempts = trace.get("attempts") or []
         # Older traces have no "found" key; any matched attempt means success.
@@ -422,7 +425,8 @@ def all_lessons(artifacts_dir: Path | str) -> dict[str, list[dict[str, Any]]]:
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
             out[str(data.get("scenario_id") or path.stem)] = list(data.get("lessons") or [])
-        except Exception:
+        except Exception as _exc:
+            _log_suppressed("core/lesson_store.py:425", _exc)
             continue
     return out
 
