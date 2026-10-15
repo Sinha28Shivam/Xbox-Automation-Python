@@ -129,23 +129,29 @@ ignoring both. In JUnit output, blocked runs are `<skipped>`, never `<failure>`.
 
 ## Setup
 
-```bash
-pip install -r requirements.txt
+Python 3.11, from `Xbox-Agentic-Testing/`:
 
-# Any one provider is enough - the factory imports by name from settings.yaml
-pip install langchain-anthropic     # or langchain-openai, -google-genai, -ollama
+```powershell
+pip install -r requirements.lock     # exact, tested versions
+pip install -e . --no-deps           # installs the `xbox-agentic` command
+pip install -e ".[dev]"              # optional: lint, type-check, coverage tools
 ```
 
-Set your key in the environment or a `.env` file beside `console.py`:
+`requirements.txt` keeps minimum versions for reference; use the lock file
+for a reproducible rig. Other LLM providers are extras (`.[openai]`,
+`.[google]`).
+
+Copy `.env.example` to `.env` and set the key for your provider:
 
 ```
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-Verify the wiring — no hardware or API key needed:
+Verify the wiring - no hardware or API key needed:
 
-```bash
-python ../temp_code_test/agentic/smoke_test.py
+```powershell
+python -m pytest
+xbox-agentic info                    # same as: python console.py info
 ```
 
 ---

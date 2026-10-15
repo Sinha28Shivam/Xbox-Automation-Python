@@ -431,7 +431,8 @@ def cmd_play(args: argparse.Namespace) -> int:
 # ===========================================================================
 def main() -> int:
     ap = argparse.ArgumentParser(
-        prog="console.py",
+        prog=("xbox-agentic" if Path(sys.argv[0]).stem == "xbox-agentic"
+              else "console.py"),
         description="Multi-agent console testing. Describe a test in plain "
                     "English; agents check the rig, plan it, run it, verify it "
                     "against real video, and report with evidence.",
