@@ -297,6 +297,18 @@ def cmd_lessons(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_trends(args: argparse.Namespace) -> int:
+    """Write artifacts/trends.html: verdict/criteria/duration history per scenario."""
+    from core.config import Config
+    from core.trends_report import build
+
+    settings = Config.load(Path(args.config_dir or _ROOT / "config") / "settings.yaml",
+                           base=_ROOT)
+    out = build(settings.resolve_path("paths.artifacts_dir", "./artifacts"))
+    print(f"\n  Trends report: {out}\n")
+    return 0
+
+
 def cmd_interactive(args: argparse.Namespace) -> int:
     """A REPL for iterating on scenarios without restarting the framework.
 
@@ -538,6 +550,8 @@ exit codes:
     p_les.add_argument("--all", action="store_true", help="include resolved/expired")
     p_les.add_argument("--json", action="store_true")
 
+    sub.add_parser("trends", help="write artifacts/trends.html across all runs")
+
     args = ap.parse_args()
 
     handlers = {
@@ -549,6 +563,7 @@ exit codes:
         "tools": cmd_tools,
         "interactive": cmd_interactive,
         "lessons": cmd_lessons,
+        "trends": cmd_trends,
     }
     if args.command not in handlers:
         ap.print_help()

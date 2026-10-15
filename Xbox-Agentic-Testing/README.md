@@ -197,6 +197,10 @@ python console.py lessons resolve <scenario> L002 --reason "fixed in code"
 
 Keep a scenario's `id:` stable - lessons are stored under it.
 
+`python console.py trends` writes `artifacts/trends.html`: per-scenario verdict
+history, criteria-met and duration trends, and which lessons each run used.
+Dry runs are excluded.
+
 ---
 
 ## Offline tests
