@@ -39,7 +39,7 @@ from typing import Any, TypeVar
 try:
     import yaml
 except ImportError:  # pragma: no cover
-    raise SystemExit("PyYAML is required:  pip install pyyaml")
+    raise SystemExit("PyYAML is required:  pip install pyyaml") from None
 
 T = TypeVar("T")
 
@@ -112,7 +112,7 @@ class Config:
 
     # -- loading -----------------------------------------------------------
     @classmethod
-    def load(cls, path: Path | str, base: Path | None = None) -> "Config":
+    def load(cls, path: Path | str, base: Path | None = None) -> Config:
         path = Path(path)
         if not path.is_file():
             raise FileNotFoundError(f"Config file not found: {path}")
@@ -122,7 +122,7 @@ class Config:
 
     @classmethod
     def load_all(cls, directory: Path | str, names: dict[str, str],
-                 base: Path | None = None) -> dict[str, "Config"]:
+                 base: Path | None = None) -> dict[str, Config]:
         """Load several named config files from one directory.
 
         `names` maps a short key -> filename, e.g. {"settings": "settings.yaml"}.
@@ -158,7 +158,7 @@ class Config:
             node = node[part]
         if node is None:
             return fallback
-        return coerce(node, fallback)          # type: ignore[return-value]
+        return coerce(node, fallback)
 
     def section(self, dotted: str) -> dict[str, Any]:
         """A sub-dict, or {} if absent. Never returns None."""
@@ -200,7 +200,7 @@ class Config:
         return ((base or self.base_dir) / p).resolve()
 
     # -- merging -----------------------------------------------------------
-    def merged_with(self, other: "Config | dict[str, Any]") -> "Config":
+    def merged_with(self, other: Config | dict[str, Any]) -> Config:
         """Deep-merge another config over this one (other wins)."""
         payload = other.data if isinstance(other, Config) else other
         return Config(_deep_merge(self.data, payload),

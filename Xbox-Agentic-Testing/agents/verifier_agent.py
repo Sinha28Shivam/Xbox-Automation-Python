@@ -77,7 +77,7 @@ class VerifierAgent(BaseAgent):
             ],
             last_proven_stage=(
                 execution.last_proven_stage.value
-                if getattr(execution, "last_proven_stage", None) else None
+                if execution.last_proven_stage is not None else None
             ),
             has_images=bool(images),
             replan_count=int(state.get("replan_count", 0)),

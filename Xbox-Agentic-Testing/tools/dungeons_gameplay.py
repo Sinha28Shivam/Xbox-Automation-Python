@@ -20,7 +20,8 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from typing import Any, Iterator
+from typing import Any
+from collections.abc import Iterator
 
 from tools import gameplay_engine
 from tools.gameplay_engine import GameProfile, run_gameplay_loop

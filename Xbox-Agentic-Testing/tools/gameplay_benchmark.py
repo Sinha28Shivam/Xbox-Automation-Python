@@ -38,8 +38,10 @@ against one recorded last week, in a later session.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import json
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -60,7 +62,8 @@ def _load(ctx: ToolContext) -> list[dict[str, Any]]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         return data if isinstance(data, list) else []
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("tools/gameplay_benchmark.py:63", _exc)
         return []
 
 
@@ -128,7 +131,7 @@ def run_benchmark_impl(
         "profile": profile,
         "scenario_name": scenario_name,
         "goal": goal,
-        "recorded_at": datetime.now(timezone.utc).isoformat(),
+        "recorded_at": datetime.now(UTC).isoformat(),
         "max_cycles": max_cycles,
         "cycles_run": loop_result.get("cycles_run"),
         "reached_terminal": reached_terminal,

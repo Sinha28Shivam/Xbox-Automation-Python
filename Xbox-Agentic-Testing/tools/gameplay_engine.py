@@ -23,11 +23,14 @@ evidence proves.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import base64
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from pydantic import BaseModel, Field
 
@@ -75,7 +78,8 @@ def frame_delta(ctx: ToolContext, before: Any, after: Any) -> float | None:
         try:
             import cv2
             return float(cv2.absdiff(before, after).mean())
-        except Exception:
+        except Exception as _exc:
+            _log_suppressed("tools/gameplay_engine.py:79", _exc)
             return None
 
 
@@ -88,7 +92,8 @@ _MAX_BLANK_STREAK = 8
 def is_blank_frame(frame: Any) -> bool:
     try:
         return frame is not None and float(frame.mean()) < _BLANK_MEAN
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("tools/gameplay_engine.py:92", _exc)
         return False
 
 
@@ -106,7 +111,7 @@ def _drain_stale_frames(camera: Any, max_reads: int = 40) -> int:
         return 0
     live = 0
     reads = 0
-    for reads in range(1, max_reads + 1):
+    for reads in range(1, max_reads + 1):  # noqa: B007 - returned below
         start = time.time()
         try:
             cap.read()
@@ -154,7 +159,8 @@ def _current_provider(ctx: ToolContext) -> str | None:
     try:
         from core.llm import LLMFactory
         return LLMFactory(ctx.settings).default_provider
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("tools/gameplay_engine.py:158", _exc)
         return None
 
 
@@ -214,7 +220,7 @@ def format_history(history: list[dict[str, Any]], keep: int = 4) -> str:
     return "\n".join(lines)
 
 
-def _skill_lookup(ctx: ToolContext, profile: "GameProfile",
+def _skill_lookup(ctx: ToolContext, profile: GameProfile,
                   scene_state: str) -> list[Any] | None:
     """A saved move sequence for this scene_state, reconstructed as real
     `profile.move_model` instances - or None if there is no skill for it yet,
@@ -231,7 +237,8 @@ def _skill_lookup(ctx: ToolContext, profile: "GameProfile",
         return None  # demoted - this skill stopped earning trust
     try:
         return [profile.move_model(**m) for m in entry["moves"]]
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("tools/gameplay_engine.py:235", _exc)
         return None  # a stored shape that no longer matches the model - skip, don't crash
 
 
@@ -268,7 +275,7 @@ class CurriculumProposal(BaseModel):
                     "when this is true.")
 
 
-def _propose_next_goal(ctx: ToolContext, profile: "GameProfile",
+def _propose_next_goal(ctx: ToolContext, profile: GameProfile,
                        current_goal: str, image_b64: str) -> str:
     """One small structured LLM call: propose the next goal, or keep the
     current one. Never raises - any failure keeps `current_goal` unchanged.
@@ -291,7 +298,8 @@ def _propose_next_goal(ctx: ToolContext, profile: "GameProfile",
         if proposal.keep_current_goal or not proposal.next_goal.strip():
             return current_goal
         return proposal.next_goal.strip()
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("tools/gameplay_engine.py:295", _exc)
         return current_goal  # a failed proposal keeps the run going, not stuck
 
 
@@ -593,7 +601,7 @@ def run_gameplay_loop(
                     outcomes = profile.execute_moves(ctx, batch)
                 else:
                     outcomes = [profile.execute_move(ctx, m) for m in batch]
-                for move, outcome in zip(batch, outcomes):
+                for move, outcome in zip(batch, outcomes, strict=False):
                     outcome["purpose"] = move.purpose
                     sink.append(outcome)
 

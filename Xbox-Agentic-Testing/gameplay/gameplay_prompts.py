@@ -1,7 +1,7 @@
 """System prompts and schemas for the Autonomous Vision-LLM Gameplay Agent."""
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Literal
 from pydantic import BaseModel, Field
 
 

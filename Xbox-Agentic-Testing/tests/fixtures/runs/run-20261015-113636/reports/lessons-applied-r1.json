@@ -1,0 +1,31 @@
+{
+  "scenario_id": "entry-point-game-activity",
+  "count": 1,
+  "lessons": [
+    {
+      "id": "L001-20261015112419",
+      "seen": "1x, last in run-20261014-162340",
+      "failure_class": "automation_defect",
+      "what_went_wrong": "Replan pressed Guide while the Guide was already open on the Achievements page, which closed it and left the console on Dashboard Home. Separately, guided navigation Right x3 captured screens that lagged one press behind.",
+      "abort_reason": "Blind tapping prevented: Console is on the Xbox Dashboard Home ('sponsored') instead of the running game.",
+      "failed_step": {
+        "index": 6,
+        "action": "press_button",
+        "arguments": {
+          "button": "right",
+          "times": 1
+        },
+        "error": ""
+      },
+      "screen_text_at_failure": "The Guy\nO00\n4:00 AM\ntlook.com\nwif\nae\n\"ASS\nah\nR\n[Oh\nOR ie\nIN\nUNGEONS\ncE\nAssassin's Creed\nOrigins\n&\ni\nNIS\nXIS\nAW\ndss\nTHUNDER\nBi\nPre-order now\nSurvive Emergence Day\nGet DMZ Early Access\nAvailable Now\nPLAY\nFREE NOW!\nSPONSORED",
+      "navigation_observed": [
+        "Searching 'Game Activity' by pressing right 3x: target never appeared. Screens seen in order: Home -> Home -> People -> Parties & chats"
+      ],
+      "recommendations": [
+        "PRIORITY 1 - Verify the Xbox Guide menu structure: Manually test the Guide navigation on the console to determine whether pressing Right from a focused game tile in the Guide actually leads to Game Activity or to Dashboard Home. This will distinguish between a console bug (product_defect) and a test scenario error (automation_defect).",
+        "PRIORITY 2 - Confirm GIMX session authentication: Check GIMX server logs to verify the session was authenticated before the test. If not, authenticate the session (hold Guide button for 2s) and re-run the test. If the test passes after authentication, the rig fault is confirmed.",
+        "PRIORITY 3 - Review test scenario assumptions: Compare the test scenario's expected Guide navigation sequence to Xbox documentation for the console version and region being tested. If the sequence is incorrect, update the test scenario."
+      ]
+    }
+  ]
+}

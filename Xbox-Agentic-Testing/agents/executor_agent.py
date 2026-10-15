@@ -29,8 +29,12 @@ counted toward that streak.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import re
 import time
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from agents.base import BaseAgent
@@ -45,7 +49,7 @@ from core.schemas import (
     StageTransition,
     StepResult,
 )
-from core import runtime_lessons
+from core import runtime_lessons, text_match
 from core.state import AgenticState, note
 
 
@@ -58,6 +62,58 @@ _INGAME_STAGES = frozenset({
     "main_menu_return",
     "level_select_replay",
     "achievements_review",
+})
+
+
+_SIGNATURES_PATH = Path(__file__).resolve().parents[1] / "config" / "screen_signatures.yaml"
+_SIGNATURES_FALLBACK = {
+    "store": ["buy $", "join game pass"],
+    "account_prompt": ["your account needs attention"],
+    "dashboard": ["my games & apps", "add to play later", "sponsored"],
+    "in_game": ["press a to start", "select level"],
+}
+
+
+@lru_cache(maxsize=1)
+def _screen_signatures() -> dict[str, list[str]]:
+    """Screen-identifying text from config/screen_signatures.yaml.
+
+    Games list their own signatures there, so adding a game is a YAML edit.
+    A missing or broken file falls back to a minimal built-in set rather than
+    disabling the guard.
+    """
+    try:
+        import yaml
+        data = yaml.safe_load(_SIGNATURES_PATH.read_text(encoding="utf-8")) or {}
+    except Exception as exc:
+        print(f"  [guard] screen_signatures.yaml unreadable ({exc}); using built-ins",
+              flush=True)
+        return _SIGNATURES_FALLBACK
+    def lower(items: Any) -> list[str]:
+        return [str(i).lower() for i in (items or [])]
+    in_game = lower(data.get("in_game_generic"))
+    for phrases in (data.get("games") or {}).values():
+        in_game += lower(phrases)
+    policy = str(data.get("account_prompt_policy", "warn")).lower()
+    return {
+        "account_prompt_policy": [policy if policy in ("warn", "block") else "warn"],
+        "store": lower(data.get("store")) or _SIGNATURES_FALLBACK["store"],
+        "account_prompt": lower(data.get("account_prompt")),
+        "dashboard": lower(data.get("dashboard")) or _SIGNATURES_FALLBACK["dashboard"],
+        "in_game": in_game or _SIGNATURES_FALLBACK["in_game"],
+    }
+
+
+# Steps that only LOOK at the screen. They never change console state, so the
+# before/after/diff/OCR wrapper used for inputs adds time but no evidence.
+_OBSERVE_ONLY_ACTIONS = frozenset({
+    "capture_frame",
+    "wait_for_stable_screen",
+    "read_screen_text",
+    "find_text_on_screen",
+    "check_for_text",
+    "read_text_region",
+    "detect_focus_highlight",
 })
 
 
@@ -82,7 +138,8 @@ class ExecutorAgent(BaseAgent):
         try:
             import json
             return list(json.loads(path.read_text(encoding="utf-8")).get("lessons") or [])
-        except Exception:
+        except Exception as _exc:
+            _log_suppressed("agents/executor_agent.py:137", _exc)
             return []
 
     def _runtime_lesson_check(self, step: PlannedStep, rules: dict[str, list[str]],
@@ -101,7 +158,8 @@ class ExecutorAgent(BaseAgent):
                     "action": "proceed", "frame_path": frame_path,
                     "reason": "Screen could not be read; lesson could not be checked."}
         text = str(reading.get("text", ""))
-        decision = runtime_lessons.decide(step.action, args, text, rules, lessons)
+        decision = runtime_lessons.decide(step.action, args, text, rules, lessons,
+                                          destinations=getattr(self, "_destinations", []))
         if decision is not None:
             decision["frame_path"] = frame_path
             decision["screen_text"] = text[:800]
@@ -131,15 +189,11 @@ class ExecutorAgent(BaseAgent):
             return {"ok": True}
 
         text = (last_with_ocr.ocr_text or "").lower()
+        sigs = _screen_signatures()
 
-        # 1. Store / Purchase screen. "game details" and "choose a plan" were
-        # removed from this list: an installed title's details page (with its
-        # own Play button, reached by a single "a" press before the real
-        # launch) legitimately contains both phrases and is not a purchase
-        # wall - only phrases that unambiguously mean "you must pay" belong here.
-        store_phrases = ["buy $", "$14.99", "$11.99",
-                         "join game pass", "session limits apply", "ad-supported streaming"]
-        hit_store = next((p for p in store_phrases if p in text), None)
+        # 1. Store / Purchase screen (config/screen_signatures.yaml: store).
+        # Exact match: prices and "buy $" must not be guessed at.
+        hit_store = next((p for p in sigs["store"] if p in text), None)
         if hit_store:
             return {
                 "ok": False,
@@ -147,19 +201,25 @@ class ExecutorAgent(BaseAgent):
                 "observation": "Refused to dispatch gameplay controls on Microsoft Store screen.",
             }
 
-        # 2. Account attention / Ownership prompt (Bypassed per user override request)
-        error_phrases = ["your account needs attention", "sign in with the account",
-                         "do you own this game", "give it another try"]
-        hit_error = next((p for p in error_phrases if p in text), None)
+        # 2. Account attention / ownership prompt. Policy is explicit in
+        # config/screen_signatures.yaml (account_prompt_policy): "warn" keeps
+        # going (the long-standing operator override), "block" stops.
+        hit_error = text_match.first_match(text, sigs["account_prompt"])
         if hit_error:
-            print(f"  [guard] Account attention prompt ('{hit_error}') detected - bypassing warning and continuing execution per override request.", flush=True)
+            if sigs.get("account_prompt_policy") == ["block"]:
+                return {
+                    "ok": False,
+                    "error": f"Blind tapping prevented: account prompt on screen ('{hit_error}').",
+                    "observation": "Refused to dispatch gameplay controls on an account prompt.",
+                }
+            print(f"  [guard] Account attention prompt ('{hit_error}') detected - continuing "
+                  f"(account_prompt_policy: warn).", flush=True)
 
         # 3. Dashboard screen (without game running)
-        dash_phrases = ["my games & apps", "add to play later", "sponsored"]
-        hit_dash = next((p for p in dash_phrases if p in text), None)
-        game_sigs = ["curse of brotherhood", "brotherhood", "anotherland", "press a to start", "select level",
-                     "minecraft dungeons", "mission"]
-        has_game_sig = any(sig in text for sig in game_sigs)
+        hit_dash = text_match.first_match(text, sigs["dashboard"])
+        # Fuzzy on purpose: a game signature misread by OCR ("Minecraft
+        # Dundecns") must still count, or the guard aborts a running game.
+        has_game_sig = text_match.first_match(text, sigs["in_game"]) is not None
         if hit_dash and not has_game_sig:
             return {
                 "ok": False,
@@ -196,6 +256,13 @@ class ExecutorAgent(BaseAgent):
         revision = int(getattr(plan, "revision", 1) or 1)
         lessons = self._load_applied_lessons(revision)
         rules = runtime_lessons.active_rules(lessons)
+        # Leaf destinations only: items that are OPENED (require_focus). The
+        # Game Activity tab heads every screen its items are opened from.
+        self._destinations = [
+            str(nav["target_text"]) for c in scenario.success_criteria
+            for nav in [(c.parameters or {}).get("navigation_guidance")]
+            if isinstance(nav, dict) and nav.get("target_text")
+            and nav.get("require_focus", True)]
         runtime_log: list[dict[str, Any]] = []
         if lessons:
             print(f"  [executor] {len(lessons)} lesson(s) active at runtime"
@@ -212,8 +279,8 @@ class ExecutorAgent(BaseAgent):
                 break
 
             # Rich real-time terminal log header
-            stage_name = step.stage.value if hasattr(step.stage, "value") else str(step.stage or "unspecified")
-            print(f"\n" + "-" * 72, flush=True)
+            stage_name = step.stage.value if step.stage is not None else "unspecified"
+            print("\n" + "-" * 72, flush=True)
             print(f"[Step {step.index + 1}/{len(plan.steps)}] [{stage_name.upper()}] Action: {step.action}", flush=True)
             if step.arguments:
                 print(f"  Arguments: {step.arguments}", flush=True)
@@ -242,7 +309,7 @@ class ExecutorAgent(BaseAgent):
                     )
                     results.append(blocked)
                     aborted = True
-                    abort_reason = blocked.error
+                    abort_reason = blocked.error or "blocked"
                     notes.append(abort_reason)
                     print(f"\n{'!' * 72}", flush=True)
                     print(f"[BLIND TAPPING PREVENTED at Step {step.index + 1}]", flush=True)
@@ -263,7 +330,7 @@ class ExecutorAgent(BaseAgent):
                 )
                 results.append(blocked)
                 aborted = True
-                abort_reason = blocked.error
+                abort_reason = blocked.error or "blocked"
                 notes.append(abort_reason)
                 print(f"\n{'!' * 72}", flush=True)
                 print(f"[SELECTION BLOCKED at Step {step.index + 1}]", flush=True)
@@ -292,7 +359,7 @@ class ExecutorAgent(BaseAgent):
                 )
                 results.append(result)
                 notes.append(result.observation)
-                print(f"  Result:    SKIPPED (lesson)", flush=True)
+                print("  Result:    SKIPPED (lesson)", flush=True)
                 continue
 
             result = self._execute_step(step, dry_run)
@@ -428,8 +495,10 @@ class ExecutorAgent(BaseAgent):
                                 StageStatus.NOT_STARTED
                             ))
 
-        before_path = self._capture(f"{step.index}-before-{step.action}",
-                                    step.index, dry_run)
+        observe_only = step.action in _OBSERVE_ONLY_ACTIONS
+        before_path = (None if observe_only else
+                       self._capture(f"{step.index}-before-{step.action}",
+                                     step.index, dry_run))
         result.frame_before = before_path
 
         try:
@@ -454,7 +523,13 @@ class ExecutorAgent(BaseAgent):
             source_tool=step.action,
         ))
 
-        if step.verify and not dry_run:
+        if observe_only and not dry_run:
+            # The step itself captured/read the screen and changed nothing, so
+            # its own frame and text are the evidence. Wrapping it in a second
+            # capture + stability wait + diff + OCR (as for inputs) cost ~5.8 s
+            # x 21 steps in run-20261015-113636 for no new information.
+            self._adopt_own_observation(result, tool_result)
+        elif step.verify and not dry_run:
             self._observe(step, result)
             self._read_text(result)
         if result.error:
@@ -465,6 +540,29 @@ class ExecutorAgent(BaseAgent):
 
         result.duration_seconds = round(time.time() - started, 2)
         return result
+
+    def _adopt_own_observation(self, result: StepResult,
+                               tool_result: dict[str, Any]) -> None:
+        """Use an observe-only step's own frame/text as its evidence."""
+        frame = (tool_result.get("frame_path")
+                 or self.context.tools.context.scratch.get("last_frame_path"))
+        result.frame_after = frame
+        result.frame_before = frame
+        text = tool_result.get("text") or tool_result.get("screen_text")
+        if text:
+            result.ocr_text = str(text)
+            result.ocr_engine = str(tool_result.get("engine") or "")
+            result.evidence.append(Evidence(
+                kind=EvidenceKind.OCR_TEXT,
+                summary=f"Read {len(str(text).splitlines())} line(s) of on-screen text",
+                detail={"text": str(text)[:2000]},
+                frame_path=frame, source_tool=result.action))
+        elif frame:
+            # Let the verifier still see text for this frame (cached OCR).
+            self._read_text(result)
+        result.observation = (
+            f"Observed the screen ({result.action}); no input was sent."
+            if not result.error else result.observation)
 
     @staticmethod
     def _step_proved_stage_progress(step: PlannedStep, result: StepResult) -> bool:
@@ -849,7 +947,8 @@ class ExecutorAgent(BaseAgent):
         """
         try:
             return list(self.context.tools.context.hardware.pad().action_log)
-        except Exception:
+        except Exception as _exc:
+            _log_suppressed("agents/executor_agent.py:936", _exc)
             return []
 
 

@@ -41,6 +41,8 @@ USAGE
 """
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import base64
 import json
 import sys
@@ -183,7 +185,8 @@ def load_session(session_dir: Path) -> dict[str, Any]:
     if sfile.is_file():
         try:
             out["session"] = json.loads(sfile.read_text(encoding="utf-8"))
-        except Exception:
+        except Exception as _exc:
+            _log_suppressed("gameplay/mechanics_report.py:186", _exc)
             pass
 
     tfile = session_dir / "trace.json"
@@ -195,7 +198,8 @@ def load_session(session_dir: Path) -> dict[str, Any]:
             out["game_name"] = trace.get("game_name", "")
             out["launch_trace"] = trace.get("launch") or {}
             out["has_trace"] = True
-        except Exception:
+        except Exception as _exc:
+            _log_suppressed("gameplay/mechanics_report.py:198", _exc)
             pass
 
     if not out.get("game_name"):
@@ -539,7 +543,8 @@ def _rel(path: str | None, base: Path) -> str:
         import os
         return Path(os.path.relpath(Path(path).resolve(),
                                     (base / "reports").resolve())).as_posix()
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("gameplay/mechanics_report.py:542", _exc)
         return Path(path).as_posix()
 
 

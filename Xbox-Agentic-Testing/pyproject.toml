@@ -1,0 +1,99 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xbox-agentic-testing"
+version = "0.1.0"
+description = "Multi-agent, evidence-based automated testing for Xbox consoles (GIMX + capture card)."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { file = "LICENSE" }
+authors = [{ name = "Xbox Agentic Testing team" }]
+classifiers = [
+    "Private :: Do Not Upload",
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: Microsoft :: Windows",
+]
+# Lower bounds = the API surface the code uses. Exact, tested versions live in
+# requirements.lock; install from that for a reproducible rig.
+dependencies = [
+    "langgraph>=0.2.40",
+    "langchain>=0.3.0",
+    "langchain-core>=0.3.0",
+    "langchain-anthropic>=0.3.0",
+    "pydantic>=2.7",
+    "PyYAML>=6.0",
+    "python-dotenv>=1.0",
+    "opencv-python>=4.9",
+    "numpy>=1.26",
+    "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+ocr = ["pytesseract>=0.3.10"]
+paddle = ["paddleocr>=2.7"]
+openai = ["langchain-openai>=0.2"]
+google = ["langchain-google-genai>=2.0"]
+dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.6", "mypy>=1.11", "pre-commit>=3.7",
+       "types-PyYAML", "filelock>=3.13"]
+
+[project.scripts]
+# Runs the same main() as `python console.py`. Install editable
+# (`pip install -e .`) so config/, scenarios/ and artifacts/ resolve next to
+# the code exactly as they do today.
+xbox-agentic = "console:main"
+
+[tool.setuptools]
+py-modules = ["console"]
+
+[tool.setuptools.packages.find]
+include = ["agents*", "core*", "graph*", "tools*", "gameplay*"]
+
+# --------------------------------------------------------------------------
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+extend-exclude = ["scratch", "scripts", "artifacts", "reports", "dev"]
+
+[tool.ruff.lint]
+# Correctness first: pyflakes, pycodestyle errors, bugbear, import sanity.
+# Style-only rules are left off so the gate catches bugs, not taste.
+select = ["F", "E9", "E7", "B", "PLE", "UP"]
+ignore = [
+    "E741",   # short names like `l` are used deliberately in comprehensions
+    "B008",   # function calls in defaults (pydantic Field) are intended
+    "UP007",  # X | Y unions: keep existing Optional[...] where present
+    "UP045",
+    "UP042",  # (str, Enum) -> StrEnum changes str(member) output used in reports
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011", "E402"]
+
+# --------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+files = ["core", "agents"]
+ignore_missing_imports = true
+# Baseline: catch wrong calls, wrong attributes, bad returns in typed code.
+check_untyped_defs = false
+disallow_untyped_defs = false
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+show_error_codes = true
+
+# --------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = ["offline"]
+addopts = "-ra"
+
+[tool.coverage.run]
+source = ["core", "agents", "tools", "graph"]
+omit = ["*/__init__.py"]
+parallel = true
+
+[tool.coverage.report]
+skip_empty = true

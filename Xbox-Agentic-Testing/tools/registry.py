@@ -6,7 +6,8 @@ import difflib
 import importlib
 import inspect
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from core.adapters import HardwareBridge
 from core.artifacts import ArtifactStore
@@ -188,8 +189,8 @@ def make_tool(func: Callable[..., Any], name: str, description: str, args_schema
     try:
         from langchain_core.tools import StructuredTool
     except ImportError:
-        func.__name__ = name  # type: ignore[attr-defined]
-        func.__doc__ = description  # type: ignore[attr-defined]
+        func.__name__ = name
+        func.__doc__ = description
         return func
     kwargs: dict[str, Any] = {"func": func, "name": name, "description": description}
     if args_schema is not None:

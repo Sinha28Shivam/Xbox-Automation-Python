@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -47,7 +48,6 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from graph.runner import TestRunner, verdict_exit_code       # noqa: E402
-from core.schemas import Verdict                            # noqa: E402
 
 _LINE = "=" * 72
 
@@ -253,6 +253,62 @@ def cmd_tools(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_lessons(args: argparse.Namespace) -> int:
+    """List or resolve learned lessons. Reads files only; no rig needed."""
+    from core import lesson_store
+    from core.config import Config
+
+    # base=_ROOT as the runner does: relative config paths are relative to the
+    # project, not to config/ (which would give config/artifacts).
+    settings = Config.load(Path(args.config_dir or _ROOT / "config") / "settings.yaml",
+                           base=_ROOT)
+    root = settings.resolve_path("paths.artifacts_dir", "./artifacts")
+
+    if args.action == "resolve":
+        if not (args.scenario and args.lesson_id):
+            print("usage: console.py lessons resolve <scenario-id> <lesson-id> [--reason ...]")
+            return 4
+        ok = lesson_store.resolve_one(root, args.scenario, args.lesson_id,
+                                      args.reason or "resolved manually")
+        print(f"  {'Resolved' if ok else 'No open lesson matching'} "
+              f"{args.lesson_id} in {args.scenario}")
+        return 0 if ok else 1
+
+    data = lesson_store.all_lessons(root)
+    if args.scenario:
+        data = {k: v for k, v in data.items() if k == args.scenario}
+    if args.json:
+        print(json.dumps(data, indent=2, default=str))
+        return 0
+    print("\n" + _LINE + "\n  LEARNED LESSONS\n" + _LINE)
+    if not data:
+        print("\n  No lessons recorded yet.\n")
+        return 0
+    for scenario_id, lessons in data.items():
+        shown = [l for l in lessons if args.all or l.get("status") == "open"]
+        print(f"\n  {scenario_id}  ({sum(l.get('status') == 'open' for l in lessons)} open, "
+              f"{len(lessons)} total)")
+        for l in shown:
+            shared = f" shared:{','.join(l['shared_tags'])}" if l.get("shared_tags") else ""
+            print(f"    [{l.get('status', '?'):8}] {l.get('id')}  {l.get('failure_class')}  "
+                  f"seen {l.get('occurrences', 1)}x  quiet {l.get('quiet_runs', 0)}{shared}")
+            print(f"               {str(l.get('primary_cause', ''))[:110]}")
+    print()
+    return 0
+
+
+def cmd_trends(args: argparse.Namespace) -> int:
+    """Write artifacts/trends.html: verdict/criteria/duration history per scenario."""
+    from core.config import Config
+    from core.trends_report import build
+
+    settings = Config.load(Path(args.config_dir or _ROOT / "config") / "settings.yaml",
+                           base=_ROOT)
+    out = build(settings.resolve_path("paths.artifacts_dir", "./artifacts"))
+    print(f"\n  Trends report: {out}\n")
+    return 0
+
+
 def cmd_interactive(args: argparse.Namespace) -> int:
     """A REPL for iterating on scenarios without restarting the framework.
 
@@ -375,7 +431,8 @@ def cmd_play(args: argparse.Namespace) -> int:
 # ===========================================================================
 def main() -> int:
     ap = argparse.ArgumentParser(
-        prog="console.py",
+        prog=("xbox-agentic" if Path(sys.argv[0]).stem == "xbox-agentic"
+              else "console.py"),
         description="Multi-agent console testing. Describe a test in plain "
                     "English; agents check the rig, plan it, run it, verify it "
                     "against real video, and report with evidence.",
@@ -401,6 +458,10 @@ exit codes:
 
     ap.add_argument("--config-dir", default=None,
                     help="override the config directory")
+    ap.add_argument("--log-level", default=None,
+                    choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+                    help="log level for artifacts/agentic.log and each run's "
+                         "logs/run.log (default: settings logging.level)")
 
     sub = ap.add_subparsers(dest="command")
 
@@ -486,7 +547,20 @@ exit codes:
 
     sub.add_parser("interactive", help="scenario REPL")
 
+    p_les = sub.add_parser("lessons", help="list or resolve learned lessons")
+    p_les.add_argument("action", nargs="?", choices=["list", "resolve"], default="list")
+    p_les.add_argument("scenario", nargs="?", help="scenario id (optional for list)")
+    p_les.add_argument("lesson_id", nargs="?", help="lesson id or prefix, e.g. L002")
+    p_les.add_argument("--reason", help="why it is resolved (for resolve)")
+    p_les.add_argument("--all", action="store_true", help="include resolved/expired")
+    p_les.add_argument("--json", action="store_true")
+
+    sub.add_parser("trends", help="write artifacts/trends.html across all runs")
+
     args = ap.parse_args()
+    if args.log_level:
+        # Read by TestRunner when it configures logging.
+        os.environ["XBOX_AGENTIC_LOG_LEVEL"] = args.log_level
 
     handlers = {
         "run": cmd_run,
@@ -496,6 +570,8 @@ exit codes:
         "info": cmd_info,
         "tools": cmd_tools,
         "interactive": cmd_interactive,
+        "lessons": cmd_lessons,
+        "trends": cmd_trends,
     }
     if args.command not in handlers:
         ap.print_help()

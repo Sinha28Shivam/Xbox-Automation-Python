@@ -20,7 +20,9 @@ validator forces to False when no observational evidence exists.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from core.logging_setup import log_suppressed as _log_suppressed
+
+from datetime import datetime, UTC
 from enum import Enum
 from typing import Any
 
@@ -28,7 +30,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 # ===========================================================================
@@ -182,7 +184,8 @@ class Evidence(BaseModel):
                     parsed = json.loads(v_str)
                     if isinstance(parsed, dict):
                         return parsed
-                except Exception:
+                except Exception as _exc:
+                    _log_suppressed("core/schemas.py:185", _exc)
                     pass
             return {"info": v_str}
         return {"value": v}
@@ -296,7 +299,7 @@ class ValidatedScenario(BaseModel):
         description="Names not found in controls.yaml - a scenario defect")
 
     @model_validator(mode="after")
-    def _needs_a_criterion(self) -> "ValidatedScenario":
+    def _needs_a_criterion(self) -> ValidatedScenario:
         # A scenario with no observable success criterion can never fail, and a
         # test that cannot fail is worthless. Reject it at the door.
         if self.valid and not self.success_criteria:
@@ -435,8 +438,8 @@ class ExecutionResult(BaseModel):
     notes: list[str] = Field(default_factory=list)
     current_stage: ScenarioStage | None = None
     last_proven_stage: ScenarioStage | None = None
-    stage_transitions: list["StageTransition"] = Field(default_factory=list)
-    stage_summary: list["StageResult"] = Field(default_factory=list)
+    stage_transitions: list[StageTransition] = Field(default_factory=list)
+    stage_summary: list[StageResult] = Field(default_factory=list)
 
     @property
     def observed_any_change(self) -> bool:
@@ -493,7 +496,7 @@ class VerificationResult(BaseModel):
     last_proven_stage: ScenarioStage | None = None
 
     @model_validator(mode="after")
-    def _no_pass_without_proof(self) -> "VerificationResult":
+    def _no_pass_without_proof(self) -> VerificationResult:
         """A PASS requires at least one observational proof.
 
         This is the single most important invariant in the framework. It is

@@ -23,7 +23,6 @@ better than looping against a console that is not responding.
 
 from __future__ import annotations
 
-from typing import Any
 
 from core.state import AgenticState
 

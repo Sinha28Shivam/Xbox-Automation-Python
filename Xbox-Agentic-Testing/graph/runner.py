@@ -25,10 +25,12 @@ Ctrl+C.
 
 from __future__ import annotations
 
+import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 # The framework's own packages are added to sys.path so that modules can import
 # each other by bare name (`from config import Config`). Flat imports keep the
@@ -38,6 +40,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from core import logging_setup                                # noqa: E402
 from core.adapters import HardwareBridge                      # noqa: E402
 from core.artifacts import ArtifactStore, new_run_id          # noqa: E402
 from agents.base import AgentContext                            # noqa: E402
@@ -82,6 +85,9 @@ class TestRunner:
         if overrides:
             self.settings = self.settings.merged_with({"runtime": overrides})
 
+        logging_setup.configure(self.settings, level=os.environ.get("XBOX_AGENTIC_LOG_LEVEL"),
+                                base_dir=self.root)
+
         self.hardware = HardwareBridge(self.settings)
         self.llm_factory = LLMFactory(self.settings)
         self.prompts = PromptLibrary(
@@ -90,11 +96,13 @@ class TestRunner:
     # -- running -----------------------------------------------------------
     def run(self, scenario_input: str, scenario_source: str = "text",
             run_id: str | None = None) -> TestReport | None:
-        run_id = run_id or new_run_id()
-        started_at = datetime.now(timezone.utc).isoformat()
+        artifacts_root = self.settings.resolve_path("paths.artifacts_dir", "./artifacts")
+        save_frames = self.settings.get("runtime.save_frames", True)
+        run_id = run_id or new_run_id(root=artifacts_root if save_frames else None)
+        started_at = datetime.now(UTC).isoformat()
 
         artifacts = ArtifactStore(
-            root=self.settings.resolve_path("paths.artifacts_dir", "./artifacts"),
+            root=artifacts_root,
             run_id=run_id,
             frame_format=self.settings.get("runtime.frame_format", "png"),
             enabled=self.settings.get("runtime.save_frames", True),
@@ -130,6 +138,8 @@ class TestRunner:
             started_at=started_at,
         )
 
+        if artifacts.enabled:
+            logging_setup.attach_run_log(artifacts.run_dir)
         print(f"\nRun {run_id}")
         print(f"Artifacts: {artifacts.run_dir}\n")
 
@@ -148,6 +158,9 @@ class TestRunner:
             # Always release the card, on every exit path. Leaving it held
             # blocks the next run and every other capture application.
             self.hardware.close()
+            # run.log stays attached so the CLI's verdict summary, printed
+            # after run() returns, lands in it too. close() or the next run's
+            # attach_run_log() detaches it.
 
         return final.get("report")
 
@@ -200,8 +213,9 @@ class TestRunner:
 
     def close(self) -> None:
         self.hardware.close()
+        logging_setup.detach_run_log()
 
-    def __enter__(self) -> "TestRunner":
+    def __enter__(self) -> TestRunner:
         return self
 
     def __exit__(self, *exc: object) -> None:

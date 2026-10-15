@@ -44,6 +44,20 @@ _GUIDE_LESSON = re.compile(
     r"guide\b.{0,80}\b(already open|was open|closed it|closes it|close it)",
     re.IGNORECASE | re.DOTALL)
 
+# run-20261015-113636: an early A opened Achievements, then the plan pressed A
+# again on the same page. Triggered by lessons about re-opening / pressing A on
+# an already-open destination.
+_ALREADY_OPEN_LESSON = re.compile(
+    r"(pressed a (again|early|too early|twice)|press(ing)? a on .{0,30}already|"
+    r"a press .{0,40}already (open|opened)|opened .{0,40} (instead|too early))",
+    re.IGNORECASE)
+
+# NOT a rule (measured, run-20261015-113636): "skip B when already on the
+# dashboard". The Guide panel is translucent, so the dashboard's "SPONSORED" /
+# "Game Pass" text is OCR'd behind Guide and Stats screens too; with the
+# Guide's own chrome misread, 6 non-dashboard frames looked like the
+# dashboard. A rule that suppresses input must not fire on evidence that weak.
+
 
 def _lesson_text(lesson: dict[str, Any]) -> str:
     parts = [str(lesson.get(k) or "") for k in
@@ -56,9 +70,35 @@ def active_rules(lessons: list[dict[str, Any]]) -> dict[str, list[str]]:
     """Which built-in rules the open lessons switch on, and by which lesson ids."""
     rules: dict[str, list[str]] = {}
     for lesson in lessons or []:
-        if _GUIDE_LESSON.search(_lesson_text(lesson)):
-            rules.setdefault("guide_already_open", []).append(str(lesson.get("id")))
+        text, lid = _lesson_text(lesson), str(lesson.get("id"))
+        if _GUIDE_LESSON.search(text):
+            rules.setdefault("guide_already_open", []).append(lid)
+        if _ALREADY_OPEN_LESSON.search(text):
+            rules.setdefault("destination_already_open", []).append(lid)
     return rules
+
+
+def _is_press(action: str, arguments: dict[str, Any], *buttons: str) -> bool:
+    return (action == "press_button"
+            and str(arguments.get("button", "")).lower() in buttons)
+
+
+def _destination_heading(screen_text: str, targets: list[str]) -> str | None:
+    """The first real OCR line, if it is one of the scenario's destinations.
+
+    Callers must pass only LEAF destinations (pages that are opened, not
+    containers that hold the selectable items). Measured on
+    run-20261015-113636: the Game Activity panel heads every A press that
+    opens Achievements/Stats/club, so including it would block every one.
+    """
+    from core.text_match import normalise
+    for line in (screen_text or "").splitlines():
+        clean = line.strip()
+        if sum(ch.isalpha() for ch in clean) < 3:
+            continue
+        head = normalise(clean)
+        return next((t for t in targets if normalise(t) == head), None)
+    return None
 
 
 def guide_is_open(screen_text: str) -> str | None:
@@ -78,6 +118,8 @@ def needs_screen(action: str, arguments: dict[str, Any],
     """Only spend an OCR call when a rule could actually fire for this step."""
     if "guide_already_open" in rules and _is_guide_press(action, arguments):
         return True
+    if "destination_already_open" in rules and _is_press(action, arguments, "a"):
+        return True
     return bool(matching_lessons(action, arguments, lessons))
 
 
@@ -94,12 +136,24 @@ def matching_lessons(action: str, arguments: dict[str, Any],
 
 def decide(action: str, arguments: dict[str, Any], screen_text: str,
            rules: dict[str, list[str]],
-           lessons: list[dict[str, Any]]) -> dict[str, Any] | None:
+           lessons: list[dict[str, Any]],
+           destinations: list[str] | None = None) -> dict[str, Any] | None:
     """Return a decision dict, or None when no lesson is relevant to this step.
 
     decision["action"] is "skip" (do not dispatch) or "proceed" (dispatch, but
     the lesson was checked against the live screen first).
+
+    destinations: the scenario's navigation targets (Achievements, Stats...).
     """
+    if ("destination_already_open" in rules and destinations
+            and _is_press(action, arguments, "a")):
+        heading = _destination_heading(screen_text, destinations)
+        if heading:
+            return {"rule": "destination_already_open",
+                    "lessons": rules["destination_already_open"], "action": "skip",
+                    "reason": (f"'{heading}' is already the open page; pressing A "
+                               f"would act on an item inside it.")}
+
     if "guide_already_open" in rules and _is_guide_press(action, arguments):
         marker = guide_is_open(screen_text)
         if marker:

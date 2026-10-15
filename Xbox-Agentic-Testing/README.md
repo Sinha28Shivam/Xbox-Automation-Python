@@ -11,6 +11,13 @@ prompts, the workflow graph, the LLM provider and every threshold live in YAML.
 python console.py run "Press A on the dashboard and confirm the screen changes"
 ```
 
+| Document | For |
+|---|---|
+| [docs/OPERATIONS.md](docs/OPERATIONS.md) | Running tests on the rig, reading results, troubleshooting |
+| [SECURITY.md](SECURITY.md) | Secrets, data sent to the LLM, prompt injection, hardware safety |
+| [CHANGELOG.md](CHANGELOG.md) | Release history |
+| [dev/README.md](dev/README.md) | Hand-run probes and calibration scripts |
+
 ---
 
 ## The problem this exists to solve
@@ -129,23 +136,29 @@ ignoring both. In JUnit output, blocked runs are `<skipped>`, never `<failure>`.
 
 ## Setup
 
-```bash
-pip install -r requirements.txt
+Python 3.11, from `Xbox-Agentic-Testing/`:
 
-# Any one provider is enough - the factory imports by name from settings.yaml
-pip install langchain-anthropic     # or langchain-openai, -google-genai, -ollama
+```powershell
+pip install -r requirements.lock     # exact, tested versions
+pip install -e . --no-deps           # installs the `xbox-agentic` command
+pip install -e ".[dev]"              # optional: lint, type-check, coverage tools
 ```
 
-Set your key in the environment or a `.env` file beside `console.py`:
+`requirements.txt` keeps minimum versions for reference; use the lock file
+for a reproducible rig. Other LLM providers are extras (`.[openai]`,
+`.[google]`).
+
+Copy `.env.example` to `.env` and set the key for your provider:
 
 ```
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-Verify the wiring — no hardware or API key needed:
+Verify the wiring - no hardware or API key needed:
 
-```bash
-python ../temp_code_test/agentic/smoke_test.py
+```powershell
+python -m pytest
+xbox-agentic info                    # same as: python console.py info
 ```
 
 ---
@@ -177,15 +190,63 @@ python console.py interactive              # REPL
 
 ---
 
+## Failure learning
+
+Every failure is recorded as a lesson in `artifacts/lessons/<scenario-id>.json`
+and given to the planner on every later run of that scenario. Lessons from
+scenarios tagged `guide`, `dashboard`, `store`, `search` or `settings` are also
+shared with other scenarios carrying the same tag. During execution, some
+lessons are enforced against the live screen (for example, Guide is not
+pressed when the Guide is already open).
+
+A lesson closes when the scenario passes, after it is applied in 3 runs
+without recurring (`learning.expire_after_quiet_runs`), or by hand:
+
+```powershell
+python console.py lessons                       # open lessons, all scenarios
+python console.py lessons list <scenario> --all # include resolved/expired
+python console.py lessons resolve <scenario> L002 --reason "fixed in code"
+```
+
+Keep a scenario's `id:` stable - lessons are stored under it.
+
+`python console.py trends` writes `artifacts/trends.html`: per-scenario verdict
+history, criteria-met and duration trends, and which lessons each run used.
+Dry runs are excluded.
+
+---
+
+## Offline tests
+
+No Xbox, GIMX, capture card or LLM key is needed:
+
+```powershell
+python -m pytest            # whole suite (~15 s)
+python tests\offline\test_lesson_store.py   # one script directly
+```
+
+`tests/offline/` holds standalone regression scripts (learning, runtime
+lessons, guided navigation, reporting fixes, Dungeons combat). Each is run in
+its own process by `tests/test_offline_suite.py`. CI runs the same suite on
+every push (`.github/workflows/offline-tests.yml`). Scripts in `dev/` that
+drive real hardware are not part of it.
+
+---
+
 ## Artifacts
 
 Every run writes to `artifacts/runs/<run-id>/`:
 
 ```
 frames/    step-000_before-press-a.png, step-000_after-press-a.png, ...
-logs/      agent errors, transcript, raw GIMX events
-reports/   report.json, report.md, junit.xml
+logs/      run.log (timestamped copy of everything shown on screen, plus
+           framework warnings), state-digest.json
+reports/   execution-report.html, scenario-report.json, plan/execution/
+           verification/rca JSON, lessons-applied / runtime-lessons JSON
 ```
+
+All runs also append to `artifacts/agentic.log` (`logging.log_file`).
+Set the detail with `--log-level DEBUG|INFO|WARNING|ERROR` or `LOG_LEVEL`.
 
 Frames are saved **before** the verifier sees them, so you can check the
 machine's reasoning against the same pictures it used. A verdict you cannot
@@ -443,8 +504,9 @@ console-specific planner needs no changes to the framework.
 Run the diagnostic. It probes every video device and saves a frame from each,
 so you can look rather than guess:
 
-```bash
-python ../temp_code_test/agentic/diagnose_capture.py
+```powershell
+xbox-agentic health                 # reports device, resolution, std/tones
+python dev\probes\peek_small.py     # save one frame to scratch/ and look at it
 ```
 
 Reading the numbers (measured on this rig):
@@ -475,8 +537,8 @@ than an obvious failure. Smoke test 10 guards the mechanism.
 Text criteria (`text_present`, `no_error_dialog`) need OCR. Check what is
 usable on this machine:
 
-```bash
-python _check_ocr.py        # tests both engines against a real captured frame
+```powershell
+python dev\probes\check_ocr.py     # which configured engines load and run
 ```
 
 Two engines are tried in the order set by `verification.ocr.engines`:
@@ -502,16 +564,20 @@ Verified on this rig: tesseract reads the Xbox game-details page cleanly
 
 ## Development
 
-```bash
-python ../temp_code_test/agentic/smoke_test.py       # 11 wiring checks, no hardware needed
-python ../temp_code_test/agentic/test_fixes.py       # 6 regression tests for bugs found in live runs
-python _check_ocr.py        # is OCR usable? read a real frame with each engine
-python ../temp_code_test/agentic/diagnose_capture.py # probe every video device, save a frame from each
-python ../temp_code_test/agentic/inspect_run.py      # summarise the latest run: plan, steps, verdict
-python ../temp_code_test/agentic/verify_report.py    # confirm the report's screenshots actually resolve
+```powershell
+python -m pytest                        # offline suite: no hardware, no API key
+ruff check . ; mypy                     # lint + type check (also run in CI)
+pre-commit install                      # run the same gates on every commit
+xbox-agentic health                     # probe GIMX + capture on the real rig
+python dev\probes\peek_small.py         # save one small frame to scratch/
 ```
 
-`_test_fixes.py` guards three bugs that only appeared against real hardware:
+Hardware probes and calibration scripts are in `dev/` (see `dev/README.md`).
+Older diagnostics (`diagnose_capture.py`, `inspect_run.py`, `smoke_test.py`)
+exist only in a local, git-ignored `../temp_code_test/agentic/` folder on the
+original rig; they are not part of this repository.
+
+The historical regression list below is now covered by `tests/`:
 
 1. **A wrong argument name aborted the run.** The planner wrote
    `wait_for_stable_screen(stability_duration=...)`; the real parameter is

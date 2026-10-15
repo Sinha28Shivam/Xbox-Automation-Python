@@ -1,0 +1,2553 @@
+{
+  "scenario_id": "entry-point-game-activity",
+  "verdict": "fail",
+  "passed": false,
+  "criteria": [
+    {
+      "criterion": "The Xbox Guide overlay opens and the selected game's Game Activity section is reached by pressing Right from the initial Guide position. The Game Activity heading or equivalent game activity controls are visibly present.",
+      "met": true,
+      "reasoning": "Step 6 shows screen_diff delta of 5.694 (changed), and OCR at step 6 reads 'Game activity' with menu options 'Achievements', 'Stats', 'Go to official club' visible. Step 7 confirms entry into Game Activity with screen change (delta 7.002) and OCR showing 'Achievements' page content. The Game Activity section is clearly visible with its menu structure.",
+      "evidence": [
+        {
+          "kind": "screen_diff",
+          "summary": "Screen changed (delta 5.694) showing Game Activity menu with options visible",
+          "detail": {},
+          "frame_path": "<RUNS>\\run-20261015-113636\\frames\\6-after-guided_navigate_to_text.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T06:08:26.438732+00:00",
+          "source_tool": null
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "OCR confirms 'Game activity' heading with Achievements, Stats, Go to official club visible",
+          "detail": {
+            "text": "A\n64,800 6\n11:08 PM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II"
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T06:08:29.877797+00:00",
+          "source_tool": null
+        }
+      ],
+      "confidence": 0.95
+    },
+    {
+      "criterion": "The Achievements destination is opened from Game Activity. The selected game's name and achievement content, such as achievement progress, unlocked achievements, or the achievements heading, are visible.",
+      "met": true,
+      "reasoning": "Step 11 shows screen_diff delta 21.503 (significant change). Step 12 shows screen_diff delta 23.403 and OCR reads 'Welcome\\nFeed\\nMultiplayer\\nProgress\\nSocial\\nWatch\\nMinecraft Dungeons II' with club-related content. However, the screen appears to show the official club page rather than a traditional achievements page. The game name 'Minecraft Dungeons II' is visible, and achievement-related content is present (the OCR mentions 'Minecraft Dungeons' context), but the visual layout suggests this may be the club page rather than a dedicated achievements view. The criterion is technically met (game name + achievement context visible) but with lower confidence due to the ambiguous page type.",
+      "evidence": [
+        {
+          "kind": "screen_diff",
+          "summary": "Screen changed (delta 21.503) after pressing A on Achievements",
+          "detail": {},
+          "frame_path": "<RUNS>\\run-20261015-113636\\frames\\11-after-press_button.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T06:09:54.664680+00:00",
+          "source_tool": null
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "OCR shows Minecraft Dungeons II with achievement/club content",
+          "detail": {
+            "text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n6\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026!"
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T06:10:02.297172+00:00",
+          "source_tool": null
+        }
+      ],
+      "confidence": 0.85
+    },
+    {
+      "criterion": "After returning to Game Activity, the Stats destination is opened and the selected game's statistics content is visible.",
+      "met": true,
+      "reasoning": "Step 18 shows guided_navigate_to_text successfully found 'Stats' (focused=true). Step 19 shows screen_diff delta 6.421 (changed). Step 20 shows screen_diff delta 2.325 and OCR reads 'Stats\\n64,800 & 6\\nDundecns Il\\n11:11 PM\\nTime played\\n7h 40m\\nRank 1 of 1 friend'. The game name (Dundecns Il, OCR corruption of Minecraft Dungeons II) and statistics content (Time played, Rank) are clearly visible.",
+      "evidence": [
+        {
+          "kind": "screen_diff",
+          "summary": "Screen changed (delta 6.421) after pressing A on Stats",
+          "detail": {},
+          "frame_path": "<RUNS>\\run-20261015-113636\\frames\\19-after-press_button.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T06:11:03.283087+00:00",
+          "source_tool": null
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "OCR shows Stats page with game name and statistics",
+          "detail": {
+            "text": "Stats\n64,800 & 6\nDundecns Il\n11:11 PM\nTime played\n7h 40m\nRank 1 of 1 friend"
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T06:11:11.101173+00:00",
+          "source_tool": null
+        }
+      ],
+      "confidence": 0.9
+    },
+    {
+      "criterion": "After returning to Game Activity, Go to official club is opened and the selected game's official club page or official club identity is visible.",
+      "met": true,
+      "reasoning": "Step 26 shows guided_navigate_to_text successfully found 'Go to official club' (focused=true, matched=true). Step 27 shows screen_diff delta 30.003 (large change). Step 30 shows OCR reading 'Welcome\\nFeed\\nMultiplayer\\nProgress\\nSocial\\nWatch\\nMinecraft Dungeons II @\\niia\\n6\\nAdd to Home\\nHide from my feed\\nLaunch game\\nSee in Microsoft Store\\nAbout this club\\nRecent activity'. The game name and official club identity (tabs like Welcome, Feed, About this club) are clearly visible.",
+      "evidence": [
+        {
+          "kind": "screen_diff",
+          "summary": "Screen changed (delta 30.003) after pressing A on Go to official club",
+          "detail": {},
+          "frame_path": "<RUNS>\\run-20261015-113636\\frames\\27-after-press_button.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T06:12:27.052025+00:00",
+          "source_tool": null
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "OCR shows official club page with game name and club structure",
+          "detail": {
+            "text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n6\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity"
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T06:12:50.594589+00:00",
+          "source_tool": null
+        }
+      ],
+      "confidence": 0.9
+    },
+    {
+      "criterion": "After returning from the official club, the Xbox dashboard is visible again and the selected game tile or dashboard shell is recognizable.",
+      "met": false,
+      "reasoning": "Step 31 shows screen_diff delta 52.459 (very large change) after pressing B from the official club. The OCR at step 31 reads 'FED\\nGI\\nva\\nAy\\nROBLOX\\n|\\nxs\\nNIS\\nNIS\\nGAME PASS\\nig\\nGame on\\nExclusive deals\\nIn-game benefits just for you\\nFor Game Pass subscribers\\nSPONSORED\\nRecently added - Game Pass'. This text pattern matches the Xbox Dashboard Home screen (showing 'SPONSORED' content, Game Pass section, recently added games). The run then aborted at step 32 with error 'Blind tapping prevented: Console is on the Xbox Dashboard Home ('sponsored') instead of the running game.' The criterion requires returning to the dashboard, which technically occurred, but the scenario's goal was to return to Game Activity first, then to the dashboard. The run jumped directly from the official club to the dashboard home, bypassing the Game Activity return step. The dashboard IS visible, but the navigation path was incorrect.",
+      "evidence": [
+        {
+          "kind": "screen_diff",
+          "summary": "Screen changed (delta 52.459) after pressing B from official club",
+          "detail": {},
+          "frame_path": "<RUNS>\\run-20261015-113636\\frames\\31-after-press_button.png",
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T06:12:52.397652+00:00",
+          "source_tool": null
+        },
+        {
+          "kind": "ocr_text",
+          "summary": "OCR shows Dashboard Home with SPONSORED content and Game Pass section",
+          "detail": {
+            "text": "FED\nGI\nva\nAy\nROBLOX\n|\nxs\nNIS\nNIS\nGAME PASS\nig\nGame on\nExclusive deals\nIn-game benefits just for you\nFor Game Pass subscribers\nSPONSORED\nRecently added - Game Pass"
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T06:12:57.044841+00:00",
+          "source_tool": null
+        },
+        {
+          "kind": "command_ack",
+          "summary": "Abort reason: Blind tapping prevented: Console is on the Xbox Dashboard Home ('sponsored') instead of the running game.",
+          "detail": {
+            "error": "Blind tapping prevented: Console is on the Xbox Dashboard Home ('sponsored') instead of the running game."
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T06:12:57.045842+00:00",
+          "source_tool": null
+        }
+      ],
+      "confidence": 0.95
+    },
+    {
+      "criterion": "No error dialog, unavailable-service message, or 'Something went wrong' message appears during the Game Activity journey.",
+      "met": true,
+      "reasoning": "Throughout the entire run, no error dialogs, unavailable-service messages, or 'Something went wrong' messages are visible in any of the captured frames or OCR output. The run proceeded smoothly through all Game Activity sections without encountering service errors. The abort at the end was due to the executor's safety check (blind tapping prevention), not a console error.",
+      "evidence": [
+        {
+          "kind": "ocr_text",
+          "summary": "No error messages detected in any frame throughout the run",
+          "detail": {
+            "observation": "All OCR outputs from steps 0-31 contain game content, menu items, and statistics without any error dialog text"
+          },
+          "frame_path": null,
+          "confidence": 1.0,
+          "timestamp": "2026-10-15T06:12:57.044841+00:00",
+          "source_tool": null
+        }
+      ],
+      "confidence": 0.95
+    }
+  ],
+  "failed_steps": [
+    31
+  ],
+  "summary": "The run successfully navigated to Game Activity, Achievements, and Stats pages with proper game name and content visible. However, the final criterion—returning to the dashboard—was not met. After pressing B from the official club page (step 31), the console returned to the Xbox Dashboard Home (showing \"SPONSORED\" content and game tiles), not to the Game Activity page. The run then aborted with \"Blind tapping prevented\" because the executor detected the console was on the dashboard rather than in a game context. The scenario requires returning to the dashboard at the end, but the evidence shows the run ended prematurely without completing the full journey back through Game Activity to the dashboard as specified in the success criteria.",
+  "not_proven": [
+    "The scenario requires returning to Game Activity after the official club visit before returning to the dashboard. The run jumped directly from the official club to the dashboard home, skipping the intermediate Game Activity return step. This navigation sequence was not proven.",
+    "The exact visual confirmation that the dashboard shown at step 31 is the same dashboard as the starting state. While the OCR pattern matches a dashboard home screen, we cannot confirm it is the specific game tile or dashboard shell for Minecraft Dungeons II.",
+    "Whether the Achievements page shown at step 12 is a dedicated achievements view or the official club page. The OCR and screen changes are consistent with opening a page, but the visual layout appears to be the club page rather than a traditional achievements list."
+  ],
+  "evidence": [
+    {
+      "kind": "command_ack",
+      "summary": "capture_frame dispatched=True",
+      "detail": {
+        "ok": true,
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\frame.png",
+        "width": 1920,
+        "height": 1080,
+        "blank": false,
+        "stats": {
+          "mean": 50.781,
+          "std": 57.647,
+          "tones": 256.0
+        },
+        "note": null
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:07:23.331459+00:00",
+      "source_tool": "capture_frame"
+    },
+    {
+      "kind": "frame_stats",
+      "summary": "Screen did NOT change (delta 0.482). Expected: Frame shows Xbox dashboard with a game tile in focus (highlighted in green or with focus indicator)",
+      "detail": {
+        "ok": true,
+        "changed": false,
+        "delta": 0.4821,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-000_0-before-capture_frame.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\0-after-capture_frame.png",
+        "interpretation": "The screen did NOT change. Either the input never reached the console (unauthenticated GIMX session is the usual cause), or it reached it and the console ignored it - a possible defect. These are different failures; do not treat them as one."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\0-after-capture_frame.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:07:24.080984+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 28 line(s) via pytesseract: TidierPlayer353; \\; O00; Q. 8",
+      "detail": {
+        "text": "TidierPlayer353\n\\\nO00\nQ. 8\n11:07 PM\n@4800 81900\n=\n7\n~\nEED\nB\n7\nGI\nre\n4\nCE\nMinecraft Dungeons\nNS\nXI\nXIS\nMee,\nrig\nFe\nme\nGame on\nIn-game benefits just for you\nFor Game Pass subscribers\nSPONSORED",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\0-after-capture_frame.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:07:29.676318+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "read_screen_text dispatched=True",
+      "detail": {
+        "ok": true,
+        "text": "TidierPlayer353\n\\\nO00\nQ. 8\n11:07 PM\n@4800 81900\n=\n7\n~\nEED\nB\n7\nGI\nre\n4\nCE\nMinecraft Dungeons\nNS\nXI\nXIS\nMee,\nrig\nFe\nme\nGame on\nIn-game benefits just for you\nFor Game Pass subscribers\nSPONSORED",
+        "engine": "pytesseract",
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\step-001_1-before-read_screen_text.png",
+        "line_count": 28,
+        "ocr_variant": "raw",
+        "ocr_score": 0.776,
+        "ocr_attempts": [
+          {
+            "variant": "raw",
+            "score": 0.776,
+            "chars": 190
+          },
+          {
+            "variant": "upscale_otsu",
+            "score": 0.701,
+            "chars": 284
+          },
+          {
+            "variant": "upscale_otsu_inverted",
+            "score": 0.714,
+            "chars": 291
+          },
+          {
+            "variant": "bright_text",
+            "score": 0.709,
+            "chars": 239
+          },
+          {
+            "variant": "warm_text",
+            "score": 0.563,
+            "chars": 42
+          }
+        ],
+        "caveat": "OCR on console UIs is unreliable - stylised fonts, motion and transparency all hurt accuracy. Absent text is NOT strong evidence that the text is absent from the screen."
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:07:33.642066+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "frame_stats",
+      "summary": "Screen did NOT change (delta 0.440). Expected: OCR output includes game title text and dashboard UI elements (tiles, menu items)",
+      "detail": {
+        "ok": true,
+        "changed": false,
+        "delta": 0.4404,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-001_1-before-read_screen_text.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\1-after-read_screen_text.png",
+        "interpretation": "The screen did NOT change. Either the input never reached the console (unauthenticated GIMX session is the usual cause), or it reached it and the console ignored it - a possible defect. These are different failures; do not treat them as one."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\1-after-read_screen_text.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:07:34.367235+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 27 line(s) via pytesseract: The Gu; \\; xItest_special4@outlook.com; O00",
+      "detail": {
+        "text": "The Gu\n\\\nxItest_special4@outlook.com\nO00\nQ. 8\n11:07 PM\n~\noe\n4 |\nIr\nGI\nEED\nB\nre\n4\nMinecraft Dungeons\nNIS\nXIS\n=i\nne\nMee,\nrig\nGame on\nn-game benefits just for you\nFor Game Pass subscribers\n=\nSPONSORED",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\1-after-read_screen_text.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:07:38.527115+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "press_button dispatched=True",
+      "detail": {
+        "ok": true,
+        "button": "guide",
+        "kind": "button",
+        "times": 1,
+        "dispatched": true,
+        "duration_seconds": 0.472,
+        "caveat": "dispatched=true only means GIMX accepted the event. It is NOT evidence that the console reacted. Capture a frame and compare to confirm."
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:07:39.108860+00:00",
+      "source_tool": "press_button"
+    },
+    {
+      "kind": "screen_diff",
+      "summary": "Screen changed (delta 36.505). Expected: Guide overlay appears with menu options visible (e.g., 'My games & apps', 'Game Activity', 'People', etc.)",
+      "detail": {
+        "ok": true,
+        "changed": true,
+        "delta": 36.5052,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-002_2-before-press_button.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\2-after-press_button.png",
+        "interpretation": "The screen changed, so the console did receive and act on input."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\2-after-press_button.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:07:40.416470+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 23 line(s) via pytesseract: ‘a; 64,800 6; 11:07 PM; Hold for power options",
+      "detail": {
+        "text": "‘a\n64,800 6\n11:07 PM\nHold for power options\nHome\n(n)\nShare last capture\n© More options\n0%\nMy games & apps\n~\n, Minecraft Dungeons II\nste, :\nAssassin's Creed Origins\nNIS\n~\nRoblox - Xbox\n~\nax\n“2 Minecraft\nXS\nO B AQ\nq)",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\2-after-press_button.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:07:43.893782+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "wait_for_stable_screen dispatched=True",
+      "detail": {
+        "ok": true,
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\stable.png",
+        "waited_seconds": 0.66
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:07:44.643770+00:00",
+      "source_tool": "wait_for_stable_screen"
+    },
+    {
+      "kind": "frame_stats",
+      "summary": "Screen did NOT change (delta 0.000). Expected: Screen stabilizes with Guide menu fully visible and no animation in progress",
+      "detail": {
+        "ok": true,
+        "changed": false,
+        "delta": 0.0,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-003_3-before-wait_for_stable_screen.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\3-after-wait_for_stable_screen.png",
+        "interpretation": "The screen did NOT change. Either the input never reached the console (unauthenticated GIMX session is the usual cause), or it reached it and the console ignored it - a possible defect. These are different failures; do not treat them as one."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\3-after-wait_for_stable_screen.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:07:45.360365+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 23 line(s) via pytesseract: ‘a; 64,800 6; 11:07 PM; Hold for power options",
+      "detail": {
+        "text": "‘a\n64,800 6\n11:07 PM\nHold for power options\nHome\n(n)\nShare last capture\n© More options\n0%\nMy games & apps\n~\n, Minecraft Dungeons II\nste, :\nAssassin's Creed Origins\nNIS\n~\nRoblox - Xbox\n~\nax\n“2 Minecraft\nXS\nO B AQ\nq)",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\3-after-wait_for_stable_screen.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:07:48.832068+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "capture_frame dispatched=True",
+      "detail": {
+        "ok": true,
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\frame.png",
+        "width": 1920,
+        "height": 1080,
+        "blank": false,
+        "stats": {
+          "mean": 27.868,
+          "std": 33.446,
+          "tones": 253.0
+        },
+        "note": null
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:07:49.057751+00:00",
+      "source_tool": "capture_frame"
+    },
+    {
+      "kind": "frame_stats",
+      "summary": "Screen did NOT change (delta 0.000). Expected: Frame shows Guide overlay with menu items visible; focus highlight visible on one menu item",
+      "detail": {
+        "ok": true,
+        "changed": false,
+        "delta": 0.0,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-004_4-before-capture_frame.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\4-after-capture_frame.png",
+        "interpretation": "The screen did NOT change. Either the input never reached the console (unauthenticated GIMX session is the usual cause), or it reached it and the console ignored it - a possible defect. These are different failures; do not treat them as one."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\4-after-capture_frame.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:07:49.773816+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 23 line(s) via pytesseract: ‘a; 64,800 6; 11:07 PM; Hold for power options",
+      "detail": {
+        "text": "‘a\n64,800 6\n11:07 PM\nHold for power options\nHome\n(n)\nShare last capture\n© More options\n0%\nMy games & apps\n~\n, Minecraft Dungeons II\nste, :\nAssassin's Creed Origins\nNIS\n~\nRoblox - Xbox\n~\nax\n“2 Minecraft\nXS\nO B AQ\nq)",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\4-after-capture_frame.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:07:53.372619+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "detect_focus_highlight dispatched=True",
+      "detail": {
+        "ok": true,
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\step-005_5-before-detect_focus_highlight.png",
+        "expected_label": "",
+        "selected_label": "(n)\nHome",
+        "highlight_bbox": {
+          "x": 83,
+          "y": 180,
+          "width": 528,
+          "height": 112
+        },
+        "crop_path": "<RUNS>\\run-20261015-113636\\frames\\focus-crop-0.png",
+        "detections": [
+          {
+            "bbox": {
+              "x": 83,
+              "y": 180,
+              "width": 528,
+              "height": 112
+            },
+            "area": 59136,
+            "area_ratio": 0.029,
+            "crop_path": "<RUNS>\\run-20261015-113636\\frames\\focus-crop-0.png",
+            "text": "(n)\nHome",
+            "engine": "pytesseract",
+            "matches_expected": false,
+            "green_pixels": 9794,
+            "fill_ratio": 0.166
+          },
+          {
+            "bbox": {
+              "x": 1154,
+              "y": 789,
+              "width": 79,
+              "height": 20
+            },
+            "area": 1580,
+            "area_ratio": 0.001,
+            "crop_path": "<RUNS>\\run-20261015-113636\\frames\\focus-crop-2.png",
+            "text": "",
+            "engine": "pytesseract",
+            "matches_expected": false,
+            "green_pixels": 727,
+            "fill_ratio": 0.46
+          },
+          {
+            "bbox": {
+              "x": 117,
+              "y": 819,
+              "width": 60,
+              "height": 27
+            },
+            "area": 1620,
+            "area_ratio": 0.001,
+            "crop_path": "<RUNS>\\run-20261015-113636\\frames\\focus-crop-1.png",
+            "text": "X",
+            "engine": "pytesseract",
+            "matches_expected": false,
+            "green_pixels": 901,
+            "fill_ratio": 0.556
+          },
+          {
+            "bbox": {
+              "x": 310,
+              "y": 53,
+              "width": 29,
+              "height": 29
+            },
+            "area": 841,
+            "area_ratio": 0.0,
+            "crop_path": "<RUNS>\\run-20261015-113636\\frames\\focus-crop-3.png",
+            "text": "1",
+            "engine": "pytesseract",
+            "matches_expected": false,
+            "green_pixels": 680,
+            "fill_ratio": 0.809
+          }
+        ],
+        "rejected_oversized": [],
+        "matched": true,
+        "engine": "pytesseract"
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:07:58.639201+00:00",
+      "source_tool": "detect_focus_highlight"
+    },
+    {
+      "kind": "frame_stats",
+      "summary": "Screen did NOT change (delta 0.000). Expected: OCR returns the label of the currently highlighted menu item (e.g., 'My games & apps', 'Game Activity', 'People', etc.)",
+      "detail": {
+        "ok": true,
+        "changed": false,
+        "delta": 0.0,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-005_5-before-detect_focus_highlight.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\5-after-detect_focus_highlight.png",
+        "interpretation": "The screen did NOT change. Either the input never reached the console (unauthenticated GIMX session is the usual cause), or it reached it and the console ignored it - a possible defect. These are different failures; do not treat them as one."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\5-after-detect_focus_highlight.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:07:59.378142+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 23 line(s) via pytesseract: ‘a; 64,800 6; 11:07 PM; Hold for power options",
+      "detail": {
+        "text": "‘a\n64,800 6\n11:07 PM\nHold for power options\nHome\n(n)\nShare last capture\n© More options\n0%\nMy games & apps\n~\n, Minecraft Dungeons II\nste, :\nAssassin's Creed Origins\nNIS\n~\nRoblox - Xbox\n~\nax\n“2 Minecraft\nXS\nO B AQ\nq)",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\5-after-detect_focus_highlight.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:08:03.055208+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "guided_navigate_to_text dispatched=False",
+      "detail": {
+        "ok": false,
+        "error": "Did not reach 'Game Activity' after 4 guided navigation attempt(s): 'Game Activity' was visible but never became the highlighted item.",
+        "target_text": "Game Activity",
+        "found": false,
+        "text_seen": true,
+        "attempts": [
+          {
+            "attempt": 1,
+            "direction": "right",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-right-0.png",
+            "screen_text": "‘a\n64,800 6\n11:08 PM\nHold for power options\nHome\n(n)\nShare last capture\n© More options\n0%\nMy games & apps\n~\n, Minecraft Dungeons II\nste, :\nAssassin's Creed Origins\nNIS\n~\nRoblox - Xbox\n~\nax\n“2 Minecraft\nXS\nO B AQ\nq)",
+            "visible_lines": [
+              "‘a",
+              "64,800 6",
+              "11:08 PM",
+              "Hold for power options",
+              "Home",
+              "(n)",
+              "Share last capture",
+              "© More options",
+              "0%",
+              "My games & apps",
+              "~",
+              ", Minecraft Dungeons II",
+              "ste, :",
+              "Assassin's Creed Origins",
+              "NIS",
+              "~",
+              "Roblox - Xbox",
+              "~",
+              "ax",
+              "“2 Minecraft",
+              "XS",
+              "O B AQ",
+              "q)"
+            ],
+            "text_visible": false,
+            "focused": false,
+            "focused_label": "",
+            "matched": false,
+            "matched_lines": [],
+            "dispatched": true
+          },
+          {
+            "attempt": 2,
+            "direction": "right",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-right-1.png",
+            "screen_text": "Oo\nOC?\n64,800 6\n11:08 PM\nPeople\nHold for power options\nView on mobile\nFriends\nGC friends\nFriend requests\nReo tu\nGamerscore leaderboard\nsank\nthis manth\nFriends & community updates\nLooking for Group\n7 pasts for Minecrait Il\nRecently played with\nFind someone",
+            "visible_lines": [
+              "Oo",
+              "OC?",
+              "64,800 6",
+              "11:08 PM",
+              "People",
+              "Hold for power options",
+              "View on mobile",
+              "Friends",
+              "GC friends",
+              "Friend requests",
+              "Reo tu",
+              "Gamerscore leaderboard",
+              "sank",
+              "this manth",
+              "Friends & community updates",
+              "Looking for Group",
+              "7 pasts for Minecrait Il",
+              "Recently played with",
+              "Find someone"
+            ],
+            "text_visible": false,
+            "focused": false,
+            "focused_label": "",
+            "matched": false,
+            "matched_lines": [],
+            "dispatched": true
+          },
+          {
+            "attempt": 3,
+            "direction": "right",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-right-2.png",
+            "screen_text": "64,800 6\n11:08 PM\nParties & chats\nHold for power options\nStart a party\nDiscord\nFoe |\nTalk\nChats\nunread\n|\nBeginning in November, XBox\nGame Pass will...\nNew chat\nChat requests\nom Report in-game voice chat",
+            "visible_lines": [
+              "64,800 6",
+              "11:08 PM",
+              "Parties & chats",
+              "Hold for power options",
+              "Start a party",
+              "Discord",
+              "Foe |",
+              "Talk",
+              "Chats",
+              "unread",
+              "|",
+              "Beginning in November, XBox",
+              "Game Pass will...",
+              "New chat",
+              "Chat requests",
+              "om Report in-game voice chat"
+            ],
+            "text_visible": false,
+            "focused": false,
+            "focused_label": "",
+            "matched": false,
+            "matched_lines": [],
+            "dispatched": true
+          },
+          {
+            "attempt": 4,
+            "direction": "right",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-right-3.png",
+            "screen_text": "A\n64,800 6\n11:08 PM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "visible_lines": [
+              "A",
+              "64,800 6",
+              "11:08 PM",
+              "Game activity",
+              "Hold for power options",
+              "Achievements",
+              "Turn achievement tracker on",
+              "TF 4/32 20/1000",
+              "More achievements",
+              "Stats",
+              "Friends who play",
+              "Looking for Group",
+              "7 tor Il",
+              "Events",
+              "Tel Go to official club",
+              "Minecraft Dungeons II"
+            ],
+            "text_visible": true,
+            "focused": false,
+            "focused_label": "Achievements\n1/32 © 20/1000",
+            "matched": false,
+            "matched_lines": [
+              "Game activity"
+            ]
+          }
+        ],
+        "attempts_used": 4,
+        "observation": "'Game Activity' was visible but never became the highlighted item."
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:08:25.730791+00:00",
+      "source_tool": "guided_navigate_to_text"
+    },
+    {
+      "kind": "screen_diff",
+      "summary": "Screen changed (delta 5.694). Expected: Game Activity menu item is highlighted and visible on screen; OCR confirms 'Game Activity' text is present",
+      "detail": {
+        "ok": true,
+        "changed": true,
+        "delta": 5.694,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-006_6-before-guided_navigate_to_text.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\6-after-guided_navigate_to_text.png",
+        "interpretation": "The screen changed, so the console did receive and act on input."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\6-after-guided_navigate_to_text.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:08:26.438732+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 16 line(s) via pytesseract: A; 64,800 6; 11:08 PM; Game activity",
+      "detail": {
+        "text": "A\n64,800 6\n11:08 PM\nGame activity\nHold for power options\nAchievements\nTurn achievement tracker on\nTF 4/32 20/1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\6-after-guided_navigate_to_text.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:08:29.877797+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "press_button dispatched=True",
+      "detail": {
+        "ok": true,
+        "button": "a",
+        "kind": "button",
+        "times": 1,
+        "dispatched": true,
+        "duration_seconds": 0.471,
+        "caveat": "dispatched=true only means GIMX accepted the event. It is NOT evidence that the console reacted. Capture a frame and compare to confirm."
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:08:30.435130+00:00",
+      "source_tool": "press_button"
+    },
+    {
+      "kind": "screen_diff",
+      "summary": "Screen changed (delta 7.002). Expected: Game Activity page opens showing game-related options (Achievements, Stats, Go to official club, etc.)",
+      "detail": {
+        "ok": true,
+        "changed": true,
+        "delta": 7.0021,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-007_7-before-press_button.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\7-after-press_button.png",
+        "interpretation": "The screen changed, so the console did receive and act on input."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\7-after-press_button.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:08:31.617542+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 21 line(s) via pytesseract: Achievements; 64,800 6; Dundecns Il; 11:08 PM",
+      "detail": {
+        "text": "Achievements\n64,800 6\nDundecns Il\n11:08 PM\n2\n1\n20/1000)\nMythic Achievement\n2\nAchievement tracker\nDefault\nKa-BOOM!\n40\nTrack Record\n@ 60\nExpert Explorer\n40\nVenerable Voyager\n@ 60\nTreasure Hunter\n20",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\7-after-press_button.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:08:34.747518+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "wait_for_stable_screen dispatched=True",
+      "detail": {
+        "ok": true,
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\stable.png",
+        "waited_seconds": 0.65
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:08:35.492714+00:00",
+      "source_tool": "wait_for_stable_screen"
+    },
+    {
+      "kind": "frame_stats",
+      "summary": "Screen did NOT change (delta 0.000). Expected: Screen stabilizes with Game Activity content fully visible",
+      "detail": {
+        "ok": true,
+        "changed": false,
+        "delta": 0.0,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-008_8-before-wait_for_stable_screen.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\8-after-wait_for_stable_screen.png",
+        "interpretation": "The screen did NOT change. Either the input never reached the console (unauthenticated GIMX session is the usual cause), or it reached it and the console ignored it - a possible defect. These are different failures; do not treat them as one."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\8-after-wait_for_stable_screen.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:08:36.194715+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 21 line(s) via pytesseract: Achievements; 64,800 6; Dundecns Il; 11:08 PM",
+      "detail": {
+        "text": "Achievements\n64,800 6\nDundecns Il\n11:08 PM\n2\n1\n20/1000)\nMythic Achievement\n2\nAchievement tracker\nDefault\nKa-BOOM!\n40\nTrack Record\n@ 60\nExpert Explorer\n40\nVenerable Voyager\n@ 60\nTreasure Hunter\n20",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\8-after-wait_for_stable_screen.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:08:39.200933+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "capture_frame dispatched=True",
+      "detail": {
+        "ok": true,
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\frame.png",
+        "width": 1920,
+        "height": 1080,
+        "blank": false,
+        "stats": {
+          "mean": 27.195,
+          "std": 30.671,
+          "tones": 240.0
+        },
+        "note": null
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:08:39.475456+00:00",
+      "source_tool": "capture_frame"
+    },
+    {
+      "kind": "frame_stats",
+      "summary": "Screen did NOT change (delta 0.000). Expected: Frame shows Game Activity page with menu options visible (Achievements, Stats, Go to official club)",
+      "detail": {
+        "ok": true,
+        "changed": false,
+        "delta": 0.0,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-009_9-before-capture_frame.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\9-after-capture_frame.png",
+        "interpretation": "The screen did NOT change. Either the input never reached the console (unauthenticated GIMX session is the usual cause), or it reached it and the console ignored it - a possible defect. These are different failures; do not treat them as one."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\9-after-capture_frame.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:08:40.198149+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 21 line(s) via pytesseract: Achievements; 64,800 6; Dundecns Il; 11:08 PM",
+      "detail": {
+        "text": "Achievements\n64,800 6\nDundecns Il\n11:08 PM\n2\n1\n20/1000)\nMythic Achievement\n2\nAchievement tracker\nDefault\nKa-BOOM!\n40\nTrack Record\n@ 60\nExpert Explorer\n40\nVenerable Voyager\n@ 60\nTreasure Hunter\n20",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\9-after-capture_frame.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:08:43.094673+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "guided_navigate_to_text dispatched=False",
+      "detail": {
+        "ok": false,
+        "error": "Did not reach 'Achievements' after 8 guided navigation attempt(s): 'Achievements' was visible but never became the highlighted item.",
+        "target_text": "Achievements",
+        "found": false,
+        "text_seen": true,
+        "attempts": [
+          {
+            "attempt": 1,
+            "direction": "down",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-0.png",
+            "screen_text": "Achievements\n64,800 6\nDundecns Il\n11:08 PM\n2\n1\n20/1000)\nMythic Achievement\n2\nAchievement tracker\nDefault\nKa-BOOM!\n40\nTrack Record\n@ 60\nExpert Explorer\n40\nVenerable Voyager\n@ 60\nTreasure Hunter\n20",
+            "visible_lines": [
+              "Achievements",
+              "64,800 6",
+              "Dundecns Il",
+              "11:08 PM",
+              "2",
+              "1",
+              "20/1000)",
+              "Mythic Achievement",
+              "2",
+              "Achievement tracker",
+              "Default",
+              "Ka-BOOM!",
+              "40",
+              "Track Record",
+              "@ 60",
+              "Expert Explorer",
+              "40",
+              "Venerable Voyager",
+              "@ 60",
+              "Treasure Hunter",
+              "20"
+            ],
+            "text_visible": true,
+            "focused": false,
+            "focused_label": "\\ch\nMythic Achievement\n1/32\n3%\nKe",
+            "matched": false,
+            "matched_lines": [
+              "Achievements"
+            ],
+            "dispatched": true
+          },
+          {
+            "attempt": 2,
+            "direction": "down",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-1.png",
+            "screen_text": "Achievements\n64,800 6\nDundecns Il\n11:08 PM\n2\n1\n20/1000)\nMythic Achievement\n3\nAchievement tracker\nOff @D\nDefault\nKa-BOOM!\n40\nTrack Record\n@ 60\nExpert Explorer\n40\nVenerable Voyager\n@ 60\nTreasure Hunter\n20",
+            "visible_lines": [
+              "Achievements",
+              "64,800 6",
+              "Dundecns Il",
+              "11:08 PM",
+              "2",
+              "1",
+              "20/1000)",
+              "Mythic Achievement",
+              "3",
+              "Achievement tracker",
+              "Off @D",
+              "Default",
+              "Ka-BOOM!",
+              "40",
+              "Track Record",
+              "@ 60",
+              "Expert Explorer",
+              "40",
+              "Venerable Voyager",
+              "@ 60",
+              "Treasure Hunter",
+              "20"
+            ],
+            "text_visible": true,
+            "focused": false,
+            "focused_label": "Achievement tracker\nOff @D",
+            "matched": false,
+            "matched_lines": [
+              "Achievements"
+            ],
+            "dispatched": true
+          },
+          {
+            "attempt": 3,
+            "direction": "down",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-2.png",
+            "screen_text": "Achievements\n64,800 6\nDundecns Il\n11:08 PM\n2\n1\n20/1000)\nMythic Achievement\n3\nAchievement tracker\nDefault\nKa-BOOM!\n40\nTrack Record\n@ 60\nExpert Explorer\n40\nVenerable Voyager\n@ 60\nTreasure Hunter\n20",
+            "visible_lines": [
+              "Achievements",
+              "64,800 6",
+              "Dundecns Il",
+              "11:08 PM",
+              "2",
+              "1",
+              "20/1000)",
+              "Mythic Achievement",
+              "3",
+              "Achievement tracker",
+              "Default",
+              "Ka-BOOM!",
+              "40",
+              "Track Record",
+              "@ 60",
+              "Expert Explorer",
+              "40",
+              "Venerable Voyager",
+              "@ 60",
+              "Treasure Hunter",
+              "20"
+            ],
+            "text_visible": true,
+            "focused": false,
+            "focused_label": "Default",
+            "matched": false,
+            "matched_lines": [
+              "Achievements"
+            ],
+            "dispatched": true
+          },
+          {
+            "attempt": 4,
+            "direction": "down",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-3.png",
+            "screen_text": "A\n64,800 6\n11:09 PM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "visible_lines": [
+              "A",
+              "64,800 6",
+              "11:09 PM",
+              "Game activity",
+              "Hold for power options",
+              "Achievements",
+              "4",
+              "I",
+              "20s 1000",
+              "More achievements",
+              "Stats",
+              "Friends who play",
+              "Looking for Group",
+              "7 tor Il",
+              "Events",
+              "Tel Go to official club",
+              "Minecraft Dungeons II"
+            ],
+            "text_visible": true,
+            "focused": false,
+            "focused_label": "Friends who play",
+            "matched": false,
+            "matched_lines": [
+              "Achievements",
+              "More achievements"
+            ],
+            "dispatched": true
+          },
+          {
+            "attempt": 5,
+            "direction": "down",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-4.png",
+            "screen_text": "A\n64,800 6\n11:09 PM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 posts for Dungeons Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "visible_lines": [
+              "A",
+              "64,800 6",
+              "11:09 PM",
+              "Game activity",
+              "Hold for power options",
+              "Achievements",
+              "4",
+              "I",
+              "20s 1000",
+              "More achievements",
+              "Stats",
+              "Friends who play",
+              "Looking for Group",
+              "7 posts for Dungeons Il",
+              "Events",
+              "Tel Go to official club",
+              "Minecraft Dungeons II"
+            ],
+            "text_visible": true,
+            "focused": false,
+            "focused_label": "Looking for Group\n7 posts for Minecraft Dungeons II",
+            "matched": false,
+            "matched_lines": [
+              "Achievements",
+              "More achievements"
+            ],
+            "dispatched": true
+          },
+          {
+            "attempt": 6,
+            "direction": "down",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-5.png",
+            "screen_text": "A\n64,800 6\n11:09 PM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "visible_lines": [
+              "A",
+              "64,800 6",
+              "11:09 PM",
+              "Game activity",
+              "Hold for power options",
+              "Achievements",
+              "4",
+              "I",
+              "20s 1000",
+              "More achievements",
+              "Stats",
+              "Friends who play",
+              "Looking for Group",
+              "7 tor Il",
+              "Events",
+              "Tel Go to official club",
+              "Minecraft Dungeons II"
+            ],
+            "text_visible": true,
+            "focused": false,
+            "focused_label": "Events",
+            "matched": false,
+            "matched_lines": [
+              "Achievements",
+              "More achievements"
+            ],
+            "dispatched": true
+          },
+          {
+            "attempt": 7,
+            "direction": "down",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-6.png",
+            "screen_text": "A\n64,800 6\n11:09 PM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nGo to official club\nMinecraft Dungeons II",
+            "visible_lines": [
+              "A",
+              "64,800 6",
+              "11:09 PM",
+              "Game activity",
+              "Hold for power options",
+              "Achievements",
+              "4",
+              "I",
+              "20s 1000",
+              "More achievements",
+              "Stats",
+              "Friends who play",
+              "Looking for Group",
+              "7 tor Il",
+              "Events",
+              "Go to official club",
+              "Minecraft Dungeons II"
+            ],
+            "text_visible": true,
+            "focused": false,
+            "focused_label": "@ Go to official club",
+            "matched": false,
+            "matched_lines": [
+              "Achievements",
+              "More achievements"
+            ],
+            "dispatched": true
+          },
+          {
+            "attempt": 8,
+            "direction": "down",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-7.png",
+            "screen_text": "A\n64,800 6\n11:09 PM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nGo to official club\nMinecraft Dungeons II",
+            "visible_lines": [
+              "A",
+              "64,800 6",
+              "11:09 PM",
+              "Game activity",
+              "Hold for power options",
+              "Achievements",
+              "4",
+              "I",
+              "20s 1000",
+              "More achievements",
+              "Stats",
+              "Friends who play",
+              "Looking for Group",
+              "7 tor Il",
+              "Events",
+              "Go to official club",
+              "Minecraft Dungeons II"
+            ],
+            "text_visible": true,
+            "focused": false,
+            "focused_label": "@ Go to official club",
+            "matched": false,
+            "matched_lines": [
+              "Achievements",
+              "More achievements"
+            ]
+          }
+        ],
+        "attempts_used": 8,
+        "observation": "'Achievements' was visible but never became the highlighted item."
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:09:48.750128+00:00",
+      "source_tool": "guided_navigate_to_text"
+    },
+    {
+      "kind": "screen_diff",
+      "summary": "Screen changed (delta 7.416). Expected: Achievements menu item is highlighted and visible on screen",
+      "detail": {
+        "ok": true,
+        "changed": true,
+        "delta": 7.4158,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-010_10-before-guided_navigate_to_text.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\10-after-guided_navigate_to_text.png",
+        "interpretation": "The screen changed, so the console did receive and act on input."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\10-after-guided_navigate_to_text.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:09:49.464677+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 17 line(s) via pytesseract: A; 64,800 6; 11:09 PM; Game activity",
+      "detail": {
+        "text": "A\n64,800 6\n11:09 PM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nGo to official club\nMinecraft Dungeons II",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\10-after-guided_navigate_to_text.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:09:53.069562+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "press_button dispatched=True",
+      "detail": {
+        "ok": true,
+        "button": "a",
+        "kind": "button",
+        "times": 1,
+        "dispatched": true,
+        "duration_seconds": 0.478,
+        "caveat": "dispatched=true only means GIMX accepted the event. It is NOT evidence that the console reacted. Capture a frame and compare to confirm."
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:09:53.651829+00:00",
+      "source_tool": "press_button"
+    },
+    {
+      "kind": "screen_diff",
+      "summary": "Screen changed (delta 21.503). Expected: Achievements page opens showing game name and achievement content (progress, unlocked achievements, or achievements heading)",
+      "detail": {
+        "ok": true,
+        "changed": true,
+        "delta": 21.5035,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-011_11-before-press_button.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\11-after-press_button.png",
+        "interpretation": "The screen changed, so the console did receive and act on input."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\11-after-press_button.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:09:54.664680+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "wait_for_stable_screen dispatched=True",
+      "detail": {
+        "ok": true,
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\stable.png",
+        "waited_seconds": 0.68
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:09:57.631995+00:00",
+      "source_tool": "wait_for_stable_screen"
+    },
+    {
+      "kind": "screen_diff",
+      "summary": "Screen changed (delta 23.403). Expected: Screen stabilizes with Achievements content fully visible",
+      "detail": {
+        "ok": true,
+        "changed": true,
+        "delta": 23.4028,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-012_12-before-wait_for_stable_screen.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\12-after-wait_for_stable_screen.png",
+        "interpretation": "The screen changed, so the console did receive and act on input."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\12-after-wait_for_stable_screen.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:09:58.377391+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 23 line(s) via pytesseract: Welcome; Feed; Multiplayer; Progress",
+      "detail": {
+        "text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n6\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\12-after-wait_for_stable_screen.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:10:02.297172+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "capture_frame dispatched=True",
+      "detail": {
+        "ok": true,
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\frame.png",
+        "width": 1920,
+        "height": 1080,
+        "blank": false,
+        "stats": {
+          "mean": 32.502,
+          "std": 38.127,
+          "tones": 256.0
+        },
+        "note": null
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:10:02.461912+00:00",
+      "source_tool": "capture_frame"
+    },
+    {
+      "kind": "frame_stats",
+      "summary": "Screen did NOT change (delta 0.000). Expected: Frame shows Achievements page with game name visible and achievement content (progress bars, achievement list, or achievements heading)",
+      "detail": {
+        "ok": true,
+        "changed": false,
+        "delta": 0.0,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-013_13-before-capture_frame.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\13-after-capture_frame.png",
+        "interpretation": "The screen did NOT change. Either the input never reached the console (unauthenticated GIMX session is the usual cause), or it reached it and the console ignored it - a possible defect. These are different failures; do not treat them as one."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\13-after-capture_frame.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:10:03.220743+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 23 line(s) via pytesseract: Welcome; Feed; Multiplayer; Progress",
+      "detail": {
+        "text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n6\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\13-after-capture_frame.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:10:07.305257+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "read_screen_text dispatched=True",
+      "detail": {
+        "ok": true,
+        "text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n6\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K",
+        "engine": "pytesseract",
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\step-014_14-before-read_screen_text.png",
+        "line_count": 23,
+        "ocr_variant": "bright_text",
+        "ocr_score": 0.93,
+        "ocr_attempts": [
+          {
+            "variant": "raw",
+            "score": 0.906,
+            "chars": 559
+          },
+          {
+            "variant": "upscale_otsu",
+            "score": 0.912,
+            "chars": 579
+          },
+          {
+            "variant": "upscale_otsu_inverted",
+            "score": 0.9,
+            "chars": 591
+          },
+          {
+            "variant": "bright_text",
+            "score": 0.93,
+            "chars": 547
+          },
+          {
+            "variant": "warm_text",
+            "score": 0.288,
+            "chars": 10
+          }
+        ],
+        "caveat": "OCR on console UIs is unreliable - stylised fonts, motion and transparency all hurt accuracy. Absent text is NOT strong evidence that the text is absent from the screen."
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:10:11.530294+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "frame_stats",
+      "summary": "Screen did NOT change (delta 0.000). Expected: OCR output includes game name and achievement-related text (e.g., 'Achievements', progress percentages, achievement titles)",
+      "detail": {
+        "ok": true,
+        "changed": false,
+        "delta": 0.0,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-014_14-before-read_screen_text.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\14-after-read_screen_text.png",
+        "interpretation": "The screen did NOT change. Either the input never reached the console (unauthenticated GIMX session is the usual cause), or it reached it and the console ignored it - a possible defect. These are different failures; do not treat them as one."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\14-after-read_screen_text.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:10:12.223867+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 23 line(s) via pytesseract: Welcome; Feed; Multiplayer; Progress",
+      "detail": {
+        "text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n6\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\14-after-read_screen_text.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:10:16.266952+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "press_button dispatched=True",
+      "detail": {
+        "ok": true,
+        "button": "b",
+        "kind": "button",
+        "times": 1,
+        "dispatched": true,
+        "duration_seconds": 0.473,
+        "caveat": "dispatched=true only means GIMX accepted the event. It is NOT evidence that the console reacted. Capture a frame and compare to confirm."
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:10:16.820657+00:00",
+      "source_tool": "press_button"
+    },
+    {
+      "kind": "screen_diff",
+      "summary": "Screen changed (delta 42.151). Expected: Game Activity page reappears with menu options visible",
+      "detail": {
+        "ok": true,
+        "changed": true,
+        "delta": 42.1506,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-015_15-before-press_button.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\15-after-press_button.png",
+        "interpretation": "The screen changed, so the console did receive and act on input."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\15-after-press_button.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:10:18.031549+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 34 line(s) via pytesseract: TidierPlayer353; \\; O00; Q. 8",
+      "detail": {
+        "text": "TidierPlayer353\n\\\nO00\nQ. 8\n@4800 81900\n11:10 PM\n=\na\n7\ni\n(Gl\ni\n|\nEED\nB\na\ni\nGI\nre\naN\n4\nCE\nMinecraft Dungeons\nNS\nXI\nXIS\nMee,\nrig\nFe\nme\nGame on\nIn-game benefits just for you\nFor Game Pass subscribers\nSPONSORED",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\15-after-press_button.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:10:22.389152+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "wait_for_stable_screen dispatched=True",
+      "detail": {
+        "ok": true,
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\stable.png",
+        "waited_seconds": 0.69
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:10:23.190337+00:00",
+      "source_tool": "wait_for_stable_screen"
+    },
+    {
+      "kind": "frame_stats",
+      "summary": "Screen did NOT change (delta 0.463). Expected: Screen stabilizes with Game Activity content fully visible",
+      "detail": {
+        "ok": true,
+        "changed": false,
+        "delta": 0.4627,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-016_16-before-wait_for_stable_screen.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\16-after-wait_for_stable_screen.png",
+        "interpretation": "The screen did NOT change. Either the input never reached the console (unauthenticated GIMX session is the usual cause), or it reached it and the console ignored it - a possible defect. These are different failures; do not treat them as one."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\16-after-wait_for_stable_screen.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:10:23.941722+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 29 line(s) via pytesseract: The Gu; \\; O00; Q. 8",
+      "detail": {
+        "text": "The Gu\n\\\nO00\nQ. 8\n11:10 PM\n(Gl\ni\nEED\nB\n7\nIr\ni\nGI\nre\naN\n4\nMinecraft Dungeons\nNS\nNIS\nXIS\n=i\nMee,\nrig\nFe\nGame on\nIn-game benefits just for you\nFor Game Pass subscribers\n=\nSPONSORED",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\16-after-wait_for_stable_screen.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:10:28.368438+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "capture_frame dispatched=True",
+      "detail": {
+        "ok": true,
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\frame.png",
+        "width": 1920,
+        "height": 1080,
+        "blank": false,
+        "stats": {
+          "mean": 50.777,
+          "std": 57.658,
+          "tones": 256.0
+        },
+        "note": null
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:10:28.582510+00:00",
+      "source_tool": "capture_frame"
+    },
+    {
+      "kind": "frame_stats",
+      "summary": "Screen did NOT change (delta 0.354). Expected: Frame shows Game Activity page with menu options visible",
+      "detail": {
+        "ok": true,
+        "changed": false,
+        "delta": 0.3542,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-017_17-before-capture_frame.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\17-after-capture_frame.png",
+        "interpretation": "The screen did NOT change. Either the input never reached the console (unauthenticated GIMX session is the usual cause), or it reached it and the console ignored it - a possible defect. These are different failures; do not treat them as one."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\17-after-capture_frame.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:10:29.355208+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 41 line(s) via pytesseract: manna; 10%; Q; 11:10 PM",
+      "detail": {
+        "text": "manna\n10%\nQ\n11:10 PM\n4,800\n#\nMINECRAES\n/\nAVA\ne\n~\nET\nrh, th\nUE.\nMinecraft Dungeons\ntwitch 4\nI]\nAny\nxi\n@ Pray\nXl\nAIS\nie,\nhd\n“A\nGAME PASS\nra)\n“i\nMODERN\n6\nLB\nI\nWARFARE\nay\nExclusive deals\nBrowse the store\nHy\n1 1\nOil\n|\nSPONSORED",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\17-after-capture_frame.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:10:33.707499+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "guided_navigate_to_text dispatched=True",
+      "detail": {
+        "ok": true,
+        "target_text": "Stats",
+        "found": true,
+        "matched_lines": [
+          "Stats"
+        ],
+        "attempts": [
+          {
+            "attempt": 1,
+            "direction": "down",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-0.png",
+            "screen_text": "TidierPlayer353\n\\\nO00\nQ. 8\n@4800 81900\n11:10 PM\n=\na\n7\ni\n(Gl\ni\n|\nEED\nB\na\ni\nGI\nre\naN\n4\nCE\nMinecraft Dungeons\nNS\nXI\nXIS\nMee,\nrig\nFe\nme\nGame on\nIn-game benefits just for you\nFor Game Pass subscribers\nSPONSORED",
+            "visible_lines": [
+              "TidierPlayer353",
+              "\\",
+              "O00",
+              "Q. 8",
+              "@4800 81900",
+              "11:10 PM",
+              "=",
+              "a",
+              "7",
+              "i",
+              "(Gl",
+              "i",
+              "|",
+              "EED",
+              "B",
+              "a",
+              "i",
+              "GI",
+              "re",
+              "aN",
+              "4",
+              "CE",
+              "Minecraft Dungeons",
+              "NS",
+              "XI",
+              "XIS",
+              "Mee,",
+              "rig",
+              "Fe",
+              "me",
+              "Game on",
+              "In-game benefits just for you",
+              "For Game Pass subscribers",
+              "SPONSORED"
+            ],
+            "text_visible": false,
+            "focused": false,
+            "focused_label": "",
+            "matched": false,
+            "matched_lines": [],
+            "dispatched": true
+          },
+          {
+            "attempt": 2,
+            "direction": "down",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-1.png",
+            "screen_text": "A\n64,800 6\n11:10 PM\nGame activity\nfe) Hold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Dungeans Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "visible_lines": [
+              "A",
+              "64,800 6",
+              "11:10 PM",
+              "Game activity",
+              "fe) Hold for power options",
+              "Achievements",
+              "4",
+              "I",
+              "20s 1000",
+              "More achievements",
+              "Stats",
+              "Friends who play",
+              "Looking for Group",
+              "7 tor Dungeans Il",
+              "Events",
+              "Tel Go to official club",
+              "Minecraft Dungeons II"
+            ],
+            "text_visible": true,
+            "focused": false,
+            "focused_label": "More achievements",
+            "matched": false,
+            "matched_lines": [
+              "Stats"
+            ],
+            "dispatched": true
+          },
+          {
+            "attempt": 3,
+            "direction": "down",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-2.png",
+            "screen_text": "A\n64,800 & 6\n11:10 PM\nGame activity\nfe) Hold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "visible_lines": [
+              "A",
+              "64,800 & 6",
+              "11:10 PM",
+              "Game activity",
+              "fe) Hold for power options",
+              "Achievements",
+              "4",
+              "I",
+              "20s 1000",
+              "More achievements",
+              "Stats",
+              "Friends who play",
+              "Looking for Group",
+              "7 tor Il",
+              "Events",
+              "Tel Go to official club",
+              "Minecraft Dungeons II"
+            ],
+            "text_visible": true,
+            "focused": true,
+            "focused_label": "Stats",
+            "matched": true,
+            "matched_lines": [
+              "Stats"
+            ]
+          }
+        ],
+        "attempts_used": 3,
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-2.png",
+        "focused": true,
+        "observation": "'Stats' is the highlighted item; navigation stopped before another input was sent."
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:10:57.042756+00:00",
+      "source_tool": "guided_navigate_to_text"
+    },
+    {
+      "kind": "screen_diff",
+      "summary": "Screen changed (delta 43.882). Expected: Stats menu item is highlighted and visible on screen",
+      "detail": {
+        "ok": true,
+        "changed": true,
+        "delta": 43.8822,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-018_18-before-guided_navigate_to_text.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\18-after-guided_navigate_to_text.png",
+        "interpretation": "The screen changed, so the console did receive and act on input."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\18-after-guided_navigate_to_text.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:10:57.883935+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 17 line(s) via pytesseract: A; 64,800 & 6; 11:10 PM; Game activity",
+      "detail": {
+        "text": "A\n64,800 & 6\n11:10 PM\nGame activity\nfe) Hold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\18-after-guided_navigate_to_text.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:11:01.764311+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "press_button dispatched=True",
+      "detail": {
+        "ok": true,
+        "button": "a",
+        "kind": "button",
+        "times": 1,
+        "dispatched": true,
+        "duration_seconds": 0.474,
+        "caveat": "dispatched=true only means GIMX accepted the event. It is NOT evidence that the console reacted. Capture a frame and compare to confirm."
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:11:02.328882+00:00",
+      "source_tool": "press_button"
+    },
+    {
+      "kind": "screen_diff",
+      "summary": "Screen changed (delta 6.421). Expected: Stats page opens showing game name and game statistics content",
+      "detail": {
+        "ok": true,
+        "changed": true,
+        "delta": 6.4215,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-019_19-before-press_button.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\19-after-press_button.png",
+        "interpretation": "The screen changed, so the console did receive and act on input."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\19-after-press_button.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:11:03.283087+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 46 line(s) via pytesseract: <; Stats; & 6; Minecraft Dungeons II",
+      "detail": {
+        "text": "<\nStats\n& 6\nMinecraft Dungeons II\nom\n11.\nGa\nMIHETRHEY\nAch\na\nia\nv1\nERY xis\nXI\nNI\nMor\n(a) GAME PASS\nStat.\nfy\nINARFAR\n\\\nExclusive deals\nthy\nFor Game Pass subscribers\nFrier\n‘efits just for you\nSPONSORED\nLool\n7 pc\n60%\n10%\nEver\nONS\n2.2,\nD\nDUNGEON\n~\nd\n“a\nff\nNs\nhe\naN\nEX Play VIS\nBg vic\nRYT",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\19-after-press_button.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:11:06.001615+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "wait_for_stable_screen dispatched=True",
+      "detail": {
+        "ok": true,
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\stable.png",
+        "waited_seconds": 0.68
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:11:06.762570+00:00",
+      "source_tool": "wait_for_stable_screen"
+    },
+    {
+      "kind": "screen_diff",
+      "summary": "Screen changed (delta 2.325). Expected: Screen stabilizes with Stats content fully visible",
+      "detail": {
+        "ok": true,
+        "changed": true,
+        "delta": 2.3252,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-020_20-before-wait_for_stable_screen.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\20-after-wait_for_stable_screen.png",
+        "interpretation": "The screen changed, so the console did receive and act on input."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\20-after-wait_for_stable_screen.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:11:07.461922+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 7 line(s) via pytesseract: Stats; 64,800 6; Dundecns Il; 11:11 PM",
+      "detail": {
+        "text": "Stats\n64,800 6\nDundecns Il\n11:11 PM\nTime played\n7h 40m\nRank 1 of 1 friend",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\20-after-wait_for_stable_screen.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:11:11.101173+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "capture_frame dispatched=True",
+      "detail": {
+        "ok": true,
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\frame.png",
+        "width": 1920,
+        "height": 1080,
+        "blank": false,
+        "stats": {
+          "mean": 26.976,
+          "std": 28.101,
+          "tones": 207.0
+        },
+        "note": null
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:11:11.264099+00:00",
+      "source_tool": "capture_frame"
+    },
+    {
+      "kind": "screen_diff",
+      "summary": "Screen changed (delta 0.923). Expected: Frame shows Stats page with game name visible and game statistics content (stat values, stat names, or stats heading)",
+      "detail": {
+        "ok": true,
+        "changed": true,
+        "delta": 0.9229,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-021_21-before-capture_frame.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\21-after-capture_frame.png",
+        "interpretation": "The screen changed, so the console did receive and act on input."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\21-after-capture_frame.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:11:12.018600+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 7 line(s) via pytesseract: Stats; 64,800 & 6; Dundecns Il; 11:11 PM",
+      "detail": {
+        "text": "Stats\n64,800 & 6\nDundecns Il\n11:11 PM\nTime played\n7h 40m\nRank 1 of 1 friend",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\21-after-capture_frame.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:11:15.409160+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "read_screen_text dispatched=True",
+      "detail": {
+        "ok": true,
+        "text": "Stats\n64,800 & 6\nDundecns Il\n11:11 PM\nTime played\n7h 40m\nRank 1 of 1 friend",
+        "engine": "pytesseract",
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\step-022_22-before-read_screen_text.png",
+        "line_count": 7,
+        "ocr_variant": "bright_text",
+        "ocr_score": 0.865,
+        "ocr_attempts": [
+          {
+            "variant": "raw",
+            "score": 0.763,
+            "chars": 213
+          },
+          {
+            "variant": "upscale_otsu",
+            "score": 0.73,
+            "chars": 274
+          },
+          {
+            "variant": "upscale_otsu_inverted",
+            "score": 0.719,
+            "chars": 281
+          },
+          {
+            "variant": "bright_text",
+            "score": 0.865,
+            "chars": 75
+          },
+          {
+            "variant": "warm_text",
+            "score": 0.0,
+            "chars": 0
+          }
+        ],
+        "caveat": "OCR on console UIs is unreliable - stylised fonts, motion and transparency all hurt accuracy. Absent text is NOT strong evidence that the text is absent from the screen."
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:11:19.155753+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "screen_diff",
+      "summary": "Screen changed (delta 1.625). Expected: OCR output includes game name and statistics-related text (e.g., 'Stats', stat names, stat values)",
+      "detail": {
+        "ok": true,
+        "changed": true,
+        "delta": 1.6248,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-022_22-before-read_screen_text.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\22-after-read_screen_text.png",
+        "interpretation": "The screen changed, so the console did receive and act on input."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\22-after-read_screen_text.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:11:19.971730+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 7 line(s) via pytesseract: Stats; 64,800 & 6; Dundecns Il; 11:11 PM",
+      "detail": {
+        "text": "Stats\n64,800 & 6\nDundecns Il\n11:11 PM\nTime played\n7h 40m\nRank 1 of 1 friend",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\22-after-read_screen_text.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:11:23.617517+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "press_button dispatched=True",
+      "detail": {
+        "ok": true,
+        "button": "b",
+        "kind": "button",
+        "times": 1,
+        "dispatched": true,
+        "duration_seconds": 0.474,
+        "caveat": "dispatched=true only means GIMX accepted the event. It is NOT evidence that the console reacted. Capture a frame and compare to confirm."
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:11:24.175142+00:00",
+      "source_tool": "press_button"
+    },
+    {
+      "kind": "screen_diff",
+      "summary": "Screen changed (delta 7.445). Expected: Game Activity page reappears with menu options visible",
+      "detail": {
+        "ok": true,
+        "changed": true,
+        "delta": 7.4452,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-023_23-before-press_button.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\23-after-press_button.png",
+        "interpretation": "The screen changed, so the console did receive and act on input."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\23-after-press_button.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:11:25.003482+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 17 line(s) via pytesseract: A; 64,800 6; 11:11 PM; Game activity",
+      "detail": {
+        "text": "A\n64,800 6\n11:11 PM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\23-after-press_button.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:11:28.902480+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "wait_for_stable_screen dispatched=True",
+      "detail": {
+        "ok": true,
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\stable.png",
+        "waited_seconds": 0.64
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:11:29.633923+00:00",
+      "source_tool": "wait_for_stable_screen"
+    },
+    {
+      "kind": "screen_diff",
+      "summary": "Screen changed (delta 0.859). Expected: Screen stabilizes with Game Activity content fully visible",
+      "detail": {
+        "ok": true,
+        "changed": true,
+        "delta": 0.8591,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-024_24-before-wait_for_stable_screen.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\24-after-wait_for_stable_screen.png",
+        "interpretation": "The screen changed, so the console did receive and act on input."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\24-after-wait_for_stable_screen.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:11:30.346853+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 17 line(s) via pytesseract: A; 64,800 6; 11:11 PM; Game activity",
+      "detail": {
+        "text": "A\n64,800 6\n11:11 PM\nGame activity\nfe) Hold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\24-after-wait_for_stable_screen.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:11:34.150682+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "capture_frame dispatched=True",
+      "detail": {
+        "ok": true,
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\frame.png",
+        "width": 1920,
+        "height": 1080,
+        "blank": false,
+        "stats": {
+          "mean": 27.912,
+          "std": 31.718,
+          "tones": 237.0
+        },
+        "note": null
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:11:34.319610+00:00",
+      "source_tool": "capture_frame"
+    },
+    {
+      "kind": "screen_diff",
+      "summary": "Screen changed (delta 1.060). Expected: Frame shows Game Activity page with menu options visible",
+      "detail": {
+        "ok": true,
+        "changed": true,
+        "delta": 1.0602,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-025_25-before-capture_frame.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\25-after-capture_frame.png",
+        "interpretation": "The screen changed, so the console did receive and act on input."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\25-after-capture_frame.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:11:35.048626+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 17 line(s) via pytesseract: A; 64,800 & 6; 11:11 PM; Game activity",
+      "detail": {
+        "text": "A\n64,800 & 6\n11:11 PM\nGame activity\nfe) Hold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\25-after-capture_frame.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:11:38.994921+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "guided_navigate_to_text dispatched=True",
+      "detail": {
+        "ok": true,
+        "target_text": "Go to official club",
+        "found": true,
+        "matched_lines": [
+          "Go to official club"
+        ],
+        "attempts": [
+          {
+            "attempt": 1,
+            "direction": "down",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-0.png",
+            "screen_text": "A\n64,800 & 6\n11:11 PM\nGame activity\nfe) Hold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "visible_lines": [
+              "A",
+              "64,800 & 6",
+              "11:11 PM",
+              "Game activity",
+              "fe) Hold for power options",
+              "Achievements",
+              "4",
+              "I",
+              "20s 1000",
+              "More achievements",
+              "Stats",
+              "Friends who play",
+              "Looking for Group",
+              "7 tor Il",
+              "Events",
+              "Tel Go to official club",
+              "Minecraft Dungeons II"
+            ],
+            "text_visible": true,
+            "focused": false,
+            "focused_label": "Stats",
+            "matched": false,
+            "matched_lines": [
+              "Tel Go to official club"
+            ],
+            "dispatched": true
+          },
+          {
+            "attempt": 2,
+            "direction": "down",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-1.png",
+            "screen_text": "A\n64,800 6\n11:11 PM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "visible_lines": [
+              "A",
+              "64,800 6",
+              "11:11 PM",
+              "Game activity",
+              "Hold for power options",
+              "Achievements",
+              "4",
+              "I",
+              "20s 1000",
+              "More achievements",
+              "Stats",
+              "Friends who play",
+              "Looking for Group",
+              "7 tor Il",
+              "Events",
+              "Tel Go to official club",
+              "Minecraft Dungeons II"
+            ],
+            "text_visible": true,
+            "focused": false,
+            "focused_label": "Friends who play",
+            "matched": false,
+            "matched_lines": [
+              "Tel Go to official club"
+            ],
+            "dispatched": true
+          },
+          {
+            "attempt": 3,
+            "direction": "down",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-2.png",
+            "screen_text": "A\n64,800 & 6\n11:11 PM\nGame activity\nfe) Hold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 posts for Dungeons Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "visible_lines": [
+              "A",
+              "64,800 & 6",
+              "11:11 PM",
+              "Game activity",
+              "fe) Hold for power options",
+              "Achievements",
+              "4",
+              "I",
+              "20s 1000",
+              "More achievements",
+              "Stats",
+              "Friends who play",
+              "Looking for Group",
+              "7 posts for Dungeons Il",
+              "Events",
+              "Tel Go to official club",
+              "Minecraft Dungeons II"
+            ],
+            "text_visible": true,
+            "focused": false,
+            "focused_label": "Looking for Group\n7 posts for Minecraft Dungeons II",
+            "matched": false,
+            "matched_lines": [
+              "Tel Go to official club"
+            ],
+            "dispatched": true
+          },
+          {
+            "attempt": 4,
+            "direction": "down",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-3.png",
+            "screen_text": "A\n64,800 & 6\n11:12 PM\nGame activity\nfe) Hold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nTel Go to official club\nMinecraft Dungeons II",
+            "visible_lines": [
+              "A",
+              "64,800 & 6",
+              "11:12 PM",
+              "Game activity",
+              "fe) Hold for power options",
+              "Achievements",
+              "4",
+              "I",
+              "20s 1000",
+              "More achievements",
+              "Stats",
+              "Friends who play",
+              "Looking for Group",
+              "7 tor Il",
+              "Events",
+              "Tel Go to official club",
+              "Minecraft Dungeons II"
+            ],
+            "text_visible": true,
+            "focused": false,
+            "focused_label": "Events",
+            "matched": false,
+            "matched_lines": [
+              "Tel Go to official club"
+            ],
+            "dispatched": true
+          },
+          {
+            "attempt": 5,
+            "direction": "down",
+            "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-4.png",
+            "screen_text": "A\n64,800 & 6\n11:12 PM\nGame activity\nHold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nGo to official club\nMinecraft Dungeons II",
+            "visible_lines": [
+              "A",
+              "64,800 & 6",
+              "11:12 PM",
+              "Game activity",
+              "Hold for power options",
+              "Achievements",
+              "4",
+              "I",
+              "20s 1000",
+              "More achievements",
+              "Stats",
+              "Friends who play",
+              "Looking for Group",
+              "7 tor Il",
+              "Events",
+              "Go to official club",
+              "Minecraft Dungeons II"
+            ],
+            "text_visible": true,
+            "focused": true,
+            "focused_label": "@ Go to official club",
+            "matched": true,
+            "matched_lines": [
+              "Go to official club"
+            ]
+          }
+        ],
+        "attempts_used": 5,
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\guided-nav-down-4.png",
+        "focused": true,
+        "observation": "'Go to official club' is the highlighted item; navigation stopped before another input was sent."
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:12:18.753769+00:00",
+      "source_tool": "guided_navigate_to_text"
+    },
+    {
+      "kind": "screen_diff",
+      "summary": "Screen changed (delta 2.467). Expected: 'Go to official club' menu item is highlighted and visible on screen",
+      "detail": {
+        "ok": true,
+        "changed": true,
+        "delta": 2.4672,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-026_26-before-guided_navigate_to_text.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\26-after-guided_navigate_to_text.png",
+        "interpretation": "The screen changed, so the console did receive and act on input."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\26-after-guided_navigate_to_text.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:12:19.601086+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 17 line(s) via pytesseract: A; 64,800 6; 11:12 PM; Game activity",
+      "detail": {
+        "text": "A\n64,800 6\n11:12 PM\nGame activity\nfe) Hold for power options\nAchievements\n4\nI\n20s 1000\nMore achievements\nStats\nFriends who play\nLooking for Group\n7 tor Il\nEvents\nGo to official club\nMinecraft Dungeons II",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\26-after-guided_navigate_to_text.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:12:23.365250+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "press_button dispatched=True",
+      "detail": {
+        "ok": true,
+        "button": "a",
+        "kind": "button",
+        "times": 1,
+        "dispatched": true,
+        "duration_seconds": 0.469,
+        "caveat": "dispatched=true only means GIMX accepted the event. It is NOT evidence that the console reacted. Capture a frame and compare to confirm."
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:12:23.920142+00:00",
+      "source_tool": "press_button"
+    },
+    {
+      "kind": "screen_diff",
+      "summary": "Screen changed (delta 30.003). Expected: Official club page opens showing game name and official club content (club name, club description, or club identity)",
+      "detail": {
+        "ok": true,
+        "changed": true,
+        "delta": 30.0035,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-027_27-before-press_button.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\27-after-press_button.png",
+        "interpretation": "The screen changed, so the console did receive and act on input."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\27-after-press_button.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:12:27.052025+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 23 line(s) via pytesseract: Welcome; Feed; Multiplayer; Progress",
+      "detail": {
+        "text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n6\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\27-after-press_button.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:12:31.210469+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "wait_for_stable_screen dispatched=True",
+      "detail": {
+        "ok": true,
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\stable.png",
+        "waited_seconds": 0.65
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:12:31.946284+00:00",
+      "source_tool": "wait_for_stable_screen"
+    },
+    {
+      "kind": "frame_stats",
+      "summary": "Screen did NOT change (delta 0.000). Expected: Screen stabilizes with official club content fully visible",
+      "detail": {
+        "ok": true,
+        "changed": false,
+        "delta": 0.0,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-028_28-before-wait_for_stable_screen.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\28-after-wait_for_stable_screen.png",
+        "interpretation": "The screen did NOT change. Either the input never reached the console (unauthenticated GIMX session is the usual cause), or it reached it and the console ignored it - a possible defect. These are different failures; do not treat them as one."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\28-after-wait_for_stable_screen.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:12:32.645071+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 23 line(s) via pytesseract: Welcome; Feed; Multiplayer; Progress",
+      "detail": {
+        "text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n6\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\28-after-wait_for_stable_screen.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:12:36.660704+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "capture_frame dispatched=True",
+      "detail": {
+        "ok": true,
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\frame.png",
+        "width": 1920,
+        "height": 1080,
+        "blank": false,
+        "stats": {
+          "mean": 32.462,
+          "std": 38.137,
+          "tones": 256.0
+        },
+        "note": null
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:12:36.827344+00:00",
+      "source_tool": "capture_frame"
+    },
+    {
+      "kind": "frame_stats",
+      "summary": "Screen did NOT change (delta 0.000). Expected: Frame shows official club page with game name visible and official club content (club name, club description, or club identity)",
+      "detail": {
+        "ok": true,
+        "changed": false,
+        "delta": 0.0,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-029_29-before-capture_frame.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\29-after-capture_frame.png",
+        "interpretation": "The screen did NOT change. Either the input never reached the console (unauthenticated GIMX session is the usual cause), or it reached it and the console ignored it - a possible defect. These are different failures; do not treat them as one."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\29-after-capture_frame.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:12:37.536821+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 23 line(s) via pytesseract: Welcome; Feed; Multiplayer; Progress",
+      "detail": {
+        "text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n6\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\29-after-capture_frame.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:12:41.705523+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "read_screen_text dispatched=True",
+      "detail": {
+        "ok": true,
+        "text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n6\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K",
+        "engine": "pytesseract",
+        "frame_path": "<RUNS>\\run-20261015-113636\\frames\\step-030_30-before-read_screen_text.png",
+        "line_count": 23,
+        "ocr_variant": "bright_text",
+        "ocr_score": 0.927,
+        "ocr_attempts": [
+          {
+            "variant": "raw",
+            "score": 0.902,
+            "chars": 561
+          },
+          {
+            "variant": "upscale_otsu",
+            "score": 0.912,
+            "chars": 579
+          },
+          {
+            "variant": "upscale_otsu_inverted",
+            "score": 0.9,
+            "chars": 591
+          },
+          {
+            "variant": "bright_text",
+            "score": 0.927,
+            "chars": 547
+          },
+          {
+            "variant": "warm_text",
+            "score": 0.288,
+            "chars": 10
+          }
+        ],
+        "caveat": "OCR on console UIs is unreliable - stylised fonts, motion and transparency all hurt accuracy. Absent text is NOT strong evidence that the text is absent from the screen."
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:12:45.751423+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "frame_stats",
+      "summary": "Screen did NOT change (delta 0.000). Expected: OCR output includes game name and club-related text (e.g., club name, club description, or 'official club')",
+      "detail": {
+        "ok": true,
+        "changed": false,
+        "delta": 0.0,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-030_30-before-read_screen_text.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\30-after-read_screen_text.png",
+        "interpretation": "The screen did NOT change. Either the input never reached the console (unauthenticated GIMX session is the usual cause), or it reached it and the console ignored it - a possible defect. These are different failures; do not treat them as one."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\30-after-read_screen_text.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:12:46.513241+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 23 line(s) via pytesseract: Welcome; Feed; Multiplayer; Progress",
+      "detail": {
+        "text": "Welcome\nFeed\nMultiplayer\nProgress\nSocial\nWatch\nMinecraft Dungeons II @\niia\n6\nAdd to Home\nHide from my feed\nLaunch game\nSee in Microsoft Store\nAbout this club\nRecent activity\nThe next chapter of Minecraft Dungeons begins in the fali of 2026! A new threat stirs, ready\nto descend upon the land and its inhabitants to cause unspeakable mayhem. Become a hero\n8 Minecraft Dungeons 1g\nand take on foes unlike anything you've faced before, journey through long-forgotten\nand clash with the forces of evil once more!\nDungeons il is here. Choose you\nI\n1.2K",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\30-after-read_screen_text.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:12:50.594589+00:00",
+      "source_tool": "read_screen_text"
+    },
+    {
+      "kind": "command_ack",
+      "summary": "press_button dispatched=True",
+      "detail": {
+        "ok": true,
+        "button": "b",
+        "kind": "button",
+        "times": 1,
+        "dispatched": true,
+        "duration_seconds": 0.473,
+        "caveat": "dispatched=true only means GIMX accepted the event. It is NOT evidence that the console reacted. Capture a frame and compare to confirm."
+      },
+      "frame_path": null,
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:12:51.157210+00:00",
+      "source_tool": "press_button"
+    },
+    {
+      "kind": "screen_diff",
+      "summary": "Screen changed (delta 52.459). Expected: Game Activity page reappears with menu options visible",
+      "detail": {
+        "ok": true,
+        "changed": true,
+        "delta": 52.4591,
+        "threshold": 0.5,
+        "before_path": "<RUNS>\\run-20261015-113636\\frames\\step-031_31-before-press_button.png",
+        "after_path": "<RUNS>\\run-20261015-113636\\frames\\31-after-press_button.png",
+        "interpretation": "The screen changed, so the console did receive and act on input."
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\31-after-press_button.png",
+      "confidence": 1.0,
+      "timestamp": "2026-10-15T06:12:52.397652+00:00",
+      "source_tool": "verify_screen_changed"
+    },
+    {
+      "kind": "ocr_text",
+      "summary": "Read 36 line(s) via pytesseract: FED; GI; va; Ay",
+      "detail": {
+        "text": "FED\nGI\nva\nAy\nROBLOX\n|\nxs\nNIS\nNIS\nGAME PASS\nig\nGame on\nExclusive deals\nIn-game benefits just for you\nFor Game Pass subscribers\nSPONSORED\nRecently added - Game Pass\n60%\n0%\nLOR\nVALG\nFae)\nHaPRY\nORTIS\nEER\n40\nD\na\niY)\ne\n4\n® Search\nte\nol\n@ Pia VIS\noe",
+        "engine": "pytesseract"
+      },
+      "frame_path": "<RUNS>\\run-20261015-113636\\frames\\31-after-press_button.png",
+      "confidence": 0.75,
+      "timestamp": "2026-10-15T06:12:57.044841+00:00",
+      "source_tool": "read_screen_text"
+    }
+  ],
+  "confidence": 0.95,
+  "should_replan": false,
+  "replan_hint": "The navigation path was incorrect. After opening the official club and pressing B, the console returned directly to the dashboard home instead of returning to Game Activity first. The scenario explicitly requires: 'After returning from the official club, the Xbox dashboard is visible again' - which implies returning to Game Activity first, then to the dashboard. The run skipped the Game Activity return step. However, replanning is not recommended because the console did respond correctly to inputs (screen changes were observed), and the issue is a navigation sequence problem rather than a rig failure. The executor's abort was appropriate given the unexpected state.",
+  "stage_status": {
+    "preflight": "proven",
+    "game_discovery": "proven",
+    "menu_detection": "proven",
+    "level_navigation": "proven",
+    "level_launch": "proven",
+    "pause_checkpoint": "proven",
+    "main_menu_return": "proven"
+  },
+  "last_proven_stage": "main_menu_return"
+}

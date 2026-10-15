@@ -22,12 +22,14 @@ letting a green heading imply more than the evidence supports.
 
 from __future__ import annotations
 
-import time
+from core.logging_setup import log_suppressed as _log_suppressed
+
 from typing import Any
 
 from agents.base import BaseAgent
 from core.schemas import ExecutiveSummary, TestReport, Verdict
 from core.state import AgenticState, note
+from datetime import UTC
 
 
 class ReporterAgent(BaseAgent):
@@ -85,6 +87,7 @@ class ReporterAgent(BaseAgent):
         self.context.artifacts.save_json(
             "executive-summary.json",
             executive_summary.model_dump(mode="json"))
+        self._age_lessons(state, verdict)
         written = self._write(payload)
         report.report_files = written
 
@@ -102,6 +105,43 @@ class ReporterAgent(BaseAgent):
                 "files": written,
             }},
         }
+
+    def _age_lessons(self, state: AgenticState, verdict: Verdict) -> None:
+        """Once per run: lessons that were applied but did not recur age out.
+
+        Skipped for dry runs and for BLOCKED/ERROR runs, where nothing reached
+        the console - "did not recur" would be meaningless there.
+        """
+        scenario = state.get("scenario")
+        if (scenario is None or state.get("dry_run")
+                or verdict in (Verdict.BLOCKED, Verdict.ERROR, Verdict.PASS)):
+            return
+        from core.lesson_store import note_run
+        reports = self.context.artifacts.reports_dir
+        applied: list[str] = []
+        for path in sorted(reports.glob("lessons-applied-r*.json")):
+            try:
+                import json
+                for l in json.loads(path.read_text(encoding="utf-8")).get("lessons") or []:
+                    if l.get("scope", "scenario") == "scenario":
+                        applied.append(str(l.get("id")))
+            except Exception as _exc:
+                _log_suppressed("agents/reporter_agent.py:126", _exc)
+                continue
+        recorded = None
+        for path in sorted(reports.glob("lesson-recorded-r*.json")):
+            try:
+                import json
+                recorded = json.loads(path.read_text(encoding="utf-8")).get("id")
+            except Exception as _exc:
+                _log_suppressed("agents/reporter_agent.py:133", _exc)
+                pass
+        expired = note_run(
+            self.context.artifacts.run_dir, scenario.id, applied, recorded,
+            run_id=str(state.get("run_id", "")),
+            expire_after=int(self.context.settings.get("learning.expire_after_quiet_runs", 3)))
+        if expired:
+            print(f"  [lessons] expired (did not recur): {', '.join(expired)}", flush=True)
 
     def _executive_summary(self, state: AgenticState,
                            verdict: Verdict) -> ExecutiveSummary:
@@ -279,11 +319,11 @@ class ReporterAgent(BaseAgent):
         if not started_at:
             return 0.0
         try:
-            from datetime import datetime, timezone
+            from datetime import datetime
             start = datetime.fromisoformat(started_at)
             if start.tzinfo is None:
-                start = start.replace(tzinfo=timezone.utc)
-            return round((datetime.now(timezone.utc) - start).total_seconds(), 2)
+                start = start.replace(tzinfo=UTC)
+            return round((datetime.now(UTC) - start).total_seconds(), 2)
         except (ValueError, TypeError):
             return 0.0
 

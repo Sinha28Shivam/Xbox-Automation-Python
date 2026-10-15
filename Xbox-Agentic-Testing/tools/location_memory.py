@@ -21,9 +21,11 @@ routes at artifacts/routes/ rather than inside a single run's folder.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import json
 import math
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -50,7 +52,8 @@ def _load(ctx: ToolContext) -> list[dict[str, Any]]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         return data if isinstance(data, list) else []
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("tools/location_memory.py:53", _exc)
         return []
 
 
@@ -92,7 +95,7 @@ def record_location_impl(
         "label": label,
         "x": float(x), "y": float(y), "z": float(z),
         "notes": notes,
-        "seen_at": datetime.now(timezone.utc).isoformat(),
+        "seen_at": datetime.now(UTC).isoformat(),
         # "As sighted", not a re-identification signal - see module docstring.
         "frame_path": frame_path,
     }

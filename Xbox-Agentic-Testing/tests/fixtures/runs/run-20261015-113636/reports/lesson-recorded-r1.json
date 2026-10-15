@@ -1,0 +1,40 @@
+{
+  "id": "L002-20261015114415",
+  "status": "open",
+  "applies_to_plan": true,
+  "signature": "product_defect|press_button|{\"button\": \"guide\"}|blind tapping prevented: console is on the xbox dashboard home ('sponsored') instead of the running game.",
+  "created_at": "2026-10-15T06:14:15+00:00",
+  "last_seen_at": "2026-10-15T06:14:15+00:00",
+  "run_id": "run-20261015-113636",
+  "last_run_id": "run-20261015-113636",
+  "revision": 1,
+  "occurrences": 1,
+  "verdict": "fail",
+  "failure_class": "product_defect",
+  "primary_cause": "The console navigated directly from the official club page to the Xbox Dashboard Home instead of returning to Game Activity first, causing the test to abort when the executor detected an unexpected state. The rig was healthy and responsive throughout; the console received and acted on all inputs correctly. This is a navigation sequence issue in the console's UI behavior, not a rig failure.",
+  "abort_reason": "Blind tapping prevented: Console is on the Xbox Dashboard Home ('sponsored') instead of the running game.",
+  "failed_step": {
+    "index": 2,
+    "action": "press_button",
+    "arguments": {
+      "button": "guide"
+    },
+    "error": "",
+    "observation": "Screen changed (delta 36.505). Expected: Guide overlay appears with menu options visible (e.g., 'My games & apps', 'Game Activity', 'People', etc.) [OCR: ‘a | 64,800 6 | 11:07 PM]",
+    "screen_text": "‘a\n64,800 6\n11:07 PM\nHold for power options\nHome\n(n)\nShare last capture\n© More options\n0%\nMy games & apps\n~\n, Minecraft Dungeons II\nste, :\nAssassin's Creed Origins\nNIS\n~\nRoblox - Xbox\n~\nax\n“2 Minecraft\nXS\nO B AQ\nq)"
+  },
+  "not_proven": [
+    "The scenario requires returning to Game Activity after the official club visit before returning to the dashboard. The run jumped directly from the official club to the dashboard home, skipping the intermediate Game Activity return step. This navigation sequence was not proven.",
+    "The exact visual confirmation that the dashboard shown at step 31 is the same dashboard as the starting state. While the OCR pattern matches a dashboard home screen, we cannot confirm it is the specific game tile or dashboard shell for Minecraft Dungeons II.",
+    "Whether the Achievements page shown at step 12 is a dedicated achievements view or the official club page. The OCR and screen changes are consistent with opening a page, but the visual layout appears to be the club page rather than a traditional achievements list."
+  ],
+  "navigation_notes": [
+    "Searching 'Game Activity' by pressing right 3x: target visible but never highlighted. Screens seen in order: Home -> People -> Parties & chats -> Achievements\n1/32 © 20/1000",
+    "Searching 'Achievements' by pressing down 7x: target visible but never highlighted. Screens seen in order: \\ch\nMythic Achievement\n1/32\n3% -> Achievement tracker\nOff @D -> Default -> Friends who play -> Looking for Group\n7 posts for  -> Events -> @ Go to official club -> @ Go to official club"
+  ],
+  "recommendations": [
+    "Manually test the navigation path on the console to confirm whether pressing B from the official club consistently returns to Dashboard Home or to Game Activity. This will determine if it's a console bug or a test specification issue.",
+    "If the console consistently returns to Dashboard Home from the official club (regardless of how you got there), file a bug against the Xbox console firmware for incorrect navigation behavior.",
+    "If the console sometimes returns to Game Activity and sometimes to Dashboard Home, increase the wait time before pressing B in the test scenario to ensure the page is fully loaded."
+  ]
+}

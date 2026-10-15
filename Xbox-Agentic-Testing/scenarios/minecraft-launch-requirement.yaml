@@ -1,4 +1,6 @@
-id: launch-minecraft-from-search
+# Distinct from minecraft-launch.yaml (full journey: launch, craft, quit).
+# Sharing an id merged their lessons and cached routes.
+id: launch-minecraft-from-search-requirement
 title: Launch Minecraft from Xbox search
 goal: Open Xbox search, type Minecraft, and launch the game
 expected_outcome: The search box contains minecraft, the Minecraft result appears, and the game starts launching

@@ -36,7 +36,7 @@ class GameSession:
         target.write_text(json.dumps(asdict(self), indent=2, ensure_ascii=False), encoding="utf-8")
 
     @classmethod
-    def load(cls, path: str | Path) -> "GameSession":
+    def load(cls, path: str | Path) -> GameSession:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         return cls(**data)
 

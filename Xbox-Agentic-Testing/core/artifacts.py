@@ -23,6 +23,8 @@ sequence reads correctly in a file listing without opening anything.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import json
 import re
 from datetime import datetime
@@ -38,9 +40,28 @@ def slug(text: str, max_length: int = 40) -> str:
     return (cleaned[:max_length] or "item").rstrip("-")
 
 
-def new_run_id(prefix: str = "run") -> str:
-    """Sortable, unique-per-second run id."""
-    return f"{prefix}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+def new_run_id(prefix: str = "run", root: Path | str | None = None) -> str:
+    """Sortable run id, unique even when two runs start in the same second.
+
+    Format stays `run-YYYYMMDD-HHMMSS` (reports, trends and docs sort on it).
+    With `root`, the id is CLAIMED by atomically creating its run directory;
+    if another process got there first a `-2`, `-3`... suffix is tried. Two
+    runs used to be able to share a folder and overwrite each other's
+    execution.json.
+    """
+    base = f"{prefix}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    if root is None:
+        return base
+    runs = Path(root) / "runs"
+    runs.mkdir(parents=True, exist_ok=True)
+    for n in range(1, 1000):
+        candidate = base if n == 1 else f"{base}-{n}"
+        try:
+            (runs / candidate).mkdir()
+            return candidate
+        except FileExistsError:
+            continue
+    raise RuntimeError(f"Could not allocate a unique run id under {runs}")
 
 
 class ArtifactStore:
@@ -84,7 +105,8 @@ class ArtifactStore:
         path = self.frames_dir / name
         try:
             ok = bool(cv2.imwrite(str(path), frame))
-        except Exception:
+        except Exception as _exc:
+            _log_suppressed("core/artifacts.py:87", _exc)
             return None
         if not ok:
             return None

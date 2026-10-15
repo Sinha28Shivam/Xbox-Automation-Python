@@ -20,12 +20,18 @@ reason a hardware run dies.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import json
 import logging
+import os
 import re
-from datetime import datetime, timezone
+import threading
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
+
+from core.store_lock import locked
 
 log = logging.getLogger("lesson_store")
 
@@ -68,23 +74,24 @@ def _sync_shared(artifacts_dir: Path | str, origin: str,
                  lesson: dict[str, Any], tags: list[str]) -> None:
     """Upsert the shared copy of a lesson, keyed by (origin scenario, id)."""
     path = shared_path(artifacts_dir)
-    shared = _load(path)
-    entry = next((l for l in shared if l.get("origin_scenario") == origin
-                  and l.get("id") == lesson.get("id")), None)
-    copy = {**lesson, "origin_scenario": origin, "tags": tags}
-    if entry is None:
-        shared.append(copy)
-    else:
-        entry.update(copy)
-    if len(shared) > MAX_STORED * 3:
-        resolved = [l for l in shared if l.get("status") != "open"]
-        for old in resolved[:len(shared) - MAX_STORED * 3]:
-            shared.remove(old)
-    _save(path, "_shared", shared)
+    with locked(path):
+        shared = _load(path)
+        entry = next((l for l in shared if l.get("origin_scenario") == origin
+                      and l.get("id") == lesson.get("id")), None)
+        copy = {**lesson, "origin_scenario": origin, "tags": tags}
+        if entry is None:
+            shared.append(copy)
+        else:
+            entry.update(copy)
+        if len(shared) > MAX_STORED * 3:
+            resolved = [l for l in shared if l.get("status") != "open"]
+            for old in resolved[:len(shared) - MAX_STORED * 3]:
+                shared.remove(old)
+        _save(path, "_shared", shared)
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def _load(path: Path) -> list[dict[str, Any]]:
@@ -100,7 +107,8 @@ def _load(path: Path) -> list[dict[str, Any]]:
 
 def _save(path: Path, scenario_id: str, lessons: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
+    # Unique tmp name: two writers must never share one tmp file.
+    tmp = path.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")
     tmp.write_text(json.dumps(
         {"scenario_id": scenario_id, "updated_at": _now(), "lessons": lessons},
         indent=2, ensure_ascii=False, default=str), encoding="utf-8")
@@ -181,7 +189,8 @@ def _navigation_notes(run_dir: Path | None) -> list[str]:
     for path in sorted((Path(run_dir) / "reports").glob("guided-navigation*.json")):
         try:
             trace = json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
+        except Exception as _exc:
+            _log_suppressed("core/lesson_store.py:184", _exc)
             continue
         attempts = trace.get("attempts") or []
         # Older traces have no "found" key; any matched attempt means success.
@@ -205,7 +214,7 @@ def _signature(failure_class: str, step: dict[str, Any], abort_reason: str) -> s
     return f"{failure_class}|{step.get('action')}|{args}|{reason}".lower()
 
 
-def record_failure(artifacts_dir: Path | str, scenario_id: str, *,
+def _record_failure_unlocked(artifacts_dir: Path | str, scenario_id: str, *,
                    rca: Any, execution: Any = None, verification: Any = None,
                    run_id: str = "", revision: int = 1,
                    run_dir: Path | str | None = None,
@@ -314,7 +323,7 @@ def open_lessons(artifacts_dir: Path | str, scenario_id: str,
         return []
 
 
-def resolve_all(artifacts_dir: Path | str, scenario_id: str,
+def _resolve_all_unlocked(artifacts_dir: Path | str, scenario_id: str,
                 run_id: str = "") -> int:
     """A PASS proves this scenario's open lessons were overcome.
 
@@ -325,30 +334,108 @@ def resolve_all(artifacts_dir: Path | str, scenario_id: str,
     try:
         path = lessons_path(artifacts_dir, scenario_id)
         lessons = _load(path)
-        resolved_ids = set()
+        resolved_ids: set[str] = set()
         for lesson in lessons:
             if lesson.get("status") == "open":
                 lesson["status"] = "resolved"
                 lesson["resolved_at"] = _now()
                 lesson["resolved_by_run"] = run_id
-                resolved_ids.add(lesson.get("id"))
+                resolved_ids.add(str(lesson.get("id")))
         if resolved_ids:
             _save(path, scenario_id, lessons)
-            spath = shared_path(artifacts_dir)
-            shared = _load(spath)
-            touched = False
-            for entry in shared:
-                if (entry.get("origin_scenario") == scenario_id
-                        and entry.get("id") in resolved_ids):
-                    entry.update(status="resolved", resolved_at=_now(),
-                                 resolved_by_run=run_id)
-                    touched = True
-            if touched:
-                _save(spath, "_shared", shared)
+            _mark_shared(artifacts_dir, scenario_id, resolved_ids, "resolved", run_id)
         return len(resolved_ids)
     except Exception as exc:
         log.warning("Could not resolve lessons for %s: %s", scenario_id, exc)
         return 0
+
+
+def _note_run_unlocked(artifacts_dir: Path | str, scenario_id: str,
+             applied_ids: list[str], recorded_id: str | None,
+             run_id: str = "", expire_after: int = 3) -> list[str]:
+    """Age the scenario's open lessons; expire ones that stopped recurring.
+
+    Called once per finished (non-dry) run. A lesson that was applied but did
+    NOT happen again this run gets `quiet_runs += 1`; after `expire_after`
+    such runs it is closed as "expired". This stops a scenario that never
+    fully passes (for an unrelated reason) from carrying fixed problems
+    forever. A recurrence resets the counter.
+    """
+    try:
+        path = lessons_path(artifacts_dir, scenario_id)
+        lessons = _load(path)
+        expired: list[str] = []
+        changed = False
+        for lesson in lessons:
+            if lesson.get("status") != "open":
+                continue
+            if lesson.get("id") == recorded_id:
+                lesson["quiet_runs"] = 0
+                changed = True
+                continue
+            if lesson.get("id") not in set(applied_ids or []):
+                continue
+            lesson["quiet_runs"] = int(lesson.get("quiet_runs", 0)) + 1
+            changed = True
+            if expire_after > 0 and lesson["quiet_runs"] >= expire_after:
+                lesson.update(status="expired", resolved_at=_now(),
+                              resolved_by_run=run_id,
+                              resolution=f"did not recur in {lesson['quiet_runs']} runs")
+                expired.append(str(lesson.get("id")))
+        if changed:
+            _save(path, scenario_id, lessons)
+        if expired:
+            _mark_shared(artifacts_dir, scenario_id, set(expired), "expired", run_id)
+        return expired
+    except Exception as exc:
+        log.warning("Could not age lessons for %s: %s", scenario_id, exc)
+        return []
+
+
+def _resolve_one_unlocked(artifacts_dir: Path | str, scenario_id: str, lesson_id: str,
+                reason: str = "resolved manually") -> bool:
+    """Close one lesson by hand, e.g. after the bug it describes was fixed in code."""
+    path = lessons_path(artifacts_dir, scenario_id)
+    lessons = _load(path)
+    hit = next((l for l in lessons if str(l.get("id", "")).startswith(lesson_id)
+                and l.get("status") == "open"), None)
+    if hit is None:
+        return False
+    hit.update(status="resolved", resolved_at=_now(), resolved_by_run="manual",
+               resolution=reason)
+    _save(path, scenario_id, lessons)
+    _mark_shared(artifacts_dir, scenario_id, {hit["id"]}, "resolved", "manual")
+    return True
+
+
+def _mark_shared(artifacts_dir: Path | str, scenario_id: str, ids: set[str],
+                 status: str, run_id: str) -> None:
+    spath = shared_path(artifacts_dir)
+    with locked(spath):
+        shared = _load(spath)
+        touched = False
+        for entry in shared:
+            if entry.get("origin_scenario") == scenario_id and entry.get("id") in ids:
+                entry.update(status=status, resolved_at=_now(), resolved_by_run=run_id)
+                touched = True
+        if touched:
+            _save(spath, "_shared", shared)
+
+
+def all_lessons(artifacts_dir: Path | str) -> dict[str, list[dict[str, Any]]]:
+    """Every scenario's lesson file, for the CLI listing."""
+    folder = _base_dir(artifacts_dir) / "lessons"
+    out: dict[str, list[dict[str, Any]]] = {}
+    for path in sorted(folder.glob("*.json")) if folder.is_dir() else []:
+        if path.name == SHARED_FILE:
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            out[str(data.get("scenario_id") or path.stem)] = list(data.get("lessons") or [])
+        except Exception as _exc:
+            _log_suppressed("core/lesson_store.py:425", _exc)
+            continue
+    return out
 
 
 def prompt_view(lessons: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -371,3 +458,30 @@ def prompt_view(lessons: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "recommendations": l.get("recommendations"),
         })
     return view
+
+
+# --- locked public API -----------------------------------------------------
+# Each public mutator holds the scenario's store lock for its whole
+# read-modify-write; the shared store has its own lock (taken inside
+# _sync_shared / _mark_shared). Lock order is always scenario -> shared.
+def record_failure(artifacts_dir: Path | str, scenario_id: str, **kwargs: Any) -> dict[str, Any] | None:
+    with locked(lessons_path(artifacts_dir, scenario_id)):
+        return _record_failure_unlocked(artifacts_dir, scenario_id, **kwargs)
+
+
+def resolve_all(artifacts_dir: Path | str, scenario_id: str, run_id: str = "") -> int:
+    with locked(lessons_path(artifacts_dir, scenario_id)):
+        return _resolve_all_unlocked(artifacts_dir, scenario_id, run_id)
+
+
+def note_run(artifacts_dir: Path | str, scenario_id: str, applied_ids: list[str],
+             recorded_id: str | None, run_id: str = "", expire_after: int = 3) -> list[str]:
+    with locked(lessons_path(artifacts_dir, scenario_id)):
+        return _note_run_unlocked(artifacts_dir, scenario_id, applied_ids, recorded_id,
+                                  run_id=run_id, expire_after=expire_after)
+
+
+def resolve_one(artifacts_dir: Path | str, scenario_id: str, lesson_id: str,
+                reason: str = "resolved manually") -> bool:
+    with locked(lessons_path(artifacts_dir, scenario_id)):
+        return _resolve_one_unlocked(artifacts_dir, scenario_id, lesson_id, reason)

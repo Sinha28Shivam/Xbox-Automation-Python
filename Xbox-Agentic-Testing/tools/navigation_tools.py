@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from core import text_match
 from core.artifacts import slug
 from tools.registry import ToolContext, ToolSpec, fail, make_tool, ok
 from tools.vision_tools import (
@@ -43,8 +44,9 @@ def _is_page_heading(text: str, needle: str, case_sensitive: bool) -> bool:
         clean = line.strip()
         if sum(ch.isalpha() for ch in clean) < 3:
             continue
-        candidate = clean if case_sensitive else clean.lower()
-        return candidate == needle
+        if case_sensitive:
+            return clean == needle
+        return text_match.normalise(clean) == text_match.normalise(needle)
     return False
 
 
@@ -121,11 +123,12 @@ def _guided_navigate_to_text(ctx: ToolContext) -> Any:
                     f"{reading.get('error')}", attempts=attempts)
 
             text = str(reading.get("text", ""))
-            haystack = text if case_sensitive else text.lower()
-            matched_lines = [
-                line.strip() for line in text.splitlines()
-                if needle in (line if case_sensitive else line.lower())
-            ]
+            # Exact after normalising case/punctuation/spacing: this decides
+            # where input stops, so OCR letter errors are NOT tolerated here
+            # (fuzzy would match "Achievement tracker" for "Achievements").
+            matched_lines = (
+                [line.strip() for line in text.splitlines() if target in line]
+                if case_sensitive else text_match.exact_matched_lines(text, target))
             focus = (_focus_matches(ctx, str(captured.get("frame_path")), target)
                      if matched_lines and require_focus else
                      {"focused": bool(matched_lines), "focused_label": "",

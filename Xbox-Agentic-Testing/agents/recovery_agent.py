@@ -121,7 +121,7 @@ class RecoveryAgent(BaseAgent):
             requires_human = True
             instructions.append(_MANUAL_STEPS)
 
-        result = RecoveryResult(
+        recovery = RecoveryResult(
             # Deliberately conservative: recovered only when we actually did
             # something AND nothing is left needing hands. The health agent
             # re-probes afterwards and gets the final say.
@@ -132,7 +132,7 @@ class RecoveryAgent(BaseAgent):
             human_instructions="\n\n".join(instructions) or None,
             detail=f"Recovery attempt {attempt}.",
         )
-        return self._emit(result, state, attempt)
+        return self._emit(recovery, state, attempt)
 
     def _emit(self, result: RecoveryResult, state: AgenticState,
               attempt: int) -> dict[str, Any]:

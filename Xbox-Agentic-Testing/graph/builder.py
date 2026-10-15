@@ -22,7 +22,8 @@ agent is therefore genuinely one line, with no follow-up edits.
 from __future__ import annotations
 
 import importlib
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from core.config import Config
 from core.state import AgenticState
@@ -32,7 +33,7 @@ try:
 except ImportError as exc:                            # pragma: no cover
     raise SystemExit(
         "LangGraph is required:  pip install langgraph\n"
-        f"  ({exc})")
+        f"  ({exc})") from exc
 
 
 class GraphBuildError(RuntimeError):

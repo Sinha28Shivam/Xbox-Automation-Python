@@ -7,6 +7,8 @@ run or changes its status.
 
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import html
 from typing import Any
 
@@ -123,7 +125,8 @@ def _frame_src(path: Any, run_dir: Any) -> str:
         if run_dir:
             return "../" + p.resolve().relative_to(Path(str(run_dir)).resolve()).as_posix()
         return p.as_uri()
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("core/professional_report.py:126", _exc)
         return str(path)
 
 
@@ -256,17 +259,37 @@ def _scenario_extras(data: dict[str, Any]) -> str:
 
     steps = data.get("steps") or []
     if steps:
+        durations = [float(s.get("duration_seconds") or 0) for s in steps]
+        slow: float = sorted(durations, reverse=True)[min(2, len(durations) - 1)] if durations else 0.0
+        longest: float = max(durations) if durations else 0.0
+        total = sum(durations)
+
+        def _time_cell(sec: float) -> str:
+            width = (sec / longest) * 100 if longest else 0
+            cls = " bad" if sec >= max(slow, 10.0) else ""
+            return (f"<td class='{cls.strip()}' style='white-space:nowrap'>{sec:.1f}s"
+                    f"<div class='bar' style='height:5px;margin-top:4px'><i style='width:"
+                    f"{width:.0f}%;background:#7c3aed'></i></div></td>")
+
         rows = "".join(
             f"<tr><td>{_esc(s.get('index'))}</td><td><code>{_esc(s.get('action'))}</code>"
             f"<div class='small'>{_esc(s.get('arguments') or '')}</div></td>"
             f"<td class='{'bad' if s.get('error') else 'ok'}'>{'Error' if s.get('error') else 'OK'}</td>"
+            f"{_time_cell(float(s.get('duration_seconds') or 0))}"
             f"<td>{_delta(s.get('screen_delta'))}</td>"
             f"<td>{_esc(s.get('error') or s.get('observation') or '')}</td>"
             f"<td>{_img(s.get('frame_after'), run_dir)}</td></tr>"
             for s in steps)
+        by_action: dict[str, list[float]] = {}
+        for s, d in zip(steps, durations, strict=True):
+            by_action.setdefault(str(s.get("action")), []).append(d)
+        summary = " &middot; ".join(
+            f"<code>{_esc(a)}</code> {sum(v):.0f}s ({len(v)}&times;)"
+            for a, v in sorted(by_action.items(), key=lambda kv: -sum(kv[1]))[:4])
         out.append(
-            "<h2>Step timeline</h2><div class='card'><table><thead><tr><th>#</th>"
-            "<th>Action</th><th>Result</th><th>Screen &Delta;</th><th>Observation</th>"
+            f"<h2>Step timeline</h2><div class='card'><p class='small'>{len(steps)} steps, "
+            f"{total:.0f}s total. Most time: {summary}.</p><table><thead><tr><th>#</th>"
+            "<th>Action</th><th>Result</th><th>Time</th><th>Screen &Delta;</th><th>Observation</th>"
             f"<th>After frame</th></tr></thead><tbody>{rows}</tbody></table></div>")
     return "".join(out)
 
@@ -281,7 +304,6 @@ def render_dashboard(data: dict[str, Any], mode: str = "scenario") -> str:
         failed = _status_count(counts, "FAIL", "FAILED")
         not_tested = _status_count(counts, "NOT TESTED", "NOT_TESTED",
                                    "NOT ENCOUNTERED")
-        attempted = passed + failed + _status_count(counts, "OBSERVED")
         duration = (data.get("run") or {}).get("duration_seconds", 0)
         total = len(data.get("scenarios") or [])
         rows = data.get("scenarios") or []
@@ -300,7 +322,7 @@ def render_dashboard(data: dict[str, Any], mode: str = "scenario") -> str:
             {"title": name, "summary": f"{len(cycles)} cycles", "duration_seconds": None}
             for name, cycles in (data.get("agents") or {}).items()
         ]
-        headers = ("Scenario", "Status", "Seen", "Attempted", "Evidence", "Notes")
+        headers: tuple[str, ...] = ("Scenario", "Status", "Seen", "Attempted", "Evidence", "Notes")
         row_html = "".join(
             f"<tr><td>{_esc(row.get('scenario'))}</td>"
             f"<td><span class='tag {_status_class(row.get('status',''))}'>{_esc(row.get('status'))}</span></td>"
@@ -324,7 +346,6 @@ def render_dashboard(data: dict[str, Any], mode: str = "scenario") -> str:
             verdict = "PASS"
         else:
             verdict = "NOT TESTED"
-        attempted = passed + failed + inconclusive
         duration = (data.get("totals") or {}).get("duration_seconds", 0)
         total = len(data.get("mechanics") or [])
         rows = data.get("mechanics") or []
@@ -354,7 +375,6 @@ def render_dashboard(data: dict[str, Any], mode: str = "scenario") -> str:
         passed = _status_count(counts, "PASS")
         failed = _status_count(counts, "FAILED", "FAIL")
         not_tested = _status_count(counts, "NOT TESTED", "NOT_TESTED")
-        attempted = passed + failed
         total = len(data.get("criteria") or [])
         duration = (data.get("totals") or {}).get("duration_seconds", 0)
         rows = data.get("criteria") or []

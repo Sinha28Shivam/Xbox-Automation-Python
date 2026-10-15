@@ -44,6 +44,8 @@ USAGE
 """
 from __future__ import annotations
 
+from core.logging_setup import log_suppressed as _log_suppressed
+
 import argparse
 import json
 import subprocess
@@ -66,7 +68,8 @@ def probe(video: Path) -> dict:
              "-of", "json", str(video)],
             capture_output=True, text=True, timeout=60)
         return json.loads(out.stdout or "{}").get("streams", [{}])[0]
-    except Exception:
+    except Exception as _exc:
+        _log_suppressed("tools/walkthrough_video.py:69", _exc)
         return {}
 
 

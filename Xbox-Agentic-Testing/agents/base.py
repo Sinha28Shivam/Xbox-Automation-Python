@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import time
 import traceback
-from typing import Any
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
@@ -44,6 +44,8 @@ from core.llm import LLMFactory, structured
 from core.prompts import PromptLibrary
 from tools.registry import ToolRegistry
 from core.state import AgenticState, note, state_digest
+
+ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
 class AgentContext:
@@ -157,8 +159,8 @@ class BaseAgent:
         return self.context.prompts.render(
             self.prompt_name, self.build_context(state, **extra))
 
-    def invoke_structured(self, schema: type[BaseModel], prompt: str,
-                          images: list[dict[str, str]] | None = None) -> BaseModel:
+    def invoke_structured(self, schema: type[ModelT], prompt: str,
+                          images: list[dict[str, str]] | None = None) -> ModelT:
         """One LLM call returning a validated `schema` instance.
 
         Retries on transient errors and on schema-validation failures - a model
@@ -171,7 +173,12 @@ class BaseAgent:
         last: Exception | None = None
         for attempt in range(self.max_retries + 1):
             try:
-                return runnable.invoke(messages)
+                result = runnable.invoke(messages)
+                # with_structured_output returns the schema instance; checked
+                # so a provider returning a dict surfaces here, not downstream.
+                if not isinstance(result, schema):
+                    result = schema.model_validate(result)
+                return result
             except Exception as exc:
                 last = exc
                 if attempt < self.max_retries:
@@ -258,6 +265,6 @@ def _build_messages(prompt: str,
         })
     try:
         from langchain_core.messages import HumanMessage
-        return [HumanMessage(content=blocks)]
+        return [HumanMessage(content=list(blocks))]
     except ImportError:                                   # pragma: no cover
         return [("human", prompt)]
