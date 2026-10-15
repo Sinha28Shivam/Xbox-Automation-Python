@@ -10,7 +10,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from core import runtime_lessons as rl
 
@@ -54,7 +54,7 @@ from core.artifacts import ArtifactStore
 from core.config import Config
 from core.schemas import PlannedStep, TestPlan, ValidatedScenario
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 store = ArtifactStore(tempfile.mkdtemp(), "run-x")
 (store.reports_dir / "lessons-applied-r1.json").write_text(
     json.dumps({"lessons": [L001]}), encoding="utf-8")

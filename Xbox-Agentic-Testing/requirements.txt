@@ -31,6 +31,9 @@ numpy>=1.26
 # --- reporting -------------------------------------------------------------
 jinja2>=3.1
 
+# --- tests (python -m pytest; offline, no hardware) ------------------------
+pytest>=8
+
 # --- optional OCR (vision tools degrade gracefully without these) ----------
  pytesseract>=0.3.10
  paddleocr>=2.7

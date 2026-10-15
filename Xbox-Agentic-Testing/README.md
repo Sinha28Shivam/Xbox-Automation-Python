@@ -177,6 +177,23 @@ python console.py interactive              # REPL
 
 ---
 
+## Offline tests
+
+No Xbox, GIMX, capture card or LLM key is needed:
+
+```powershell
+python -m pytest            # whole suite (~15 s)
+python tests\offline\test_lesson_store.py   # one script directly
+```
+
+`tests/offline/` holds standalone regression scripts (learning, runtime
+lessons, guided navigation, reporting fixes, Dungeons combat). Each is run in
+its own process by `tests/test_offline_suite.py`. CI runs the same suite on
+every push (`.github/workflows/offline-tests.yml`). Scripts in `scratch/` that
+drive real hardware are not part of it.
+
+---
+
 ## Artifacts
 
 Every run writes to `artifacts/runs/<run-id>/`:

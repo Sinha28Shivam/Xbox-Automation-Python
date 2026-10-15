@@ -11,7 +11,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import jinja2
 
@@ -77,7 +77,7 @@ assert again["id"] == lesson["id"] and again["occurrences"] == 2
 assert len(json.loads(store.read_text())["lessons"]) == 1
 
 # 5. The planner prompt really contains the lesson.
-template = (Path(__file__).resolve().parents[1] / "config" / "prompts" / "planner.j2").read_text(encoding="utf-8")
+template = (Path(__file__).resolve().parents[2] / "config" / "prompts" / "planner.j2").read_text(encoding="utf-8")
 rendered = jinja2.Environment().from_string(template).render(
     lessons=ls.prompt_view(ls.open_lessons(run_b, SID)), is_replan=False,
     tools=[], controls={}, scenario={}, timings={}, max_steps=50, state={}, runtime={})

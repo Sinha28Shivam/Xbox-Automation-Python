@@ -10,7 +10,7 @@ E. the lesson pointed at the first (recovered) error, not the abort cause
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from agents.executor_agent import ExecutorAgent
 from agents.planner_agent import PlannerAgent
