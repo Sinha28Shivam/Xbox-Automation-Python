@@ -71,6 +71,9 @@ a lesson manually when the bug it describes was fixed in code.
 
 ## 6. Adding a scenario
 
+Full guides: [ADDING_SCENARIOS.md](ADDING_SCENARIOS.md) (menus/screens),
+[ADDING_GAMEPLAY.md](ADDING_GAMEPLAY.md) (games). Short version:
+
 1. Copy an existing YAML in `scenarios/`; give it a new, stable `id:`.
 2. Tag it (`guide`, `dashboard`, ... share lessons; game scenarios must not
    use those tags).

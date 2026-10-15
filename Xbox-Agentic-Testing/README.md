@@ -13,6 +13,9 @@ python console.py run "Press A on the dashboard and confirm the screen changes"
 
 | Document | For |
 |---|---|
+| [docs/ONBOARDING.md](docs/ONBOARDING.md) | **New to the project? Start here** - setup, how a run works, where to change what |
+| [docs/ADDING_SCENARIOS.md](docs/ADDING_SCENARIOS.md) | Adding a test of a console screen/menu (YAML only) |
+| [docs/ADDING_GAMEPLAY.md](docs/ADDING_GAMEPLAY.md) | Adding a new game to play, or changing how a game is played |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Running tests on the rig, reading results, troubleshooting |
 | [SECURITY.md](SECURITY.md) | Secrets, data sent to the LLM, prompt injection, hardware safety |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
