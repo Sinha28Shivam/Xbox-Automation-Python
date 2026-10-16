@@ -66,6 +66,10 @@ xbox-agentic lessons list <scenario-id> --all
 xbox-agentic lessons resolve <scenario-id> L002 --reason "fixed in code"
 ```
 
+Dungeons runs keep their lessons in `gameplay-dungeons`. Each run lists them under
+**Learning** in `reports/execution-report.html`, along with how many times
+they changed play.
+
 Lessons close on a PASS, after 3 runs without recurring, or by hand. Resolve
 a lesson manually when the bug it describes was fixed in code.
 

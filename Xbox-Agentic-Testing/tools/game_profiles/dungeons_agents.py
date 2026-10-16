@@ -181,6 +181,37 @@ class Supervisor:
         c[f"agent_{name}"] = c.get(f"agent_{name}", 0) + 1
         print(f"  Agent     : {name} ({route})", flush=True)
 
+    def _learned_interaction(self, d: DungeonsFrameDecision, c: dict[str, Any],
+                             cmd: AgentCommand) -> list[DungeonsMove] | None:
+        """A not_attempted lesson: a close target of a learned category goes to
+        the interaction agent before any other agent can walk past it.
+
+        Runs after the health and unseen-attacker overrides. A HELD engagement
+        (no enemy on this frame, only a remembered one) does not block it;
+        a real hit or a visible enemy does."""
+        cats = set(c.get("_learn_interact_priority") or [])
+        if not cats or cmd.to == "interaction" or d.enemy_adjacent \
+                or d._nav.get("blind_attacker"):
+            return None
+        if d.enemy_direction != "none" and not d._nav.get("held"):
+            return None
+        near = [e for e in d.entities if e.category in cats
+                and e.distance_estimate in ("very_close", "close")]
+        if not near and not (d.interact_prompt_visible and cats & {"loot", "door_or_lever"}):
+            return None
+        target = near[0] if near else None
+        steer = AgentCommand(to="interaction", target=target.kind if target else "",
+                             direction=target.direction if target else "none",
+                             reason="learned: close target was skipped in an earlier run")
+        moves = self.by_name["interaction"].propose(d, c, steer)
+        if not moves:
+            return None
+        for m in moves:
+            m.purpose = f"{m.purpose} [learned]"
+        c["learn_interact_overrides"] = c.get("learn_interact_overrides", 0) + 1
+        self._credit(d, c, "interaction", "learned: interact before moving on")
+        return moves
+
     def forced_moves(self, d: DungeonsFrameDecision,
                      c: dict[str, Any]) -> list[DungeonsMove] | None:
         if d.scene_state == "mission_complete" and d._nav.get("hud"):
@@ -204,6 +235,9 @@ class Supervisor:
         if moves:
             self._credit(d, c, "combat", f"override: hit by unseen attacker "
                                          f"(-{d._nav.get('damage')}%)")
+            return moves
+        moves = self._learned_interaction(d, c, cmd)
+        if moves:
             return moves
         if d._nav.get("blind_attacker") or d._nav.get("held"):
             moves = self.by_name["combat"].propose(d, c, None)

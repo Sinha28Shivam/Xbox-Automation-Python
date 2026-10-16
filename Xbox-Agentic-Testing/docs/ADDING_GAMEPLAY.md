@@ -139,6 +139,16 @@ xbox-agentic run --file scenarios\<game>-inplay.yaml --dry-run
 3. Full scenario run; read `execution-report.html` and the cycle log
    (`<game>-cycles.json`) frame by frame before trusting a PASS.
 
+### 9. Learning (optional)
+
+Copy `tools/game_profiles/dungeons_learning.py`. Implement `detect` (what
+the cycle log PROVES went wrong), `assess` (fixed / quiet / untested),
+`adjustments` (bounded counter overrides your `forced_moves` read) and
+`prompt_text`. Call `core/gameplay_lessons.py` `open_lessons` at the start and
+`update` at the end, as `tools/dungeons_gameplay.py` does. Lessons appear in
+`xbox-agentic lessons list gameplay-<game>`. Tests:
+`tests/test_dungeons_learning.py`.
+
 ## Rules for gameplay code
 
 - **Only the `Literal` actions in the Move model can ever be pressed.** Keep

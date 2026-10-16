@@ -63,29 +63,110 @@ def _status(seen: list[int], attempted: list[int], evidence: list[int]) -> str:
 
 def _norm_objective(text: str) -> str:
     t = re.sub(r"\(.*?\)|objective marker.*|marker .*", " ", text.lower())
-    t = re.sub(r"the [a-z]+ from the rift|[^a-z ]", " ", t)
+    # Strip only a leading mission title ("THE ILLAGERS FROM THE RIFT - ...").
+    # Stripping it anywhere turned "Defeat the Illagers from the Rift" into
+    # "defeat" - a fake new stage (dungeons-20261016-114012, c42).
+    t = re.sub(r"^\s*the [a-z]+ from the rift\s*[-:|]+", " ", t)
+    t = re.sub(r"[^a-z ]", " ", t)
     return " ".join(t.split())
 
 
+def _same_objective(a: str, b: str) -> bool:
+    return (difflib.SequenceMatcher(None, a, b).ratio() >= _SAME_OBJECTIVE
+            or a in b or b in a)
+
+
 def objective_stages(cycles: list[dict[str, Any]]) -> list[tuple[int, str]]:
-    """(first cycle, objective) for each distinct objective stage, in order."""
+    """(first cycle, objective) for each distinct objective stage, in order.
+
+    A reading that matches ANY earlier stage is a misread, not progress: the
+    banner does not go back to an objective that was already completed.
+    """
     stages: list[tuple[int, str]] = []
     for c in cycles:
         o = _norm_objective(str(c.get("objective") or ""))
         if len(o) < 6:
             continue
-        if any(difflib.SequenceMatcher(None, o, s).ratio() >= _SAME_OBJECTIVE
-               for _, s in stages[-1:]):
+        if any(_same_objective(o, s) for _, s in stages):
             continue
         if stages:
             # Ignore a one-cycle flicker: require the next reading to agree.
             idx = cycles.index(c)
             nxt = [_norm_objective(str(x.get("objective") or "")) for x in cycles[idx + 1:idx + 3]]
-            if nxt and not any(difflib.SequenceMatcher(None, o, n).ratio() >= _SAME_OBJECTIVE
-                               for n in nxt if len(n) >= 6):
+            if nxt and not any(_same_objective(o, n) for n in nxt if len(n) >= 6):
                 continue
         stages.append((c["cycle"], o))
     return stages
+
+
+def _timeline(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """One row per cycle: who acted, why, what was pressed, health."""
+    rows = []
+    for c in payload.get("cycles") or []:
+        rows.append({
+            "cycle": c.get("cycle"), "scene": c.get("scene_state"),
+            "agent": c.get("agent") or "model", "route": c.get("route") or "",
+            "health": c.get("health_percent"),
+            "buttons": ", ".join(str(m.get("macro")) + (f"({m['direction']})" if m.get("direction") else "")
+                                 for m in _moves(c)),
+            "learned": any("[learned" in str(m.get("purpose", "")) for m in _moves(c)),
+            "purpose": "; ".join(str(m.get("purpose", "")) for m in _moves(c))[:200],
+            "frame": c.get("frame_before")})
+    return rows
+
+
+def _moments(payload: dict[str, Any],
+             stages: list[tuple[int, str]]) -> list[dict[str, Any]]:
+    """The cycles a reviewer should look at first, each with its frame."""
+    cycles = payload.get("cycles") or []
+    out, prev = [], None
+    for c in cycles:
+        n, state = c.get("cycle"), c.get("scene_state")
+        if state == "death" and prev != "death":
+            out.append({"cycle": n, "kind": "death", "text": "Hero downed",
+                        "frame": c.get("frame_before")})
+        for m in _moves(c):
+            if m.get("macro") == "potion":
+                out.append({"cycle": n, "kind": "potion",
+                            "text": str(m.get("purpose", "Potion")),
+                            "frame": c.get("frame_before")})
+        prev = state
+    frame_of = {c.get("cycle"): c.get("frame_before") for c in cycles}
+    for n, stage in stages[1:]:
+        out.append({"cycle": n, "kind": "objective", "text": f"New objective: {stage}",
+                    "frame": frame_of.get(n)})
+    if payload.get("mission_complete"):
+        ev = payload.get("mission_evidence") or {}
+        out.append({"cycle": ev.get("cycle"), "kind": "complete",
+                    "text": "Mission complete screen", "frame": ev.get("frame_path")})
+    return sorted(out, key=lambda m: m.get("cycle") or 0)
+
+
+def _summary(scenarios: list[dict[str, Any]], payload: dict[str, Any],
+             stages: list[tuple[int, str]]) -> str:
+    """Deterministic plain-English summary - no model involved."""
+    by = {s["scenario"]: s["status"] for s in scenarios}
+    passed = [n for n, s in by.items() if s == PASS]
+    failed = [n for n, s in by.items() if s == FAIL]
+    observed = [n for n, s in by.items() if s == OBSERVED]
+    parts = [f"{payload.get('cycles_run', 0)} cycles in "
+             f"{float(payload.get('duration_seconds') or 0):.0f}s; "
+             f"stopped because: {payload.get('stop_reason')}."]
+    parts.append("Mission complete." if payload.get("mission_complete")
+                 else "Mission was not completed in this run.")
+    if passed:
+        parts.append("Proven on a later frame: " + ", ".join(passed) + ".")
+    if failed:
+        parts.append("Acted but no result shown: " + ", ".join(failed) + ".")
+    if observed:
+        parts.append("Seen but never attempted: " + ", ".join(observed) + ".")
+    deaths = payload.get("deaths", 0)
+    parts.append(f"Deaths {deaths}, potions {payload.get('potions', 0)} "
+                 f"({payload.get('potions_confirmed', 0)} confirmed by health rising), "
+                 f"lowest health {payload.get('min_health')}%.")
+    if len(stages) <= 1:
+        parts.append("The objective banner never moved to a new stage.")
+    return " ".join(parts)
 
 
 def verdict(scenarios: list[dict[str, Any]]) -> str:
@@ -219,7 +300,15 @@ def build(payload: dict[str, Any]) -> dict[str, Any]:
                          "buttons": ", ".join(str(m.get("macro")) + (f"({m['direction']})" if m.get("direction") else "")
                                               for m in _moves(c))})
     scenarios = [rescue, fight, explore, items, loot, talk, nav, wall, obj]
+    counts: dict[str, int] = {}
+    for s in scenarios:
+        counts[s["status"]] = counts.get(s["status"], 0) + 1
     return {"verdict": verdict(scenarios),
+            "counts": counts,
+            "summary": _summary(scenarios, payload, stages),
+            "timeline": _timeline(payload),
+            "moments": _moments(payload, stages),
+            "learning": payload.get("learning") or {},
             "agents": agents,
             "messages": messages,
             "run": {"cycles_run": payload.get("cycles_run"),
@@ -245,7 +334,8 @@ def _html(report: dict[str, Any], reports_dir: Path) -> str:
             rel = Path(p).resolve().relative_to(reports_dir.parent.resolve())
             href = "../" + rel.as_posix()
         except ValueError:
-            href = Path(p).as_uri()
+            path = Path(p)
+            href = path.as_uri() if path.is_absolute() else path.as_posix()
         return f'<a href="{html.escape(href)}">{n}</a>'
 
     def cyc(ns: list[int]) -> str:
@@ -303,18 +393,27 @@ def _html(report: dict[str, Any], reports_dir: Path) -> str:
 
 
 def write(payload: dict[str, Any], reports_dir: Path) -> dict[str, Any]:
+    """execution-report.html is the report; dungeons-scenarios.html is the
+    same dashboard under its old name, so existing links keep working.
+    The old plain table is kept as dungeons-scenarios-raw.html."""
+    from datetime import datetime
+
+    from core.professional_report import render_dashboard
+
     report = build(payload)
     reports_dir.mkdir(parents=True, exist_ok=True)
     (reports_dir / "dungeons-scenarios.json").write_text(
         json.dumps(report, indent=2, default=str), encoding="utf-8")
-    (reports_dir / "dungeons-scenarios.html").write_text(
+    (reports_dir / "dungeons-scenarios-raw.html").write_text(
         _html(report, reports_dir), encoding="utf-8")
     dashboard = dict(report)
     dashboard["title"] = "Minecraft Dungeons - execution report"
     dashboard["run_id"] = reports_dir.parent.name
-    from core.professional_report import render_dashboard
-    (reports_dir / "execution-report.html").write_text(
-        render_dashboard(dashboard, mode="dungeons"), encoding="utf-8")
+    dashboard["run_dir"] = str(reports_dir.parent)
+    dashboard["generated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    page = render_dashboard(dashboard, mode="dungeons")
+    for name in ("execution-report.html", "dungeons-scenarios.html"):
+        (reports_dir / name).write_text(page, encoding="utf-8")
     return report
 
 

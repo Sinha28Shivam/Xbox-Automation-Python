@@ -857,8 +857,12 @@ def _potion_check(decision: DungeonsFrameDecision,
         counters["potions_confirmed"] = counters.get("potions_confirmed", 0) + 1
     if hp == 0:
         return None  # downed or HUD hidden: a potion would be wasted
-    low = hp <= _POTION_THRESHOLD
-    dropped = prev - hp >= _POTION_DROP and hp < 100
+    # A death lesson (tools/game_profiles/dungeons_learning.py) raises these.
+    threshold = int(counters.get("_learn_potion_threshold") or _POTION_THRESHOLD)
+    drop = int(counters.get("_learn_potion_drop") or _POTION_DROP)
+    low = hp <= threshold
+    dropped = prev - hp >= drop and hp < 100
+    learned = not (hp <= _POTION_THRESHOLD or prev - hp >= _POTION_DROP)
     # An unconfirmed drink only blocks for a short retry window, not 30s.
     wait_s = _POTION_RETRY_S if counters.get("_potion_pending") else _POTION_COOLDOWN_S
     cooled = time.monotonic() - counters["_last_potion"] >= wait_s
@@ -868,6 +872,9 @@ def _potion_check(decision: DungeonsFrameDecision,
     counters["_potion_pending"] = True
     counters["_potion_hp"] = hp
     why = f"health {hp}% (was {prev}%)"
+    if learned:
+        counters["learn_early_potions"] = counters.get("learn_early_potions", 0) + 1
+        why += f" [learned: drink at <= {threshold}% or -{drop}%]"
     moves = [DungeonsMove(action="potion", purpose=f"Drink potion: {why}.")]
     enemy_dir = decision.enemy_direction
     if decision.enemy_adjacent and enemy_dir != "none":
@@ -1196,10 +1203,19 @@ _SUMMARY_KEYS = ("deaths", "melee", "dodges", "reflex_attacks", "ranged",
                  "rescue_approaches", "model_yields", "interactions",
                  "wall_escapes", "map_steers", "occluded_cycles", "map_travel_px",
                  "engagements", "unconfirmed_sightings", "blind_hits",
-                 "held_engagements", "self_sightings")
+                 "held_engagements", "self_sightings", "learn_early_potions",
+                 "learn_interact_overrides")
 
 
 def _extra_session_text(counters: dict[str, Any]) -> str:
+    text = _session_counts_text(counters)
+    # Lesson hints (core/gameplay_lessons.py), set once at run start.
+    if counters.get("_learn_prompt"):
+        text += str(counters["_learn_prompt"])
+    return text
+
+
+def _session_counts_text(counters: dict[str, Any]) -> str:
     text = ("Deaths so far: {deaths}; melee swings: {melee}; ranged: {ranged}; "
             "artifacts: {artifacts}; dodges: {dodges}; potions: {potions}\n").format(
                 **{k: counters.get(k, 0) for k in _SUMMARY_KEYS})

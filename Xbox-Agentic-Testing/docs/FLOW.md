@@ -386,6 +386,8 @@ Both ways then follow the same path:
 ```text
 tools/dungeons_gameplay.py:vision_guided_dungeons_gameplay_impl
   resolve_profile(agents)          # game_profiles/dungeons_agents.PROFILE or dungeons_profile.PROFILE
+  _load_learning(ctx)              # open lessons -> counters + prompt hint -> lessons-applied.json
+  _with_lessons(profile, learning) # profile starts with the learned knobs
   _mirrored_pads / _encoder
   tools/gameplay_engine.py:run_gameplay_loop(ctx, profile, goal, ...)
      decider = build_vision_decider(ctx, profile.frame_model)
@@ -400,12 +402,33 @@ tools/dungeons_gameplay.py:vision_guided_dungeons_gameplay_impl
              -> buttons from config/dungeons_controls.yaml
         after = grab_nonblank(camera)
         profile.update_stuck_counters(counters, moves, progressed)
+  _finish_learning(ctx, result, learning)   # core/gameplay_lessons.py:update -> lessons-updated.json
   game_profiles/dungeons_agents.py:ReporterAgent().run(result, reports_dir)
+     tools/dungeons_scenario_report.py:write -> professional_report.render_dashboard(mode="dungeons")
 ```
 
 In `game_profiles/dungeons_agents.py`, `Supervisor` combines `HealthAgent`,
 `CombatAgent`, `InteractionAgent` and `NavigatorAgent` through the profile
-hooks. To add a new game, create a new `GameProfile`; see
+hooks.
+
+**Gameplay learning** (`core/gameplay_lessons.py` + `tools/game_profiles/dungeons_learning.py`):
+
+- At run end, `DungeonsRules.detect` reads the cycle log and records lessons in
+  `artifacts/lessons/gameplay-dungeons.json`: `death` (with health before it),
+  `not_attempted` (a chest/item/villager was close but never pressed), and
+  `failed` (an agent acted but no later frame showed a result).
+- At the next run's start, `adjustments` turns open lessons into bounded knobs:
+  a death means drinking at 80% (85% after two) instead of 70%, and a
+  not_attempted lesson makes `Supervisor._learned_interaction` give a close
+  target to the interaction agent first. `prompt_text` adds a hint to every
+  model prompt.
+- Moves changed by a lesson are tagged `[learned]` and counted, so the report
+  shows the lesson was enforced, not just loaded.
+- A lesson is resolved when its scenario later PASSes. It ages when it doesn't
+  recur and expires after 3 quiet runs. Runs shorter than 10 in-mission cycles
+  don't judge it at all.
+
+To add a new game, create a new `GameProfile`; see
 [ADDING_GAMEPLAY.md](ADDING_GAMEPLAY.md).
 
 ---

@@ -6,6 +6,27 @@ versions follow [Semantic Versioning].
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/
 
+## [Unreleased]
+
+### Added
+- Learning for Dungeons gameplay (`core/gameplay_lessons.py`,
+  `tools/game_profiles/dungeons_learning.py`). Lessons for deaths, skipped
+  chests/items, and actions with no visible result are recorded from the cycle
+  log. They are applied at the next run's start: earlier potion, interaction
+  priority, and a prompt hint. Resolved on PASS, expire after 3 quiet runs.
+- The Dungeons report now uses the professional dashboard properly: real
+  pass/fail counts, a run summary, cycle links to frames, a Learning section,
+  key moments with frames, and a per-cycle timeline.
+  `dungeons-scenarios.html` is now the same dashboard; the old table is in
+  `dungeons-scenarios-raw.html`.
+
+### Fixed
+- Dungeons report showed Passed 0 / Total 9 for a 4-PASS run (counts were
+  never passed to the dashboard).
+- 'Objective reached' was a false PASS: "Defeat the Illagers from the Rift"
+  normalised to "defeat" and counted as a new stage
+  (dungeons-20261016-114012, c42).
+
 ## [0.1.0] - 2026-10-15
 
 First versioned release. Verified on hardware: `entry-point-game-activity`
