@@ -342,6 +342,18 @@ def _dungeons_extras(data: dict[str, Any]) -> str:
             body += "<p class='small'>No lesson was recorded, resolved or expired.</p>"
         out.append(f"<h2>Learning</h2><div class='card'>{body}</div>")
 
+    rules = [s for s in data.get("scenarios") or [] if s.get("notes")]
+    if rules:
+        rows = "".join(
+            f"<tr><td>{_esc(s.get('scenario'))}</td>"
+            f"<td>{''.join(f'<div>{_esc(n)}</div>' for n in s.get('notes') or [])}</td></tr>"
+            for s in rules)
+        out.append("<h2>Scenario rules</h2><div class='card'><p class='small'>How each "
+                   "status is decided from the cycle log. PASS needs a result on a later "
+                   "frame; OBSERVED = seen but not attempted; NOT ENCOUNTERED never "
+                   "affects the verdict.</p><table><thead><tr><th>Scenario</th>"
+                   f"<th>Rule</th></tr></thead><tbody>{rows}</tbody></table></div>")
+
     sp = data.get("combat_speed") or {}
     if sp.get("combat_cycles"):
         def _s(v: Any) -> str:
@@ -442,15 +454,11 @@ def render_dashboard(data: dict[str, Any], mode: str = "scenario") -> str:
             {"title": name, "summary": f"{len(cycles)} cycles", "duration_seconds": None}
             for name, cycles in (data.get("agents") or {}).items()
         ]
-        headers: tuple[str, ...] = ("Scenario", "Status", "Seen (cycles)", "Acted",
-                                    "Result shown", "Rule")
+        headers: tuple[str, ...] = ("Scenario", "Status", "Evidence frames")
         row_html = "".join(
             f"<tr><td>{_esc(row.get('scenario'))}</td>"
             f"<td><span class='tag {_status_class(row.get('status',''))}'>{_esc(row.get('status'))}</span></td>"
-            f"<td>{_cycles(row.get('seen_cycles') or [])}</td>"
-            f"<td>{_cycles(row.get('attempted_cycles') or [])}</td>"
-            f"<td>{_cycles(row.get('evidence_cycles') or [])}</td>"
-            f"<td class='small'>{_esc('; '.join(row.get('notes') or []))}</td></tr>"
+            f"<td>{_cycles(row.get('evidence_cycles') or [])}</td></tr>"
             for row in rows)
     elif mode == "mechanics":
         title = f"{data.get('game_name', 'Game')} mechanics execution"
