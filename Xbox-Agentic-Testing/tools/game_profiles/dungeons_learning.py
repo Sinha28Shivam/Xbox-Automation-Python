@@ -95,6 +95,10 @@ def _not_attempted(payload: dict[str, Any], report: dict[str, Any],
     close = []
     for n in s.get("seen_cycles") or []:
         c = by_n.get(n) or {}
+        if name == "Saving villagers" and not c.get("villager_in_danger"):
+            # A calm villager is not a rescue (G006 in dungeons-20261016-133419
+            # was a villager the hero had just talked to).
+            continue
         near = [e for e in c.get("entities") or [] if e.get("category") in cats
                 and e.get("distance_estimate") in ("very_close", "close")]
         if near:
@@ -160,9 +164,13 @@ class DungeonsRules:
         for l in lessons:
             rule = l.get("failure_class")
             if rule == "death":
-                strong = int(l.get("occurrences", 1)) >= 2
+                # Strong only after 2+ deaths in the latest run that recurred;
+                # 85% / -10% drank at 90% and broke off a sustain for a 10%
+                # chip in dungeons-20261016-133419 (a deathless run).
+                strong = int((l.get("data") or {}).get("deaths", 1)) >= 2 \
+                    and int(l.get("quiet_runs", 0)) == 0
                 counters["_learn_potion_threshold"] = 85 if strong else 80
-                counters["_learn_potion_drop"] = 10 if strong else 12
+                counters["_learn_potion_drop"] = 15 if strong else 18
                 applied.append({"id": l.get("id"), "rule": rule,
                                 "change": (f"drink at <= {counters['_learn_potion_threshold']}% "
                                            f"health or a {counters['_learn_potion_drop']}% drop "

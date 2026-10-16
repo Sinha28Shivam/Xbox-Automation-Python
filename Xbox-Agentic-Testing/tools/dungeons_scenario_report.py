@@ -90,10 +90,13 @@ def objective_stages(cycles: list[dict[str, Any]]) -> list[tuple[int, str]]:
         if any(_same_objective(o, s) for _, s in stages):
             continue
         if stages:
-            # Ignore a one-cycle flicker: require the next reading to agree.
+            # A new stage must be read the same way on 2 of the next 3 frames.
+            # One agreeing frame let misreads through ("find the way again" at
+            # c41 of dungeons-20261016-133419 among "key gem/golem/guem").
             idx = cycles.index(c)
-            nxt = [_norm_objective(str(x.get("objective") or "")) for x in cycles[idx + 1:idx + 3]]
-            if nxt and not any(_same_objective(o, n) for n in nxt if len(n) >= 6):
+            nxt = [_norm_objective(str(x.get("objective") or "")) for x in cycles[idx + 1:idx + 4]]
+            nxt = [n for n in nxt if len(n) >= 6]
+            if nxt and sum(_same_objective(o, n) for n in nxt) < min(2, len(nxt)):
                 continue
         stages.append((c["cycle"], o))
     return stages
@@ -246,10 +249,25 @@ def build(payload: dict[str, Any]) -> dict[str, Any]:
     seen = [c["cycle"] for c in cycles if (c.get("enemy_count") or 0) > 0
             or _ents(c, "enemy")]
     tried = [c["cycle"] for c in cycles if _did(c, "fight", "melee", "ranged")]
-    done = [n for n in tried if n in nxt
-            and (nxt[n].get("enemy_count") or 0) < (by_n[n].get("enemy_count") or 0)]
+
+    def visible_enemies(c: dict[str, Any]) -> int:
+        return len(_ents(c, "enemy"))
+
+    def cleared(n: int) -> bool:
+        """Close-range: fewer enemies nearby. Ranged (enemy_count is 0 at range,
+        dungeons-20261016-133419): fewer enemies visible and no health lost."""
+        if n not in nxt:
+            return False
+        a, b = by_n[n], nxt[n]
+        if (b.get("enemy_count") or 0) < (a.get("enemy_count") or 0):
+            return True
+        hp_a, hp_b = a.get("health_percent") or 0, b.get("health_percent") or 0
+        return (visible_enemies(b) < visible_enemies(a) and visible_enemies(a) > 0
+                and hp_b >= hp_a - 5)
+    done = [n for n in tried if cleared(n)]
     fight = _scenario("Fighting mobs", seen, tried, done,
-                      ["evidence = nearby enemy count fell after the attack"])
+                      ["evidence = after the attack the next frame shows fewer enemies "
+                       "nearby, or fewer enemies on screen with no health lost"])
 
     # Exploring villages: village structures/objective seen while the map moved.
     # Objective text alone ("Find Honeycomb Farm") is not a sighting.

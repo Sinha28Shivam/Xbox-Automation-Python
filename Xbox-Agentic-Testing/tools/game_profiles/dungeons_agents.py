@@ -100,6 +100,7 @@ class InteractionAgent(Agent):
 
     def _give_up(self, c: dict[str, Any]) -> None:
         c["_interact_run"] = c["_approach_run"] = c["_sidesteps"] = 0
+        c["_approach_cat"] = None
         c["_interact_cooldown"] = _INTERACT_COOLDOWN
         c["interaction_give_ups"] += 1
 
@@ -155,7 +156,10 @@ class InteractionAgent(Agent):
         else:
             purpose = f"Approach {label}."
         c["rescue_approaches" if rescue else "interaction_approaches"] += 1
-        return [DungeonsMove(action="move", direction=heading, duration=1.2,
+        c["_approach_cat"] = t.category if t else None
+        # Short steps when close: overshooting a chest means turning back.
+        step = 0.7 if t and t.distance_estimate == "close" else 1.2
+        return [DungeonsMove(action="move", direction=heading, duration=step,
                              purpose=purpose)]
 
 
@@ -227,6 +231,27 @@ class Supervisor:
         self._credit(d, c, "interaction", "learned: interact before moving on")
         return moves
 
+    def _committed_approach(self, d: DungeonsFrameDecision,
+                            c: dict[str, Any]) -> list[DungeonsMove] | None:
+        """Finish walking to a chest once started. In dungeons-20261016-133419
+        each chest approach (c42, c53, c59) lasted one cycle before the
+        navigator took over again, so no chest was ever reached."""
+        if c.get("_approach_run", 0) <= 0 or c.get("_interact_cooldown", 0) > 0:
+            return None
+        if d.enemy_adjacent or d._nav.get("blind_attacker") \
+                or (d.enemy_direction != "none" and not d._nav.get("held")):
+            return None
+        cat = c.get("_approach_cat")
+        if not cat or not any(e.category == cat and e.distance_estimate in ("very_close", "close")
+                              for e in d.entities):
+            return None
+        moves = self.by_name["interaction"].propose(d, c, None)
+        if not moves:
+            return None
+        c["committed_approaches"] = c.get("committed_approaches", 0) + 1
+        self._credit(d, c, "interaction", "committed: finish the approach")
+        return moves
+
     def forced_moves(self, d: DungeonsFrameDecision,
                      c: dict[str, Any]) -> list[DungeonsMove] | None:
         if d.scene_state == "mission_complete" and d._nav.get("hud"):
@@ -251,7 +276,7 @@ class Supervisor:
             self._credit(d, c, "combat", f"override: hit by unseen attacker "
                                          f"(-{d._nav.get('damage')}%)")
             return moves
-        moves = self._learned_interaction(d, c, cmd)
+        moves = self._learned_interaction(d, c, cmd) or self._committed_approach(d, c)
         if moves:
             return moves
         if d._nav.get("blind_attacker") or d._nav.get("held"):

@@ -333,6 +333,12 @@ OBSERVATION RULES
   "opened chest" if the lid is open). When a chest is opened or broken it
   spills GLOWING GOLD COINS / emeralds on the ground: report those as "loot",
   kind "coins" - walking over them collects them.
+- Give `x` and `y` for EVERY chest, coin pile, villager, gate/lever and
+  portal too, not only enemies: the system measures how far each is from
+  the hero and walks there before pressing A.
+- STORY CAPTIONS: a dark text box across the lower screen with a sentence
+  (e.g. "The illagers are just on the other side of the gate!") and the HUD
+  hidden is a cutscene caption: scene_state = menu_or_prompt.
 - Read `objective` and `objective_kind` from the objective banner. Report the
   SAME objective text every cycle until the on-screen text changes.
 - The minimap (top-right): white arrow = hero, YELLOW icon/diamond = the
@@ -710,7 +716,33 @@ def _enemy_geometry(decision: DungeonsFrameDecision) -> dict[str, Any] | None:
             "visible": len(real) + len(unplaced)}
 
 
+# Interactables measured from x/y like enemies. Frame 058 of run
+# dungeons-20261016-133419: the model called two chests ~3 hero-widths away
+# "very_close", so A was pressed at nothing. A press needs the hero this
+# close (frame-height units); anything further is "close" and is walked to.
+_REACH_RADIUS = 0.11
+_PLACED_CATEGORIES = ("loot", "villager", "door_or_lever", "portal")
+
+
+def _object_geometry(decision: DungeonsFrameDecision) -> int:
+    """Recompute direction/distance of placed interactables. Returns how many."""
+    hx, hy = _HERO_XY
+    n = 0
+    for e in decision.entities:
+        if e.category not in _PLACED_CATEGORIES or e.x is None or e.y is None:
+            continue
+        dx, dy = (e.x - hx) * 16 / 9, e.y - hy
+        dist = math.hypot(dx, dy)
+        if dist >= _SELF_RADIUS * 0.5:
+            e.direction = _heading_of(dx, dy)
+        e.distance_estimate = ("very_close" if dist <= _REACH_RADIUS else
+                               "close" if dist <= _NEAR_RADIUS * 1.6 else "far")
+        n += 1
+    return n
+
+
 def _apply_enemy_geometry(decision: DungeonsFrameDecision) -> None:
+    decision._nav["placed_objects"] = _object_geometry(decision)
     geo = _enemy_geometry(decision)
     decision._nav["enemy_geo"] = geo
     if geo is None:
@@ -857,11 +889,25 @@ def _annotate(decision: DungeonsFrameDecision, frame: Any) -> None:
             f"model said {claimed}%, heart gauge reads {hp}% (using {hp}%)")
         print(f"  [health] model {claimed}% vs pixel {hp}% -> trusting pixel",
               flush=True)
+    hud = _hud_visible(frame)
+    decision._nav["hud"] = hud
+    if (hp == 0 and not hud and decision.scene_state == "in_mission"
+            and claimed > 0):
+        # Story caption (frame 008 of dungeons-20261016-133419): the HUD is
+        # hidden behind a dialogue box, the heart reads 0, yet the model
+        # says in_mission. Walking/pressing A at the scenery wasted 8 cycles;
+        # it is a prompt to advance. Health is not trusted on this frame.
+        decision.scene_state = "menu_or_prompt"
+        decision.moves = []
+        decision._nav["caption"] = True
+        decision.health_mismatch = "HUD hidden behind a story caption"
+        print("  [scene] HUD hidden + heart 0 while 'in_mission' -> story caption",
+              flush=True)
+        return
     # The pixel reading stays authoritative: it is measured, not inferred.
     decision.health_percent = hp
     if hp > 0:
         decision.health_low = hp <= _POTION_THRESHOLD
-    decision._nav["hud"] = _hud_visible(frame)
 
 
 # Blue artifact hexagon right of the hotbar: 0.39-0.73 blue fill in gameplay,
@@ -1097,6 +1143,10 @@ def _forced_moves(decision: DungeonsFrameDecision,
     counters["_downed"] = False
     if state == "loading_or_cutscene":
         return [DungeonsMove(action="wait", duration=1.5, purpose="Wait out loading.")]
+    if decision._nav.get("caption"):
+        counters["captions_skipped"] = counters.get("captions_skipped", 0) + 1
+        return [DungeonsMove(action="advance_prompt",
+                             purpose="Story caption over the HUD: advance it.")]
     if state == "menu_or_prompt" and not decision.moves:
         return [DungeonsMove(action="advance_prompt", purpose="Dismiss prompt.")]
     if state != "in_mission":
@@ -1296,7 +1346,8 @@ _SUMMARY_KEYS = ("deaths", "melee", "dodges", "reflex_attacks", "ranged",
                  "wall_escapes", "map_steers", "occluded_cycles", "map_travel_px",
                  "engagements", "unconfirmed_sightings", "blind_hits",
                  "held_engagements", "self_sightings", "far_ignored",
-                 "combat_pushes", "coin_pickups", "learn_early_potions",
+                 "combat_pushes", "coin_pickups", "captions_skipped",
+                 "committed_approaches", "learn_early_potions",
                  "learn_interact_overrides")
 
 

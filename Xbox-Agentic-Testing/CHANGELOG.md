@@ -39,6 +39,13 @@ versions follow [Semantic Versioning].
   `dungeons-scenarios-raw.html`.
 
 ### Fixed
+- Fixes from Dungeons run dungeons-20261016-133419:
+  - Story captions are detected: the model said in_mission while the HUD was hidden and the heart read 0. They are now advanced with A instead of walked through (cycles 7-14 were wasted).
+  - Chests, coins, villagers, gates and portals get x/y positions, and their distance is measured from them. A is pressed only within reach (frame 058 had 'very_close' chests about 3 hero-widths away). A chest approach is now finished instead of handed back to the navigator after one cycle.
+  - 'Fighting mobs' can now pass for ranged fights: the next frame shows fewer enemies on screen and no health lost.
+  - No 'Saving villagers' lesson is recorded for a calm villager. False lessons G006 and G007 were resolved by hand.
+  - The death lesson stays mild (80% / -18%) unless the last run had 2+ deaths. Previously it drank at 90% and broke off attacks for a 10% hit.
+  - A new objective stage needs 2 of the next 3 readings to agree, which removes misread stages.
 - Dungeons report showed Passed 0 / Total 9 for a 4-PASS run (counts were
   never passed to the dashboard).
 - 'Objective reached' was a false PASS: "Defeat the Illagers from the Rift"
