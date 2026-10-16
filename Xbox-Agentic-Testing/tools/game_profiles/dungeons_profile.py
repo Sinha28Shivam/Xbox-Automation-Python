@@ -47,6 +47,19 @@ _ARTIFACT_EVERY = 3          # fight/ranged cycles between artifact uses
 _CROWD_SIZE = 3              # enemies within reach that trigger a retreat
 _MAX_RETREAT_RUN = 2         # consecutive retreats before fighting anyway
 _RANGED_HOLD = 0.7
+
+# Combat speed knobs, set once per run from settings gameplay.dungeons by
+# tools/dungeons_gameplay.py (apply_tuning). These defaults are what runs when
+# no settings are given; the pre-speed-up behaviour is LEGACY_TUNING.
+LEGACY_TUNING: dict[str, Any] = {
+    "ranged_hold_s": _RANGED_HOLD, "fight_swings": 4, "sidestep_every": 1,
+    "artifact_cooldown_s": 0.0}
+TUNING: dict[str, Any] = {
+    "ranged_hold_s": 1.2,         # longer volley: more bolts per decision
+    "fight_swings": 6,            # longer melee burst
+    "sidestep_every": 2,          # roll after every 2nd burst, not every one
+    "artifact_cooldown_s": 8.0,   # artifacts as soon as they are likely ready
+}
 # Health monitor: drink (LT) when health is at/below the threshold or fell by
 # _POTION_DROP since the last reading. In-game potion cooldown is ~30s.
 # Live run 2026-10-05: 61% -> 4% and 68% -> 35% -> 1% within one ~5s cycle each.
@@ -364,24 +377,35 @@ def _face(pad: Any, move: DungeonsMove) -> None:
                        hold=_FACE_HOLD, label="face")
 
 
-def _fight(pad: Any, direction: str) -> dict[str, Any]:
+_burst_count = 0   # fight bursts this process; drives sidestep_every
+
+
+def _fight(pad: Any, direction: str, swings: int | None = None,
+           sidestep: bool | None = None) -> dict[str, Any]:
     """Swing repeatedly toward the enemy (stick held so the hero keeps facing
-    it), then sidestep with a roll (left stick + LB)."""
+    it), then sidestep with a roll (left stick + LB) every
+    TUNING["sidestep_every"] bursts."""
+    global _burst_count
+    n = int(swings if swings is not None else TUNING["fight_swings"])
     x, y = _vec(direction)
     stick = ComboComponent(kind="axis", name="left_stick", x=x * 0.4, y=y * 0.4)
     swing = [stick, _bound("melee")]
     ok = True
-    for _ in range(_FIGHT_SWINGS):
+    for _ in range(n):
         ok = bool(dispatch_combo(pad, swing, hold=_SWING_HOLD, label="fight")["dispatched"]) and ok
-    # Sidestep via the real dodge: left stick toward the sidestep heading plus
-    # LB. A right-stick flick here only opened the emote wheel.
-    sx, sy = _vec(_PERPENDICULAR.get(direction, "down"))
-    dispatch_combo(pad,
-                   [ComboComponent(kind="axis", name="left_stick", x=sx, y=sy),
-                    _bound("forward_dodge")],
-                   hold=0.15, label="fight_dodge")
-    return {"macro": "fight", "direction": direction, "swings": _FIGHT_SWINGS,
-            "dispatched": ok}
+    _burst_count += 1
+    if sidestep is None:
+        sidestep = _burst_count % max(1, int(TUNING["sidestep_every"])) == 0
+    if sidestep:
+        # Sidestep via the real dodge: left stick toward the sidestep heading
+        # plus LB. A right-stick flick here only opened the emote wheel.
+        sx, sy = _vec(_PERPENDICULAR.get(direction, "down"))
+        dispatch_combo(pad,
+                       [ComboComponent(kind="axis", name="left_stick", x=sx, y=sy),
+                        _bound("forward_dodge")],
+                       hold=0.15, label="fight_dodge")
+    return {"macro": "fight", "direction": direction, "swings": n,
+            "sidestep": bool(sidestep), "dispatched": ok}
 
 
 def execute_move(ctx: ToolContext, move: DungeonsMove) -> dict[str, Any]:
@@ -1068,12 +1092,25 @@ def _forced_moves(decision: DungeonsFrameDecision,
     return _combat_moves(decision, counters)
 
 
+def _artifact_due(counters: dict[str, Any]) -> bool:
+    """Artifacts on a time cooldown (TUNING) instead of every Nth combat cycle.
+    artifact_cooldown_s = 0 keeps the old every-_ARTIFACT_EVERY-cycles rule."""
+    cooldown = float(TUNING["artifact_cooldown_s"])
+    if cooldown <= 0:
+        return counters["combat_cycles"] % _ARTIFACT_EVERY == 1
+    now = time.monotonic()
+    if now - float(counters.get("_last_artifact_t", float("-inf"))) < cooldown:
+        return False
+    counters["_last_artifact_t"] = now
+    return True
+
+
 def _combat_moves(decision: DungeonsFrameDecision,
                   counters: dict[str, Any]) -> list[DungeonsMove]:
     """Reflex combat toward `enemy_direction` (must not be 'none')."""
     enemy_dir = decision.enemy_direction
     counters["combat_cycles"] += 1
-    use_artifact = counters["combat_cycles"] % _ARTIFACT_EVERY == 1
+    use_artifact = _artifact_due(counters)
     if decision.health_low and decision.enemy_adjacent:
         return [_next_artifact(counters),
                 DungeonsMove(action="dodge", direction=_OPPOSITE.get(enemy_dir, "down"),
@@ -1092,7 +1129,7 @@ def _combat_moves(decision: DungeonsFrameDecision,
                              purpose=f"Crowd of {decision.enemy_count}: dodge out."),
                 DungeonsMove(action="move", direction=away, duration=1.0,
                              purpose="Crowd: open distance."),
-                DungeonsMove(action="ranged", direction=enemy_dir, duration=_RANGED_HOLD,
+                DungeonsMove(action="ranged", direction=enemy_dir, duration=float(TUNING["ranged_hold_s"]),
                              purpose="Crowd: shoot the chasers.")]
     counters["_retreat_run"] = 0
     if decision.enemy_adjacent:
@@ -1104,7 +1141,7 @@ def _combat_moves(decision: DungeonsFrameDecision,
         return moves
     # Enemy visible but not adjacent: shoot, then let the model's moves follow
     # on alternate cycles so the hero still advances.
-    moves = [DungeonsMove(action="ranged", direction=enemy_dir, duration=_RANGED_HOLD,
+    moves = [DungeonsMove(action="ranged", direction=enemy_dir, duration=float(TUNING["ranged_hold_s"]),
                           purpose="Enemy at range: shoot.")]
     if use_artifact:
         moves.insert(0, _next_artifact(counters))
@@ -1126,12 +1163,18 @@ def _fallback_moves(decision: DungeonsFrameDecision) -> list[DungeonsMove]:
 
 
 def _on_move_dispatched(move: DungeonsMove, counters: dict[str, Any]) -> None:
+    # What dungeons_speed.sustain repeats while the model thinks: the batch's
+    # last attack, cleared by anything that is not an attack or an artifact.
+    if move.action in ("fight", "ranged") and move.direction != "none":
+        counters["_sustain_action"] = (move.action, move.direction)
+    elif move.action not in _TAP_ACTIONS:
+        counters["_sustain_action"] = None
     if move.action == "move" and move.direction != "none":
         counters["_last_move_dir"] = move.direction
     if move.action == "melee":
         counters["melee"] += 1
     elif move.action == "fight":
-        counters["melee"] += _FIGHT_SWINGS
+        counters["melee"] += int(TUNING["fight_swings"])
         counters["dodges"] += 1
     elif move.action in ("dodge", "forward_dodge"):
         counters["dodges"] += 1

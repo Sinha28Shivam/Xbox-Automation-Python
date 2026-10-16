@@ -222,6 +222,16 @@ def vision_guided_dungeons_gameplay_impl(
                     dispatched=False)
 
     profile = resolve_profile(agents)
+    from tools.game_profiles import dungeons_speed
+    speed = dungeons_speed.load_speed(ctx.settings)
+    dungeons_speed.apply_tuning(speed)
+    profile = dungeons_speed.with_speed(profile, speed)
+    print("[speed] sustain={} (cap {}s), fast schema={} (full every {}), "
+          "combat frame={}px, ranged {}s, {} swings".format(
+              speed["sustain_combat"] and fast, speed["sustain_max_s"],
+              speed["fast_combat_schema"], speed["full_refresh_every"],
+              speed["combat_vision_width"] or "full", speed["ranged_hold_s"],
+              speed["fight_swings"]), flush=True)
     learning = _load_learning(ctx)
     if learning["lessons"]:
         profile = _with_lessons(profile, learning)

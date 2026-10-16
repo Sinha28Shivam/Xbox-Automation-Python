@@ -342,6 +342,27 @@ def _dungeons_extras(data: dict[str, Any]) -> str:
             body += "<p class='small'>No lesson was recorded, resolved or expired.</p>"
         out.append(f"<h2>Learning</h2><div class='card'>{body}</div>")
 
+    sp = data.get("combat_speed") or {}
+    if sp.get("combat_cycles"):
+        def _s(v: Any) -> str:
+            return "-" if v is None else f"{v}s"
+        cells = [
+            ("Combat cycles", sp.get("combat_cycles")),
+            ("Avg combat decision", _s(sp.get("avg_combat_think_s"))),
+            ("Avg fast / full decision", f"{_s(sp.get('avg_fast_think_s'))} / "
+                                         f"{_s(sp.get('avg_full_think_s'))}"),
+            ("Attacks per combat cycle", sp.get("attacks_per_combat_cycle")),
+            ("Attacking while thinking", _s(sp.get("sustain_seconds"))),
+            ("Longest sustain", _s(sp.get("longest_sustain_s"))),
+            ("Sustain stopped for health", sp.get("sustain_danger_stops", 0)),
+        ]
+        info = "".join(f"<div class='kv'><span class='muted'>{_esc(k)}</span><br>"
+                       f"<b>{_esc(v)}</b></div>" for k, v in cells)
+        out.append("<h2>Combat speed</h2><div class='card'><div class='grid two'>"
+                   f"{info}</div><p class='small'>Baseline before the speed-up "
+                   "(dungeons-20261016-114012): 5.56s per combat decision, about 1 "
+                   "attack per combat cycle.</p></div>")
+
     moments = data.get("moments") or []
     if moments:
         css = {"death": "FAIL", "potion": "INCONCLUSIVE", "objective": "PASS",
@@ -359,13 +380,20 @@ def _dungeons_extras(data: dict[str, Any]) -> str:
             f"<tr><td>{_esc(t.get('cycle'))}</td><td>{_esc(t.get('scene'))}</td>"
             f"<td><b>{_esc(t.get('agent'))}</b><div class='small'>{_esc(t.get('route'))}</div></td>"
             f"<td>{_esc(t.get('health'))}%</td>"
+            f"<td>{_esc(t.get('think_s') if t.get('think_s') is not None else '-')}s"
+            f"<div class='small'>{_esc(t.get('decide_mode') or '')}</div></td>"
             f"<td><code>{_esc(t.get('buttons') or '-')}</code>"
             + (" <span class='tag OBSERVED'>learned</span>" if t.get("learned") else "")
-            + f"<div class='small'>{_esc(t.get('purpose'))}</div></td>"
-            f"<td>{_img(t.get('frame'), run_dir)}</td></tr>"
+            + f"<div class='small'>{_esc(t.get('purpose'))}</div>"
+            + (f"<div class='small'>kept attacking {_esc((t.get('sustain') or {}).get('seconds'))}s "
+               f"({_esc((t.get('sustain') or {}).get('slices'))} slices) - stopped: "
+               f"{_esc((t.get('sustain') or {}).get('stopped_by'))}</div>"
+               if (t.get("sustain") or {}).get("slices") or (t.get("sustain") or {}).get("danger_hp")
+               else "")
+            + f"</td><td>{_img(t.get('frame'), run_dir)}</td></tr>"
             for t in timeline)
         out.append("<h2>Cycle timeline</h2><div class='card'><table><thead><tr><th>#</th>"
-                   "<th>Scene</th><th>Agent</th><th>Health</th><th>Action</th>"
+                   "<th>Scene</th><th>Agent</th><th>Health</th><th>Decide</th><th>Action</th>"
                    f"<th>Frame</th></tr></thead><tbody>{rows}</tbody></table></div>")
     return "".join(out)
 

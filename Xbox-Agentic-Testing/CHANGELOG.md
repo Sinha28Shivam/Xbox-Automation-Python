@@ -9,6 +9,24 @@ versions follow [Semantic Versioning].
 ## [Unreleased]
 
 ### Added
+- Faster Dungeons combat (`tools/game_profiles/dungeons_speed.py`, settings
+  `gameplay.dungeons`, every change has its own flag). Baseline
+  dungeons-20261016-114012: 5.56 s per combat decision and 0.94 attacks per
+  combat cycle; the hero was idle about 4 s of every 5.5 s.
+  - The hero keeps attacking while the model thinks, up to 12 s. It checks
+    the heart gauge between bursts and breaks off to drink or roll. In the
+    offline fake rig (2.5 s model delay, 8 cycles) this went from 7 to 31
+    volleys.
+  - While engaged, the model gets a 9-field combat schema and a short prompt,
+    with a full reading every 3rd cycle.
+  - Frames sent to the model are 640 px while engaged.
+  - Combat timing: 1.2 s volley, 6-swing burst, roll after every 2nd burst,
+    artifacts on an 8 s cooldown.
+  - The report gains a Combat speed card, and each cycle in the timeline
+    shows decision mode, decision time and the attacks made while thinking.
+- Optional engine hooks `GameProfile.sustain`, `fast_frame_model`,
+  `vision_size` and `encode_frame(width, quality)`. Max and Minecraft are
+  unchanged.
 - Learning for Dungeons gameplay (`core/gameplay_lessons.py`,
   `tools/game_profiles/dungeons_learning.py`). Lessons for deaths, skipped
   chests/items, and actions with no visible result are recorded from the cycle

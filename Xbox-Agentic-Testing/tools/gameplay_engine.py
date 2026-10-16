@@ -26,6 +26,7 @@ from __future__ import annotations
 from core.logging_setup import log_suppressed as _log_suppressed
 
 import base64
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -48,20 +49,25 @@ JPEG_QUALITY = 82
 # ===========================================================================
 # Frame helpers (the genuinely game-agnostic ones)
 # ===========================================================================
-def encode_frame(frame: Any) -> str | None:
-    """Downscale a BGR numpy frame and return base64 JPEG, or None."""
+def encode_frame(frame: Any, width: int | None = None,
+                 quality: int | None = None) -> str | None:
+    """Downscale a BGR numpy frame and return base64 JPEG, or None.
+
+    width/quality override the module defaults for this call only.
+    """
     try:
         import cv2
     except ImportError:
         return None
 
-    height, width = frame.shape[:2]
-    if width > VISION_WIDTH:
-        scale = VISION_WIDTH / float(width)
-        frame = cv2.resize(frame, (VISION_WIDTH, int(height * scale)),
+    target = int(width or VISION_WIDTH)
+    height, frame_width = frame.shape[:2]
+    if frame_width > target:
+        scale = target / float(frame_width)
+        frame = cv2.resize(frame, (target, int(height * scale)),
                            interpolation=cv2.INTER_AREA)
     encoded, buffer = cv2.imencode(
-        ".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY])
+        ".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), int(quality or JPEG_QUALITY)])
     if not encoded:
         return None
     return base64.b64encode(buffer.tobytes()).decode("ascii")
@@ -389,6 +395,32 @@ class GameProfile:
     use_curriculum: bool = False
     curriculum_interval: int = 5
 
+    # Optional SPEED hooks (all off by default; Max/Minecraft are unaffected).
+    #
+    # Compact decision: while use_fast_decision(counters, last_scene) is True
+    # the loop asks fast_frame_model with fast_system_prompt instead of the
+    # full schema, then to_full_decision() converts the reply so every
+    # downstream hook still receives a frame_model instance.
+    fast_frame_model: type[BaseModel] | None = None
+    fast_system_prompt: str = ""
+    use_fast_decision: Callable[[dict[str, Any], str | None], bool] = field(
+        default=lambda counters, last_scene: False)
+    to_full_decision: Callable[[Any], Any] = field(default=lambda decision: decision)
+    # (width, jpeg_quality) for the frame sent to the model, or None = defaults.
+    vision_size: Callable[[dict[str, Any]], tuple[int, int] | None] = field(
+        default=lambda counters: None)
+    # Sustained action: runs on the input thread WHILE the model thinks about
+    # the next frame, so the character is not idle during the round-trip.
+    # sustain(ctx, snapshot, stop_event, grab, max_seconds) -> result dict,
+    # called with a copy of the counters taken right after a dispatch. It must
+    # return promptly once stop_event is set, and must not touch the live
+    # counters: merge_sustain(counters, result) applies its result on the
+    # main thread before the next decision is acted on.
+    sustain: Callable[..., dict[str, Any]] | None = None
+    sustain_max_s: float = 0.0
+    merge_sustain: Callable[[dict[str, Any], dict[str, Any]], None] = field(
+        default=lambda counters, result: None)
+
 
 # ===========================================================================
 # The one shared loop every game runs through
@@ -433,8 +465,33 @@ def run_gameplay_loop(
         decider = build_vision_decider(ctx, profile.frame_model)
     except Exception as exc:
         return fail(f"Vision model unavailable: {exc}")
+    fast_decider: Any = None
+    if profile.fast_frame_model is not None:
+        try:
+            fast_decider = build_vision_decider(ctx, profile.fast_frame_model)
+        except Exception as _exc:
+            _log_suppressed("tools/gameplay_engine.py:fast_decider", _exc)
 
     provider = _current_provider(ctx)
+
+    # The capture device is read by the main loop AND by a profile's sustain
+    # hook on the input thread; OpenCV captures are not thread-safe.
+    cam_lock = threading.Lock()
+
+    def _grab() -> tuple[Any, bool]:
+        with cam_lock:
+            return grab_nonblank(camera)
+
+    def _grab_quick() -> Any:
+        # Bounded wait: the main loop may hold the camera through blank-frame
+        # retries, and sustain must keep checking its stop flag meanwhile.
+        if not cam_lock.acquire(timeout=0.5):
+            return None
+        try:
+            _drain_stale_frames(camera, max_reads=8)
+            return camera.grab(allow_blank=True)
+        finally:
+            cam_lock.release()
 
     max_cycles = max(1, int(max_cycles))
     cycles: list[dict[str, Any]] = []
@@ -469,6 +526,28 @@ def run_gameplay_loop(
     carried: tuple[Any, bool] | None = None
     actor = ThreadPoolExecutor(max_workers=1) if overlap_act else None
     act_future: Any = None
+    # Sustain runs only on the input thread, so it needs overlap_act.
+    sustain_on = (actor is not None and profile.sustain is not None
+                  and profile.sustain_max_s > 0)
+    pending_sustain: dict[str, Any] | None = None
+    last_scene: str | None = None
+
+    def _end_sustain() -> None:
+        """Stop the running sustain, wait for it, apply its result."""
+        nonlocal pending_sustain
+        if pending_sustain is None:
+            return
+        pending_sustain["stop"].set()
+        if act_future is not None:
+            act_future.result()
+        result = pending_sustain["result"]
+        if result:
+            profile.merge_sustain(counters, result)
+            idx = pending_sustain["record"]
+            if idx < len(cycles):
+                cycles[idx]["sustain"] = {k: v for k, v in result.items()
+                                          if not str(k).startswith("_")}
+        pending_sustain = None
 
     try:
         for cycle in range(1, max_cycles + 1):
@@ -477,7 +556,7 @@ def run_gameplay_loop(
                 before, before_blank = carried
                 carried = None
             else:
-                before, before_blank = grab_nonblank(camera)
+                before, before_blank = _grab()
             if before is not None and before_blank:
                 counters["blank_streak"] = counters.get("blank_streak", 0) + 1
                 print(f"  [cycle {cycle}] frame still black after retries "
@@ -499,7 +578,11 @@ def run_gameplay_loop(
             if before_path:
                 frames.append(before_path)
 
-            image_b64 = encode_frame(profile.prepare_vision_frame(before))
+            fast = (fast_decider is not None
+                    and bool(profile.use_fast_decision(counters, last_scene)))
+            size = profile.vision_size(counters)
+            image_b64 = encode_frame(profile.prepare_vision_frame(before),
+                                     *(size or (None, None)))
             if image_b64 is None:
                 stop_reason = "Could not JPEG-encode the frame for the vision model."
                 break
@@ -519,8 +602,9 @@ def run_gameplay_loop(
             stuck_text = ", ".join(
                 f"{name}={value}" for name, value in counters.items()
                 if isinstance(value, int)) or "none"
+            system_prompt = profile.fast_system_prompt if fast else profile.system_prompt
             prompt = (
-                f"{profile.system_prompt}\n"
+                f"{system_prompt}\n"
                 f"# Session state\n"
                 f"Goal: {goal}\n"
                 f"Cycle: {cycle} of {max_cycles}\n"
@@ -531,15 +615,21 @@ def run_gameplay_loop(
 
             t_think = time.time()
             try:
-                decision = decide(decider, prompt, image_b64,
-                                  cacheable_prefix=profile.system_prompt,
+                decision = decide(fast_decider if fast else decider, prompt, image_b64,
+                                  cacheable_prefix=system_prompt,
                                   provider=provider)
+                if fast:
+                    decision = profile.to_full_decision(decision)
             except Exception as exc:
                 print(f"  [cycle {cycle}] vision model error: {exc}", flush=True)
                 history.append({"cycle": cycle, "moves": "none", "delta": None,
                                 "outcome": f"model error: {exc}"})
                 time.sleep(1.0)
                 continue
+            think_done = time.time()
+            # The next decision is ready: stop sustaining the previous one and
+            # apply what it did (potion stamps, attack counts) before deciding.
+            _end_sustain()
 
             profile.annotate_decision(decision, before)
             print(f"\n--- cycle {cycle}/{max_cycles} " + "-" * 40, flush=True)
@@ -611,21 +701,47 @@ def run_gameplay_loop(
                 # Never let two input batches overlap on the pad.
                 if act_future is not None:
                     act_future.result()
-                act_future = actor.submit(_run_moves)
+                if sustain_on:
+                    for move in moves[:3]:
+                        profile.on_move_dispatched(move, counters)
+                    snapshot = dict(counters)
+                    stop = threading.Event()
+                    holder: dict[str, Any] = {"stop": stop, "result": None,
+                                              "record": len(cycles)}
+
+                    def _run_and_sustain(snap: dict[str, Any] = snapshot,
+                                         stop_event: threading.Event = stop,
+                                         box: dict[str, Any] = holder) -> None:
+                        _run_moves()
+                        if profile.sustain is None:
+                            return
+                        try:
+                            box["result"] = profile.sustain(
+                                ctx, snap, stop_event, _grab_quick,
+                                float(profile.sustain_max_s))
+                        except Exception as _exc:
+                            _log_suppressed("tools/gameplay_engine.py:sustain", _exc)
+
+                    act_future = actor.submit(_run_and_sustain)
+                    pending_sustain = holder
+                else:
+                    act_future = actor.submit(_run_moves)
                 dispatched_any = True
             else:
                 _run_moves()
                 dispatched_any = dispatched_any or any(
                     o.get("dispatched") for o in dispatched_moves)
-            for move in moves[:3]:
-                profile.on_move_dispatched(move, counters)
+            if not sustain_on:  # sustain path already counted them above
+                for move in moves[:3]:
+                    profile.on_move_dispatched(move, counters)
+            last_scene = decision.scene_state
 
             # --- 6. re-observe and measure -------------------------------------
             act_s = round(time.time() - t_act, 2)
             print(f"  Timing    : think={think_s}s act={act_s}s", flush=True)
             time.sleep(max(0.0, float(overlap_lead if actor is not None
                                       else settle_after_move)))
-            after, after_blank = grab_nonblank(camera)
+            after, after_blank = _grab()
             if pipeline:
                 carried = (after, after_blank) if after is not None else None
                 after_path = None
@@ -676,6 +792,8 @@ def run_gameplay_loop(
                 "confidence": decision.confidence,
                 "think_s": think_s,
                 "act_s": act_s,
+                "decide_mode": "fast" if fast else "full",
+                "model_s": round(think_done - t_think, 2),
                 **profile.cycle_extra_fields(decision),
             })
             history.append({
@@ -703,6 +821,10 @@ def run_gameplay_loop(
                        "this point is kept as evidence.")
         print(f"\n  [stopped] {stop_reason}", flush=True)
     finally:
+        try:
+            _end_sustain()
+        except Exception as _exc:
+            _log_suppressed("tools/gameplay_engine.py:end_sustain", _exc)
         if actor is not None:
             actor.shutdown(wait=True)
         if saver is not None:

@@ -110,9 +110,42 @@ def _timeline(payload: dict[str, Any]) -> list[dict[str, Any]]:
             "buttons": ", ".join(str(m.get("macro")) + (f"({m['direction']})" if m.get("direction") else "")
                                  for m in _moves(c)),
             "learned": any("[learned" in str(m.get("purpose", "")) for m in _moves(c)),
+            "think_s": c.get("think_s"),
+            "decide_mode": c.get("decide_mode"),
+            "sustain": c.get("sustain") or {},
             "purpose": "; ".join(str(m.get("purpose", "")) for m in _moves(c))[:200],
             "frame": c.get("frame_before")})
     return rows
+
+
+def combat_speed(payload: dict[str, Any]) -> dict[str, Any]:
+    """Decide latency and attacks per combat cycle, from the cycle log."""
+    cycles = payload.get("cycles") or []
+    fights = [c for c in cycles if c.get("agent") == "combat"]
+
+    def avg(vals: list[float]) -> float | None:
+        return round(sum(vals) / len(vals), 2) if vals else None
+
+    def attacks(c: dict[str, Any]) -> int:
+        own = sum(1 for m in _moves(c) if m.get("macro") in ("fight", "ranged", "melee"))
+        s = c.get("sustain") or {}
+        return own + int(s.get("slices", 0))
+    fast = [float(c["think_s"]) for c in cycles
+            if c.get("decide_mode") == "fast" and c.get("think_s") is not None]
+    full = [float(c["think_s"]) for c in cycles
+            if c.get("decide_mode") != "fast" and c.get("think_s") is not None]
+    sustains = [c.get("sustain") or {} for c in cycles if c.get("sustain")]
+    return {
+        "combat_cycles": len(fights),
+        "avg_combat_think_s": avg([float(c["think_s"]) for c in fights
+                                   if c.get("think_s") is not None]),
+        "avg_fast_think_s": avg(fast), "avg_full_think_s": avg(full),
+        "fast_decisions": len(fast),
+        "attacks_per_combat_cycle": avg([float(attacks(c)) for c in fights]),
+        "sustain_seconds": round(sum(float(s.get("seconds", 0)) for s in sustains), 1),
+        "longest_sustain_s": max((float(s.get("seconds", 0)) for s in sustains), default=0.0),
+        "sustain_danger_stops": sum(1 for s in sustains if "danger_hp" in s),
+    }
 
 
 def _moments(payload: dict[str, Any],
@@ -166,6 +199,14 @@ def _summary(scenarios: list[dict[str, Any]], payload: dict[str, Any],
                  f"lowest health {payload.get('min_health')}%.")
     if len(stages) <= 1:
         parts.append("The objective banner never moved to a new stage.")
+    sp = combat_speed(payload)
+    if sp["combat_cycles"]:
+        think = (f"{sp['avg_combat_think_s']}s average decision, "
+                 if sp["avg_combat_think_s"] is not None else "")
+        parts.append(f"Combat: {sp['combat_cycles']} cycles, {think}"
+                     f"{sp['attacks_per_combat_cycle']} attacks per combat cycle"
+                     + (f", {sp['sustain_seconds']}s of attacks while the model thought"
+                        if sp["sustain_seconds"] else "") + ".")
     return " ".join(parts)
 
 
@@ -308,6 +349,7 @@ def build(payload: dict[str, Any]) -> dict[str, Any]:
             "summary": _summary(scenarios, payload, stages),
             "timeline": _timeline(payload),
             "moments": _moments(payload, stages),
+            "combat_speed": combat_speed(payload),
             "learning": payload.get("learning") or {},
             "agents": agents,
             "messages": messages,

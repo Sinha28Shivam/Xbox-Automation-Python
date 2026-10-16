@@ -116,6 +116,28 @@ gameplay:
     move_timeout: 2.5
     move_pixel_fraction: 0.0015
     move_pixel_delta: 30
+  dungeons:
+    # Combat speed (tools/game_profiles/dungeons_speed.py). Baseline run
+    # dungeons-20261016-114012: 5.6 s per combat decision, ~1 s of action, so
+    # the hero idled ~4 s of every 5.5 s in a fight. Set any flag false to
+    # compare against the old behaviour.
+    # Keep attacking while the model thinks; stops on the next decision, a
+    # health drop (drink + roll), HUD loss, or after sustain_max_s. Needs the
+    # default fast mode (overlapped input); --slow disables it.
+    sustain_combat: "${DUNGEONS_SUSTAIN:true}"
+    sustain_max_s: 12
+    # While engaged, a 9-field combat reading instead of the full schema; a
+    # full reading every full_refresh_every cycles keeps objective/loot alive.
+    fast_combat_schema: "${DUNGEONS_FAST_SCHEMA:true}"
+    full_refresh_every: 3
+    # Frame width sent to the model while engaged (0 = same as navigation).
+    combat_vision_width: 640
+    combat_jpeg_quality: 65
+    # Combat timing. Old values: 0.7 / 4 / 1 / 0 (artifact every 3rd combat cycle).
+    ranged_hold_s: 1.2
+    fight_swings: 6
+    sidestep_every: 2
+    artifact_cooldown_s: 8
   report:
     # Frame pairs the AI audits per mechanic. Each pair is one vision call
     # with two images, so 6 mechanics x 2 is the cost ceiling per report.

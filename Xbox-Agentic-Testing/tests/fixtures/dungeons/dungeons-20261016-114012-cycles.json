@@ -111,7 +111,8 @@
     "direction": "right",
     "reason": "Follow objective marker to defeat the Illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-001-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-001-before.jpg",
+   "think_s": 5.9
   },
   {
    "cycle": 2,
@@ -178,7 +179,8 @@
     "direction": "up_right",
     "reason": "Follow objective marker toward illagers to defeat."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-002-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-002-before.jpg",
+   "think_s": 5.12
   },
   {
    "cycle": 3,
@@ -235,7 +237,8 @@
     "direction": "right",
     "reason": "Follow objective marker to the right toward illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-003-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-003-before.jpg",
+   "think_s": 4.85
   },
   {
    "cycle": 4,
@@ -292,7 +295,8 @@
     "direction": "right",
     "reason": "No enemies visible; continue toward objective marker on the right."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-004-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-004-before.jpg",
+   "think_s": 4.92
   },
   {
    "cycle": 5,
@@ -346,7 +350,8 @@
     "direction": "right",
     "reason": "Follow objective marker right toward illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-005-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-005-before.jpg",
+   "think_s": 3.59
   },
   {
    "cycle": 6,
@@ -403,7 +408,8 @@
     "direction": "right",
     "reason": "Follow objective marker to the right toward illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-006-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-006-before.jpg",
+   "think_s": 4.66
   },
   {
    "cycle": 7,
@@ -470,7 +476,8 @@
     "direction": "up_right",
     "reason": "Follow objective marker toward illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-007-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-007-before.jpg",
+   "think_s": 4.72
   },
   {
    "cycle": 8,
@@ -517,7 +524,8 @@
     "direction": "up_right",
     "reason": "Follow objective marker up-right toward illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-008-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-008-before.jpg",
+   "think_s": 4.16
   },
   {
    "cycle": 9,
@@ -564,7 +572,8 @@
     "direction": "right",
     "reason": "Continue toward objective marker on minimap; no enemies blocking."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-009-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-009-before.jpg",
+   "think_s": 4.45
   },
   {
    "cycle": 10,
@@ -600,7 +609,8 @@
     "direction": "right",
     "reason": "Objective marker and minimap point right; no obstacles."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-010-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-010-before.jpg",
+   "think_s": 4.3
   },
   {
    "cycle": 11,
@@ -647,7 +657,8 @@
     "direction": "up_right",
     "reason": "Continue toward objective marker up-right; no enemies blocking."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-011-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-011-before.jpg",
+   "think_s": 4.82
   },
   {
    "cycle": 12,
@@ -694,7 +705,8 @@
     "direction": "up_right",
     "reason": "Continue toward objective marker up-right; no enemies blocking."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-012-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-012-before.jpg",
+   "think_s": 6.56
   },
   {
    "cycle": 13,
@@ -751,7 +763,8 @@
     "direction": "up_right",
     "reason": "No enemies visible; continue toward objective marker up-right."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-013-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-013-before.jpg",
+   "think_s": 5.05
   },
   {
    "cycle": 14,
@@ -798,7 +811,8 @@
     "direction": "up_right",
     "reason": "Continue toward objective marker up-right; no enemies blocking."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-014-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-014-before.jpg",
+   "think_s": 4.74
   },
   {
    "cycle": 15,
@@ -852,7 +866,8 @@
     "direction": "up_left",
     "reason": "Follow objective marker up-left toward illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-015-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-015-before.jpg",
+   "think_s": 5.14
   },
   {
    "cycle": 16,
@@ -899,7 +914,8 @@
     "direction": "up_right",
     "reason": "Continue toward objective marker up-right; no enemies blocking."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-016-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-016-before.jpg",
+   "think_s": 4.64
   },
   {
    "cycle": 17,
@@ -956,7 +972,8 @@
     "direction": "up",
     "reason": "Continue toward objective marker upward; no enemies blocking."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-017-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-017-before.jpg",
+   "think_s": 4.71
   },
   {
    "cycle": 18,
@@ -1003,7 +1020,8 @@
     "direction": "up_left",
     "reason": "Follow objective marker up-left toward illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-018-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-018-before.jpg",
+   "think_s": 5.05
   },
   {
    "cycle": 19,
@@ -1057,7 +1075,8 @@
     "direction": "up",
     "reason": "No enemies visible; continue toward objective marker upward."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-019-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-019-before.jpg",
+   "think_s": 4.56
   },
   {
    "cycle": 20,
@@ -1104,7 +1123,8 @@
     "direction": "up_left",
     "reason": "No enemies visible; continue toward objective marker up-left."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-020-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-020-before.jpg",
+   "think_s": 4.79
   },
   {
    "cycle": 21,
@@ -1151,7 +1171,8 @@
     "direction": "up_right",
     "reason": "Follow objective marker toward illagers"
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-021-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-021-before.jpg",
+   "think_s": 4.64
   },
   {
    "cycle": 22,
@@ -1187,7 +1208,8 @@
     "direction": "right",
     "reason": "Follow objective marker right toward illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-022-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-022-before.jpg",
+   "think_s": 3.6
   },
   {
    "cycle": 23,
@@ -1223,7 +1245,8 @@
     "direction": "up_right",
     "reason": "No enemies visible; follow objective marker up-right toward illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-023-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-023-before.jpg",
+   "think_s": 3.78
   },
   {
    "cycle": 24,
@@ -1270,7 +1293,8 @@
     "direction": "up_right",
     "reason": "Follow objective marker toward illagers"
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-024-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-024-before.jpg",
+   "think_s": 4.64
   },
   {
    "cycle": 25,
@@ -1306,7 +1330,8 @@
     "direction": "up_right",
     "reason": "Follow objective marker up-right toward illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-025-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-025-before.jpg",
+   "think_s": 3.96
   },
   {
    "cycle": 26,
@@ -1349,7 +1374,8 @@
     "direction": "up_right",
     "reason": "Follow objective marker up-right toward illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-026-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-026-before.jpg",
+   "think_s": 4.13
   },
   {
    "cycle": 27,
@@ -1396,7 +1422,8 @@
     "direction": "up_right",
     "reason": "Follow objective marker up-right toward illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-027-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-027-before.jpg",
+   "think_s": 4.0
   },
   {
    "cycle": 28,
@@ -1443,7 +1470,8 @@
     "direction": "up",
     "reason": "Follow objective marker upward to find and defeat illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-028-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-028-before.jpg",
+   "think_s": 4.32
   },
   {
    "cycle": 29,
@@ -1490,7 +1518,8 @@
     "direction": "up",
     "reason": "Follow objective marker upward to find and defeat illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-029-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-029-before.jpg",
+   "think_s": 4.16
   },
   {
    "cycle": 30,
@@ -1533,7 +1562,8 @@
     "direction": "up",
     "reason": "Continue toward objective marker at top of screen."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-030-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-030-before.jpg",
+   "think_s": 4.06
   },
   {
    "cycle": 31,
@@ -1590,7 +1620,8 @@
     "direction": "up",
     "reason": "No enemies visible; continue toward objective marker upward on minimap."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-031-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-031-before.jpg",
+   "think_s": 4.51
   },
   {
    "cycle": 32,
@@ -1637,7 +1668,8 @@
     "direction": "up_left",
     "reason": "Continue toward objective marker up-left; no enemies blocking."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-032-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-032-before.jpg",
+   "think_s": 4.07
   },
   {
    "cycle": 33,
@@ -1684,7 +1716,8 @@
     "direction": "up_right",
     "reason": "Follow objective marker toward illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-033-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-033-before.jpg",
+   "think_s": 4.6
   },
   {
    "cycle": 34,
@@ -1731,7 +1764,8 @@
     "direction": "up_right",
     "reason": "Follow objective marker toward illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-034-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-034-before.jpg",
+   "think_s": 4.73
   },
   {
    "cycle": 35,
@@ -1785,7 +1819,8 @@
     "direction": "up_right",
     "reason": "Continue toward objective marker up-right; no enemies blocking."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-035-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-035-before.jpg",
+   "think_s": 4.73
   },
   {
    "cycle": 36,
@@ -1896,7 +1931,8 @@
     "direction": "right",
     "reason": "Multiple illagers at close range attacking; health at 87%. Engage nearest threat to the right."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-036-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-036-before.jpg",
+   "think_s": 7.46
   },
   {
    "cycle": 37,
@@ -1930,7 +1966,8 @@
     "direction": "none",
     "reason": ""
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-037-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-037-before.jpg",
+   "think_s": 2.6
   },
   {
    "cycle": 38,
@@ -1964,7 +2001,8 @@
     "direction": "none",
     "reason": "Loading screen - wait for level to load."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-038-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-038-before.jpg",
+   "think_s": 3.22
   },
   {
    "cycle": 39,
@@ -2021,7 +2059,8 @@
     "direction": "up",
     "reason": "No enemies visible; continue toward objective marker upward."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-039-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-039-before.jpg",
+   "think_s": 5.27
   },
   {
    "cycle": 40,
@@ -2078,7 +2117,8 @@
     "direction": "left",
     "reason": "Glowing blue chest is very close to the left; open it for loot before continuing to objective."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-040-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-040-before.jpg",
+   "think_s": 5.9
   },
   {
    "cycle": 41,
@@ -2140,7 +2180,8 @@
     "direction": "up_right",
     "reason": "Follow objective marker up-right to find and defeat remaining illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-041-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-041-before.jpg",
+   "think_s": 4.71
   },
   {
    "cycle": 42,
@@ -2197,7 +2238,8 @@
     "direction": "up_left",
     "reason": "No enemies visible; follow objective marker up-left toward illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-042-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-042-before.jpg",
+   "think_s": 4.97
   },
   {
    "cycle": 43,
@@ -2233,7 +2275,8 @@
     "direction": "up_right",
     "reason": "Follow objective marker toward illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-043-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-043-before.jpg",
+   "think_s": 4.16
   },
   {
    "cycle": 44,
@@ -2280,7 +2323,8 @@
     "direction": "up_right",
     "reason": "No enemies visible; continue toward objective marker up-right."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-044-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-044-before.jpg",
+   "think_s": 4.52
   },
   {
    "cycle": 45,
@@ -2339,7 +2383,8 @@
     "direction": "up_right",
     "reason": "No enemies visible; continue toward objective marker on minimap."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-045-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-045-before.jpg",
+   "think_s": 4.81
   },
   {
    "cycle": 46,
@@ -2396,7 +2441,8 @@
     "direction": "right",
     "reason": "Health dropped 26% with no visible attacker; ranged enemy likely off-screen right. Relocate and engage."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-046-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-046-before.jpg",
+   "think_s": 5.79
   },
   {
    "cycle": 47,
@@ -2453,7 +2499,8 @@
     "direction": "up_right",
     "reason": "No enemies visible; continue toward objective marker up-right on minimap."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-047-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-047-before.jpg",
+   "think_s": 5.01
   },
   {
    "cycle": 48,
@@ -2515,7 +2562,8 @@
     "direction": "up_left",
     "reason": "Follow objective marker toward illagers; no immediate threats visible."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-048-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-048-before.jpg",
+   "think_s": 6.01
   },
   {
    "cycle": 49,
@@ -2572,7 +2620,8 @@
     "direction": "up_left",
     "reason": "Enemy visible upper-left; continue ranged attack to defeat illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-049-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-049-before.jpg",
+   "think_s": 5.66
   },
   {
    "cycle": 50,
@@ -2619,7 +2668,8 @@
     "direction": "up_right",
     "reason": "No enemies visible; follow objective marker up-right toward illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-050-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-050-before.jpg",
+   "think_s": 5.26
   },
   {
    "cycle": 51,
@@ -2660,7 +2710,8 @@
     "direction": "up",
     "reason": "No enemies visible; follow objective marker upward on minimap."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-051-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-051-before.jpg",
+   "think_s": 4.49
   },
   {
    "cycle": 52,
@@ -2707,7 +2758,8 @@
     "direction": "up_left",
     "reason": "No enemies visible; continue toward objective marker up_left."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-052-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-052-before.jpg",
+   "think_s": 4.95
   },
   {
    "cycle": 53,
@@ -2754,7 +2806,8 @@
     "direction": "up_left",
     "reason": "No enemies visible; navigate toward objective marker up-left."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-053-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-053-before.jpg",
+   "think_s": 4.48
   },
   {
    "cycle": 54,
@@ -2821,7 +2874,8 @@
     "direction": "down",
     "reason": "Two illagers adjacent, attacking. Defeat objective requires eliminating them."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-054-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-054-before.jpg",
+   "think_s": 5.73
   },
   {
    "cycle": 55,
@@ -2893,7 +2947,8 @@
     "direction": "down",
     "reason": "Two illagers very close; continue aggressive melee/ranged attack downward to defeat them."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-055-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-055-before.jpg",
+   "think_s": 7.07
   },
   {
    "cycle": 56,
@@ -2940,7 +2995,8 @@
     "direction": "up",
     "reason": "No enemies visible; navigate toward objective marker up the map."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-056-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-056-before.jpg",
+   "think_s": 4.45
   },
   {
    "cycle": 57,
@@ -3007,7 +3063,8 @@
     "direction": "up_right",
     "reason": "Two fire enemies visible right side; continue combat engagement."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-057-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-057-before.jpg",
+   "think_s": 6.17
   },
   {
    "cycle": 58,
@@ -3059,7 +3116,8 @@
     "direction": "up_right",
     "reason": "No enemies visible; follow objective marker up-right toward illagers."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-058-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-058-before.jpg",
+   "think_s": 4.61
   },
   {
    "cycle": 59,
@@ -3156,7 +3214,8 @@
     "direction": "up_left",
     "reason": "Multiple illagers up-left are closest threats; continue ranged attack toward the cluster."
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-059-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-059-before.jpg",
+   "think_s": 6.8
   },
   {
    "cycle": 60,
@@ -3190,7 +3249,8 @@
     "direction": "none",
     "reason": "Dismiss controller disconnected dialog by pressing OKAY"
    },
-   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-060-before.jpg"
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-060-before.jpg",
+   "think_s": 3.21
   }
  ]
 }
