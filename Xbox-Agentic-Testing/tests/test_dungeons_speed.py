@@ -251,7 +251,7 @@ class _Decider:
         text = messages[0].content[0]["text"]
         fast = text.startswith(sp.COMBAT_PROMPT[:40])
         self.calls.append("fast" if fast else "full")
-        enemy = {"kind": "pillager", "x": 0.85, "y": 0.48}
+        enemy = {"kind": "pillager", "x": 0.62, "y": 0.48}  # close, not adjacent
         if fast:
             return sp.DungeonsCombatDecision(scene_state="in_mission",
                                              enemies="pillager", enemy_list=[enemy])

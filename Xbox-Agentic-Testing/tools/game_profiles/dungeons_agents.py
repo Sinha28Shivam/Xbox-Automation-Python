@@ -64,6 +64,14 @@ class CombatAgent(Agent):
         return None
 
 
+_COIN_WORDS = ("coin", "emerald", "gold", "gem")
+
+
+def _is_coins(e: DungeonsEntity) -> bool:
+    kind = e.kind.lower()
+    return e.category == "loot" and "chest" not in kind and any(w in kind for w in _COIN_WORDS)
+
+
 class InteractionAgent(Agent):
     """Villagers, chests, pickups, gates and levers: walk up and press A."""
     name = "interaction"
@@ -106,6 +114,13 @@ class InteractionAgent(Agent):
         if t is not None and t.category == "portal" and not (cmd and cmd.target):
             t = None
         rescue = bool(t and t.category == "villager" and d.villager_in_danger)
+        if t is not None and _is_coins(t) and not prompt:
+            # Spilled coins/emeralds are collected by walking over them.
+            c["_interact_run"] = 0
+            c["coin_pickups"] = c.get("coin_pickups", 0) + 1
+            return [DungeonsMove(action="move", direction=t.direction,
+                                 duration=0.6 if t.distance_estimate == "very_close" else 1.2,
+                                 purpose=f"Collect loot '{t.kind}' by walking over it.")]
         if prompt or (t and t.distance_estimate == "very_close"):
             c["_approach_run"] = c["_sidesteps"] = 0
             c["_interact_run"] += 1

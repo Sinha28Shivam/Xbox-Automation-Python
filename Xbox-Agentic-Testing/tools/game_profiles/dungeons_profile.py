@@ -328,9 +328,15 @@ OBSERVATION RULES
   distance_estimate (very_close = touching). Set `threatens_villager` on an
   enemy attacking a villager; `villager_in_danger` when a villager is caged,
   cornered or attacked; `interact_prompt_visible` when a button prompt shows.
+- CHESTS look like a small brown/orange wooden box with a GLOWING GREEN top
+  (often on a stone base). Report them as category "loot", kind "chest" (say
+  "opened chest" if the lid is open). When a chest is opened or broken it
+  spills GLOWING GOLD COINS / emeralds on the ground: report those as "loot",
+  kind "coins" - walking over them collects them.
 - Read `objective` and `objective_kind` from the objective banner. Report the
   SAME objective text every cycle until the on-screen text changes.
-- The minimap (top-right): white arrow = hero, yellow diamond = objective.
+- The minimap (top-right): white arrow = hero, YELLOW icon/diamond = the
+  objective to reach. When no enemy is close, always head toward it.
   A flat white/grey silhouette of the hero means a wall is hiding the hero.
 - Leave `moves` empty. Keep every text field short.
 """
@@ -635,6 +641,8 @@ _CONFIRM_FRAMES = 2             # sightings before a non-adjacent engagement
 _ENGAGE_HOLD = 3                # cycles an engagement survives a missed read
 _BLIND_MEMORY = 8               # cycles a last sighting still aims a blind hit
 _DAMAGE_DROP = 8                # health % lost since last cycle = being hit
+_HIT_MEMORY = 2                 # cycles after a hit in which far enemies still count
+_MAX_RANGED_STREAK = 3          # ranged-only cycles (no hit, nobody close) before a push
 # Xbox "toast" notification over the HUD: saturated green fills the bottom
 # bar. Measured: 0.67 on a toast frame, <= 0.021 on every other frame.
 _TOAST_BOX = (650 / 1920, 900 / 1080, 1280 / 1920, 1010 / 1080)
@@ -726,6 +734,28 @@ def _combat_state(decision: DungeonsFrameDecision,
     """
     seen = decision.enemy_direction != "none"
     hit = bool(decision._nav.get("damage"))
+    counters["_hit_age"] = 0 if hit else counters.get("_hit_age", _HIT_MEMORY + 1) + 1
+    geo = decision._nav.get("enemy_geo") or {}
+    nearest = geo.get("nearest")
+    far_only = (seen and not decision.enemy_adjacent and nearest is not None
+                and nearest > _NEAR_RADIUS)
+    if far_only and counters["_hit_age"] > _HIT_MEMORY:
+        # Every enemy is far and nothing has hit us lately. Run
+        # dungeons-20261016-130821 spent cycles 16-60 shooting at 'far'
+        # sightings (many at the screen edges, often phantoms) and never
+        # followed the minimap. A far enemy neither starts nor renews a fight:
+        # keep walking to the objective; a real attacker shows up as damage.
+        counters["far_ignored"] = counters.get("far_ignored", 0) + 1
+        # Still remembered: if it later hits us unseen, aim back at it.
+        counters["_last_enemy_dir"] = decision.enemy_direction
+        counters["_seen_age"] = 0
+        counters["_sightings"] = 0
+        if counters.get("_engage_left", 0) > 0:
+            counters["_engage_left"] -= 1
+        decision.enemy_direction = "none"
+        decision.enemy_adjacent = False
+        decision._nav["far_ignored"] = True
+        return
     if seen:
         counters["_sightings"] = counters.get("_sightings", 0) + 1
         counters["_last_enemy_dir"] = decision.enemy_direction
@@ -1132,6 +1162,25 @@ def _combat_moves(decision: DungeonsFrameDecision,
                 DungeonsMove(action="ranged", direction=enemy_dir, duration=float(TUNING["ranged_hold_s"]),
                              purpose="Crowd: shoot the chasers.")]
     counters["_retreat_run"] = 0
+    if decision.enemy_adjacent or decision._nav.get("damage"):
+        counters["_ranged_streak"] = 0
+    else:
+        counters["_ranged_streak"] = counters.get("_ranged_streak", 0) + 1
+    bearing = decision._nav.get("bearing") or (
+        decision.objective_bearing if decision.objective_bearing != "none" else None)
+    if counters["_ranged_streak"] > _MAX_RANGED_STREAK and bearing:
+        # Shooting from a distance without being hit and without anyone
+        # closing in is not progress: push toward the objective and let a
+        # real attacker re-engage us.
+        counters["_ranged_streak"] = 0
+        counters["combat_pushes"] = counters.get("combat_pushes", 0) + 1
+        counters["_engage_left"] = 0
+        # Shot first, walk last: the last move is what a sustain repeats, and
+        # a move clears it, so the hero keeps walking instead of shooting.
+        return [DungeonsMove(action="ranged", direction=enemy_dir, duration=0.5,
+                             purpose="Covering shot before moving on."),
+                DungeonsMove(action="move", direction=bearing, duration=2.0,
+                             purpose=f"Combat stalled at range: push to objective ({bearing}).")]
     if decision.enemy_adjacent:
         counters["reflex_attacks"] += 1
         moves = [DungeonsMove(action="fight", direction=enemy_dir,
@@ -1246,7 +1295,8 @@ _SUMMARY_KEYS = ("deaths", "melee", "dodges", "reflex_attacks", "ranged",
                  "rescue_approaches", "model_yields", "interactions",
                  "wall_escapes", "map_steers", "occluded_cycles", "map_travel_px",
                  "engagements", "unconfirmed_sightings", "blind_hits",
-                 "held_engagements", "self_sightings", "learn_early_potions",
+                 "held_engagements", "self_sightings", "far_ignored",
+                 "combat_pushes", "coin_pickups", "learn_early_potions",
                  "learn_interact_overrides")
 
 

@@ -110,6 +110,8 @@ yellow ring and is NEVER an enemy. Report only what is visible:
   zombies, skeletons, spiders, creepers) with x/y = screen position 0-1 of
   its centre. Scan the edges: crossbow pillagers shoot from far away. Red
   tint or arrows at the hero mean an attacker is on screen - find it.
+- Only list enemies you can actually see; never guess at dark edges. A fight
+  is over when no enemy is near: say enemies 'none' and list none.
 - enemy_direction / enemy_adjacent / enemy_count are a fallback only.
 - potion_ready from the potion icon. One short sentence of reasoning.
 Keep it short: the system attacks while you look.

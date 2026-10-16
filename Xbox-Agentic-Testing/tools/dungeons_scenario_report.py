@@ -282,12 +282,15 @@ def build(payload: dict[str, Any]) -> dict[str, Any]:
         return [e for e in _ents(c, "loot", near) if "chest" in str(e.get("kind", "")).lower()]
     seen = [c["cycle"] for c in cycles if chest(c) or "chest" in _text(c)]
     tried = [c["cycle"] for c in cycles if _pressed_at(c, "loot", "chest")]
+    def coins(c: dict[str, Any]) -> bool:
+        return any(w in str(e.get("kind", "")).lower() for e in _ents(c, "loot")
+                   for w in ("coin", "emerald", "gold"))
     done = [n for n in tried if n in nxt and (
-        not chest(nxt[n], near=True)
+        not chest(nxt[n], near=True) or coins(nxt[n])
         or any("open" in str(e.get("kind", "")).lower() for e in chest(nxt[n])))]
     loot = _scenario("Looting chests", seen, tried, done,
-                     ["PASS = A pressed at a chest, then the chest is gone or "
-                      "shown open on the next frame"])
+                     ["PASS = A pressed at a chest, then on the next frame the chest "
+                      "is gone, shown open, or glowing coins spilled out"])
 
     # Interacting with villagers (not a rescue): A aimed at a calm villager.
     seen = [c["cycle"] for c in cycles if _ents(c, "villager")]
