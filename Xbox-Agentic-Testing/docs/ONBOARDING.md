@@ -7,6 +7,7 @@ Read this first. Then follow the guide for your task:
 - **New game to play, or changing how a game is played**:
   [ADDING_GAMEPLAY.md](ADDING_GAMEPLAY.md)
 - **Running tests and reading results**: [OPERATIONS.md](OPERATIONS.md)
+- **How execution flows through the code** (call order, routing, artifacts): [FLOW.md](FLOW.md)
 
 ## 1. Set up (once)
 
