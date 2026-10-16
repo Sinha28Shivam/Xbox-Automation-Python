@@ -46,6 +46,83 @@ def resolve_profile(agents: bool = True) -> GameProfile:
     return PROFILE
 
 
+def _artifacts_root(ctx: ToolContext) -> Any:
+    return ctx.artifacts.run_dir.parent.parent
+
+
+def _learning_enabled(ctx: ToolContext) -> bool:
+    value = ctx.settings.get("learning.enabled", True) if ctx.settings else True
+    return str(value).strip().lower() not in ("false", "0", "no", "off")
+
+
+def _load_learning(ctx: ToolContext) -> dict[str, Any]:
+    """Open Dungeons lessons and the runtime changes they make (run start)."""
+    from core import gameplay_lessons
+    from tools.game_profiles.dungeons_learning import GAME, RULES
+
+    state: dict[str, Any] = {"enabled": _learning_enabled(ctx), "lessons": [],
+                             "counters": {}, "applied": [], "prompt": ""}
+    if not state["enabled"] or not ctx.artifacts.enabled:
+        return state
+    lessons = gameplay_lessons.open_lessons(_artifacts_root(ctx), GAME)
+    adj = RULES.adjustments(lessons)
+    state.update(lessons=lessons, counters=adj["counters"], applied=adj["applied"],
+                 prompt=RULES.prompt_text(lessons))
+    if lessons:
+        print(f"[learning] {len(lessons)} open Dungeons lesson(s) applied:", flush=True)
+        for a in adj["applied"]:
+            print(f"  {a['id']} ({a['rule']}): {a['change']}", flush=True)
+    ctx.artifacts.save_json("lessons-applied.json",
+                            {"lessons": lessons, "applied": adj["applied"],
+                             "counters": adj["counters"], "prompt": state["prompt"]})
+    return state
+
+
+def _with_lessons(profile: GameProfile, learning: dict[str, Any]) -> GameProfile:
+    """Same profile, starting with the lesson knobs and the prompt hint."""
+    from dataclasses import replace
+
+    base = profile.initial_counters
+    extra = {**learning["counters"], "_learn_prompt": learning["prompt"]}
+
+    def initial_counters() -> dict[str, Any]:
+        return {**base(), **extra}
+    return replace(profile, initial_counters=initial_counters)
+
+
+def _finish_learning(ctx: ToolContext, result: dict[str, Any],
+                     learning: dict[str, Any]) -> dict[str, Any]:
+    """Record new lessons, resolve fixed ones and age quiet ones (run end)."""
+    from core import gameplay_lessons
+    from tools import dungeons_scenario_report as rep
+    from tools.game_profiles.dungeons_learning import GAME, RULES
+
+    summary: dict[str, Any] = {
+        "enabled": learning["enabled"],
+        "applied": learning["applied"],
+        "enforced": {"early_potions": result.get("learn_early_potions", 0),
+                     "interact_overrides": result.get("learn_interact_overrides", 0)},
+    }
+    if not learning["enabled"] or not ctx.artifacts.enabled:
+        return summary
+    report = rep.build(result)
+    expire = int(ctx.settings.get("learning.expire_after_quiet_runs", 3)) if ctx.settings else 3
+    outcome = gameplay_lessons.update(
+        _artifacts_root(ctx), GAME, RULES, result, report,
+        applied_ids=[str(l.get("id")) for l in learning["lessons"]],
+        run_id=ctx.artifacts.run_id, expire_after=expire)
+    summary.update({k: outcome.get(k, []) for k in
+                    ("recorded", "recurred", "resolved", "expired", "untested", "quiet")})
+    summary["lessons"] = outcome.get("lessons", {})
+    if outcome.get("error"):
+        summary["error"] = outcome["error"]
+    ctx.artifacts.save_json("lessons-updated.json", summary)
+    print(f"[learning] recorded {len(summary.get('recorded', []))}, recurred "
+          f"{len(summary.get('recurred', []))}, resolved {len(summary.get('resolved', []))}, "
+          f"expired {len(summary.get('expired', []))}", flush=True)
+    return summary
+
+
 @contextmanager
 def _encoder(fast: bool) -> Iterator[None]:
     """Shrink the frames sent to the model for this run only.
@@ -145,6 +222,9 @@ def vision_guided_dungeons_gameplay_impl(
                     dispatched=False)
 
     profile = resolve_profile(agents)
+    learning = _load_learning(ctx)
+    if learning["lessons"]:
+        profile = _with_lessons(profile, learning)
     tuning: dict[str, Any] = (
         {"cycle_delay": 0.0, "settle_after_move": 0.1, "pipeline": True,
          "overlap_act": True}
@@ -157,6 +237,9 @@ def vision_guided_dungeons_gameplay_impl(
                                    max_cycles=max_cycles, **tuning)
 
     result["mode"] = {"agents": agents, "fast": fast, "pads": mirrored or None}
+    if result.get("ok"):
+        result["learning"] = _finish_learning(ctx, result, learning)
+        ctx.artifacts.save_json(profile.json_artifact_name, result)
 
     # The scenario report reads the per-agent fields only the multi-agent
     # profile records, so it is skipped for the single-decision profile.

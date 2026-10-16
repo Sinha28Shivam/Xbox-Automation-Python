@@ -1,0 +1,3196 @@
+{
+ "ok": true,
+ "cycles_run": 60,
+ "stop_reason": "Reached the 60-cycle budget.",
+ "mean_delta": 12.0065,
+ "max_delta": 73.2475,
+ "observed_change": true,
+ "goal_met": false,
+ "duration_seconds": 322.23,
+ "dispatched": true,
+ "mission_complete": false,
+ "mission_evidence": null,
+ "deaths": 1,
+ "melee": 8,
+ "dodges": 10,
+ "reflex_attacks": 2,
+ "ranged": 15,
+ "artifacts": 5,
+ "retreats": 1,
+ "potions": 1,
+ "min_health": 66,
+ "potions_confirmed": 1,
+ "rescue_attacks": 0,
+ "rescue_interacts": 0,
+ "rescue_approaches": 0,
+ "model_yields": 0,
+ "interactions": 0,
+ "wall_escapes": 5,
+ "map_steers": 0,
+ "occluded_cycles": 0,
+ "map_travel_px": 972,
+ "engagements": 1,
+ "unconfirmed_sightings": 0,
+ "blind_hits": 2,
+ "held_engagements": 10,
+ "self_sightings": 0,
+ "interaction_approaches": 0,
+ "interaction_give_ups": 0,
+ "village_sightings": 11,
+ "combat_commands_dropped": 0,
+ "agent_cycles": {
+  "scene": 3,
+  "health": 1,
+  "combat": 18,
+  "interaction": 0,
+  "navigator": 38
+ },
+ "cycles": [
+  {
+   "cycle": 1,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate right (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "loot",
+     "kind": "glowing chest",
+     "direction": "up_left",
+     "distance_estimate": "close",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "building",
+     "kind": "stone structure",
+     "direction": "up",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": null,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "Glowing chest up-left",
+   "delta": 8.1433,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "right",
+    "reason": "Follow objective marker to defeat the Illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-001-before.jpg"
+  },
+  {
+   "cycle": 2,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_right (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "loot",
+     "kind": "glowing cube pickup",
+     "direction": "left",
+     "distance_estimate": "close",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "building",
+     "kind": "village structure with torch",
+     "direction": "up_left",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 0.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 23.0615,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "Follow objective marker toward illagers to defeat."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-002-before.jpg"
+  },
+  {
+   "cycle": 3,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate right (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "building",
+     "kind": "village structure",
+     "direction": "left",
+     "distance_estimate": "close",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 20.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 5.657,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "right",
+    "reason": "Follow objective marker to the right toward illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-003-before.jpg"
+  },
+  {
+   "cycle": 4,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate right (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "building",
+     "kind": "village structure",
+     "direction": "up_left",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 0.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 4.8422,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "right",
+    "reason": "No enemies visible; continue toward objective marker on the right."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-004-before.jpg"
+  },
+  {
+   "cycle": 5,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "dodge",
+     "direction": "up",
+     "duration": 0.15,
+     "dispatched": true,
+     "purpose": "Blocked going right (minimap not moving): roll up."
+    },
+    {
+     "macro": "move",
+     "direction": "up",
+     "duration": 2.0,
+     "dispatched": true,
+     "purpose": "Blocked: walk around the wall."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 0.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 4.7453,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "right",
+    "reason": "Follow objective marker right toward illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-005-before.jpg"
+  },
+  {
+   "cycle": 6,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up",
+     "duration": 2.0,
+     "dispatched": true,
+     "purpose": "Detour: clear the wall before heading back."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "building",
+     "kind": "village structure",
+     "direction": "up_left",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 0.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 24.0257,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "right",
+    "reason": "Follow objective marker to the right toward illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-006-before.jpg"
+  },
+  {
+   "cycle": 7,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_right (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "building",
+     "kind": "purple brick structure",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "building",
+     "kind": "green foliage/terrain",
+     "direction": "left",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 31.2,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 17.7669,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "Follow objective marker toward illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-007-before.jpg"
+  },
+  {
+   "cycle": 8,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_right (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 8.3,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 4.432,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "Follow objective marker up-right toward illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-008-before.jpg"
+  },
+  {
+   "cycle": 9,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate right (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 0.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 16.0935,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "right",
+    "reason": "Continue toward objective marker on minimap; no enemies blocking."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-009-before.jpg"
+  },
+  {
+   "cycle": 10,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate right (Observer hint)."
+    }
+   ],
+   "entities": [],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 4.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 19.3494,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "right",
+    "reason": "Objective marker and minimap point right; no obstacles."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-010-before.jpg"
+  },
+  {
+   "cycle": 11,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_right (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "Defeat the Illagers from the Rift",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 52.8,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 14.0592,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "Continue toward objective marker up-right; no enemies blocking."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-011-before.jpg"
+  },
+  {
+   "cycle": 12,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_right (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 40.7,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 13.5803,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "Continue toward objective marker up-right; no enemies blocking."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-012-before.jpg"
+  },
+  {
+   "cycle": 13,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_right (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "building",
+     "kind": "wooden structure",
+     "direction": "up",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 20.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 12.1579,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "No enemies visible; continue toward objective marker up-right."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-013-before.jpg"
+  },
+  {
+   "cycle": 14,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_right (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 0.1,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 12.0887,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "Continue toward objective marker up-right; no enemies blocking."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-014-before.jpg"
+  },
+  {
+   "cycle": 15,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "dodge",
+     "direction": "up_left",
+     "duration": 0.15,
+     "dispatched": true,
+     "purpose": "Blocked going up_right (minimap not moving): roll up_left."
+    },
+    {
+     "macro": "move",
+     "direction": "up_left",
+     "duration": 2.0,
+     "dispatched": true,
+     "purpose": "Blocked: walk around the wall."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_left",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 0.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 2.804,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_left",
+    "reason": "Follow objective marker up-left toward illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-015-before.jpg"
+  },
+  {
+   "cycle": 16,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up",
+     "duration": 2.0,
+     "dispatched": true,
+     "purpose": "Detour: clear the wall before heading back."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 0.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 8.0171,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "Continue toward objective marker up-right; no enemies blocking."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-016-before.jpg"
+  },
+  {
+   "cycle": 17,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "building",
+     "kind": "wooden structure",
+     "direction": "up",
+     "distance_estimate": "close",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 15.3,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 1.645,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up",
+    "reason": "Continue toward objective marker upward; no enemies blocking."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-017-before.jpg"
+  },
+  {
+   "cycle": 18,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_left",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_left (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "illagers objective",
+     "direction": "up_left",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 0.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 1.6295,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_left",
+    "reason": "Follow objective marker up-left toward illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-018-before.jpg"
+  },
+  {
+   "cycle": 19,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "dodge",
+     "direction": "down_left",
+     "duration": 0.15,
+     "dispatched": true,
+     "purpose": "Blocked going up_left (minimap not moving): roll down_left."
+    },
+    {
+     "macro": "move",
+     "direction": "down_left",
+     "duration": 2.0,
+     "dispatched": true,
+     "purpose": "Blocked: walk around the wall."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 0.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 1.8131,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up",
+    "reason": "No enemies visible; continue toward objective marker upward."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-019-before.jpg"
+  },
+  {
+   "cycle": 20,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "down_left",
+     "duration": 2.0,
+     "dispatched": true,
+     "purpose": "Detour: clear the wall before heading back."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_left",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 0.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 9.3196,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_left",
+    "reason": "No enemies visible; continue toward objective marker up-left."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-020-before.jpg"
+  },
+  {
+   "cycle": 21,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_right (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 39.5,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 12.1815,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "Follow objective marker toward illagers"
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-021-before.jpg"
+  },
+  {
+   "cycle": 22,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate right (Observer hint)."
+    }
+   ],
+   "entities": [],
+   "objective": "Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 20.7,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 12.6202,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "right",
+    "reason": "Follow objective marker right toward illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-022-before.jpg"
+  },
+  {
+   "cycle": 23,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_right (Observer hint)."
+    }
+   ],
+   "entities": [],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 48.9,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 9.2388,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "No enemies visible; follow objective marker up-right toward illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-023-before.jpg"
+  },
+  {
+   "cycle": 24,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_right (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 22.3,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 1.7203,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "Follow objective marker toward illagers"
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-024-before.jpg"
+  },
+  {
+   "cycle": 25,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_right (Observer hint)."
+    }
+   ],
+   "entities": [],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 0.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 1.8384,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "Follow objective marker up-right toward illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-025-before.jpg"
+  },
+  {
+   "cycle": 26,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "dodge",
+     "direction": "up_left",
+     "duration": 0.15,
+     "dispatched": true,
+     "purpose": "Blocked going up_right (minimap not moving): roll up_left."
+    },
+    {
+     "macro": "move",
+     "direction": "up_left",
+     "duration": 2.0,
+     "dispatched": true,
+     "purpose": "Blocked: walk around the wall."
+    }
+   ],
+   "entities": [],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 0.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 2.5217,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "Follow objective marker up-right toward illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-026-before.jpg"
+  },
+  {
+   "cycle": 27,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up",
+     "duration": 2.0,
+     "dispatched": true,
+     "purpose": "Detour: clear the wall before heading back."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 0.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 9.9285,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "Follow objective marker up-right toward illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-027-before.jpg"
+  },
+  {
+   "cycle": 28,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 26.2,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 1.592,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up",
+    "reason": "Follow objective marker upward to find and defeat illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-028-before.jpg"
+  },
+  {
+   "cycle": 29,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 0.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 1.7511,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up",
+    "reason": "Follow objective marker upward to find and defeat illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-029-before.jpg"
+  },
+  {
+   "cycle": 30,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "dodge",
+     "direction": "left",
+     "duration": 0.15,
+     "dispatched": true,
+     "purpose": "Blocked going up (minimap not moving): roll left."
+    },
+    {
+     "macro": "move",
+     "direction": "left",
+     "duration": 2.0,
+     "dispatched": true,
+     "purpose": "Blocked: walk around the wall."
+    }
+   ],
+   "entities": [],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 0.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 10.4397,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up",
+    "reason": "Continue toward objective marker at top of screen."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-030-before.jpg"
+  },
+  {
+   "cycle": 31,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "left",
+     "duration": 2.0,
+     "dispatched": true,
+     "purpose": "Detour: clear the wall before heading back."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "building",
+     "kind": "stone structure",
+     "direction": "down",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 17.2,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 10.7024,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up",
+    "reason": "No enemies visible; continue toward objective marker upward on minimap."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-031-before.jpg"
+  },
+  {
+   "cycle": 32,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_left",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_left (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_left",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 47.9,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 7.5249,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_left",
+    "reason": "Continue toward objective marker up-left; no enemies blocking."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-032-before.jpg"
+  },
+  {
+   "cycle": 33,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_right (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 21.2,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 14.164,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "Follow objective marker toward illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-033-before.jpg"
+  },
+  {
+   "cycle": 34,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_right (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 26.2,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 10.7,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "Follow objective marker toward illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-034-before.jpg"
+  },
+  {
+   "cycle": 35,
+   "scene_state": "in_mission",
+   "health_percent": 87,
+   "agent": "combat",
+   "route": "override: hit by unseen attacker (-13%)",
+   "moves": [
+    {
+     "macro": "dodge",
+     "direction": "up_left",
+     "duration": 0.15,
+     "dispatched": true,
+     "purpose": "Taking damage from an unseen attacker: roll."
+    },
+    {
+     "macro": "move",
+     "direction": "up_left",
+     "duration": 0.8,
+     "dispatched": true,
+     "purpose": "Unseen attacker: keep moving off the line."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 39.6,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 13.1666,
+   "blind_attacker": "unknown",
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "Continue toward objective marker up-right; no enemies blocking."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-035-before.jpg"
+  },
+  {
+   "cycle": 36,
+   "scene_state": "in_mission",
+   "health_percent": 87,
+   "agent": "combat",
+   "route": "override: enemy in reach",
+   "moves": [
+    {
+     "macro": "dodge",
+     "direction": "left",
+     "duration": 0.15,
+     "dispatched": true,
+     "purpose": "Crowd of 4: dodge out."
+    },
+    {
+     "macro": "move",
+     "direction": "left",
+     "duration": 1.0,
+     "dispatched": true,
+     "purpose": "Crowd: open distance."
+    },
+    {
+     "macro": "ranged",
+     "direction": "right",
+     "duration": 0.7,
+     "dispatched": true,
+     "purpose": "Crowd: shoot the chasers."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "enemy",
+     "kind": "illager/pillager",
+     "direction": "right",
+     "distance_estimate": "very_close",
+     "is_threat": true,
+     "threatens_villager": false,
+     "x": 0.55,
+     "y": 0.45
+    },
+    {
+     "category": "enemy",
+     "kind": "illager/pillager",
+     "direction": "up_right",
+     "distance_estimate": "close",
+     "is_threat": true,
+     "threatens_villager": false,
+     "x": 0.6,
+     "y": 0.35
+    },
+    {
+     "category": "enemy",
+     "kind": "illager/pillager",
+     "direction": "left",
+     "distance_estimate": "far",
+     "is_threat": true,
+     "threatens_villager": false,
+     "x": 0.35,
+     "y": 0.45
+    },
+    {
+     "category": "enemy",
+     "kind": "illager/pillager",
+     "direction": "up",
+     "distance_estimate": "close",
+     "is_threat": true,
+     "threatens_villager": false,
+     "x": 0.5,
+     "y": 0.3
+    },
+    {
+     "category": "enemy",
+     "kind": "illager/pillager",
+     "direction": "down_right",
+     "distance_estimate": "very_close",
+     "is_threat": true,
+     "threatens_villager": false,
+     "x": 0.58,
+     "y": 0.55
+    }
+   ],
+   "objective": "THE ILAGERS FROM THE RIFT - Defeat the Ilagers",
+   "objective_kind": "defeat",
+   "enemy_count": 4,
+   "enemy_direction": "right",
+   "enemy_adjacent": true,
+   "map_shift": 27.6,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 37.0893,
+   "blind_attacker": null,
+   "command": {
+    "to": "combat",
+    "target": "illager",
+    "direction": "right",
+    "reason": "Multiple illagers at close range attacking; health at 87%. Engage nearest threat to the right."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-036-before.jpg"
+  },
+  {
+   "cycle": 37,
+   "scene_state": "death",
+   "health_percent": 0,
+   "agent": "scene",
+   "route": "death",
+   "moves": [
+    {
+     "macro": "wait",
+     "dispatched": false,
+     "purpose": "Downed: auto-revive countdown."
+    }
+   ],
+   "entities": [],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 4.6,
+   "hero_occluded": true,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 73.2475,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "",
+    "direction": "none",
+    "reason": ""
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-037-before.jpg"
+  },
+  {
+   "cycle": 38,
+   "scene_state": "loading_or_cutscene",
+   "health_percent": 0,
+   "agent": "scene",
+   "route": "loading_or_cutscene",
+   "moves": [
+    {
+     "macro": "wait",
+     "dispatched": false,
+     "purpose": "Wait out loading."
+    }
+   ],
+   "entities": [],
+   "objective": "THE ILLAGERS FROM THE RIFT",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 29.9,
+   "hero_occluded": true,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 46.3577,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "none",
+    "reason": "Loading screen - wait for level to load."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-038-before.jpg"
+  },
+  {
+   "cycle": 39,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "combat",
+   "route": "override: holding engagement",
+   "moves": [
+    {
+     "macro": "ranged",
+     "direction": "right",
+     "duration": 0.7,
+     "dispatched": true,
+     "purpose": "Enemy at range: shoot."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "portal",
+     "kind": "Return to Brave Haven",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "right",
+   "enemy_adjacent": false,
+   "map_shift": 0.1,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 15.1884,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up",
+    "reason": "No enemies visible; continue toward objective marker upward."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-039-before.jpg"
+  },
+  {
+   "cycle": 40,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "combat",
+   "route": "override: holding engagement",
+   "moves": [
+    {
+     "macro": "ranged",
+     "direction": "right",
+     "duration": 0.7,
+     "dispatched": true,
+     "purpose": "Enemy at range: shoot."
+    }
+   ],
+   "entities": [
+    {
+     "category": "loot",
+     "kind": "glowing blue chest",
+     "direction": "left",
+     "distance_estimate": "very_close",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": 0.25,
+     "y": 0.5
+    },
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_left",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Ilagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "right",
+   "enemy_adjacent": false,
+   "map_shift": 101.4,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "Glowing blue chest to the left, very close",
+   "delta": 5.8228,
+   "blind_attacker": null,
+   "command": {
+    "to": "interaction",
+    "target": "chest",
+    "direction": "left",
+    "reason": "Glowing blue chest is very close to the left; open it for loot before continuing to objective."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-040-before.jpg"
+  },
+  {
+   "cycle": 41,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "combat",
+   "route": "override: holding engagement",
+   "moves": [
+    {
+     "macro": "artifact_1",
+     "dispatched": true,
+     "purpose": "Use artifact in combat."
+    },
+    {
+     "macro": "ranged",
+     "direction": "right",
+     "duration": 0.7,
+     "dispatched": true,
+     "purpose": "Enemy at range: shoot."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "loot",
+     "kind": "glowing cube pickup",
+     "direction": "up_left",
+     "distance_estimate": "close",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "right",
+   "enemy_adjacent": false,
+   "map_shift": 1.1,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 9.2841,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "Follow objective marker up-right to find and defeat remaining illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-041-before.jpg"
+  },
+  {
+   "cycle": 42,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_left",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_left (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_left",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "loot",
+     "kind": "glowing blue chest",
+     "direction": "up_left",
+     "distance_estimate": "close",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "Defeat the Illagers from the Rift",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 4.3,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 12.6371,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_left",
+    "reason": "No enemies visible; follow objective marker up-left toward illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-042-before.jpg"
+  },
+  {
+   "cycle": 43,
+   "scene_state": "in_mission",
+   "health_percent": 100,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_right (Observer hint)."
+    }
+   ],
+   "entities": [],
+   "objective": "Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 55.5,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 14.4918,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "Follow objective marker toward illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-043-before.jpg"
+  },
+  {
+   "cycle": 44,
+   "scene_state": "in_mission",
+   "health_percent": 99,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_right",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_right (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "Defeat the Illagers from the Rift",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 31.2,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 12.3742,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "No enemies visible; continue toward objective marker up-right."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-044-before.jpg"
+  },
+  {
+   "cycle": 45,
+   "scene_state": "in_mission",
+   "health_percent": 73,
+   "agent": "health",
+   "route": "override: health 73%",
+   "moves": [
+    {
+     "macro": "potion",
+     "dispatched": true,
+     "purpose": "Drink potion: health 73% (was 99%)."
+    },
+    {
+     "macro": "dodge",
+     "direction": "left",
+     "duration": 0.15,
+     "dispatched": true,
+     "purpose": "Potion: dodge away while healing."
+    },
+    {
+     "macro": "move",
+     "direction": "left",
+     "duration": 1.0,
+     "dispatched": true,
+     "purpose": "Potion: open distance."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "right",
+   "enemy_adjacent": true,
+   "map_shift": 27.6,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 8.3797,
+   "blind_attacker": "right",
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "No enemies visible; continue toward objective marker on minimap."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-045-before.jpg"
+  },
+  {
+   "cycle": 46,
+   "scene_state": "in_mission",
+   "health_percent": 66,
+   "agent": "combat",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "ranged",
+     "direction": "right",
+     "duration": 0.7,
+     "dispatched": true,
+     "purpose": "Enemy at range: shoot."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "enemy",
+     "kind": "crossbow pillager (presumed off-screen)",
+     "direction": "right",
+     "distance_estimate": "far",
+     "is_threat": true,
+     "threatens_villager": false,
+     "x": 0.95,
+     "y": 0.5
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "right",
+   "enemy_adjacent": false,
+   "map_shift": 11.5,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 9.216,
+   "blind_attacker": null,
+   "command": {
+    "to": "combat",
+    "target": "crossbow pillager",
+    "direction": "right",
+    "reason": "Health dropped 26% with no visible attacker; ranged enemy likely off-screen right. Relocate and engage."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-046-before.jpg"
+  },
+  {
+   "cycle": 47,
+   "scene_state": "in_mission",
+   "health_percent": 99,
+   "agent": "combat",
+   "route": "override: holding engagement",
+   "moves": [
+    {
+     "macro": "ranged",
+     "direction": "right",
+     "duration": 0.7,
+     "dispatched": true,
+     "purpose": "Enemy at range: shoot."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "building",
+     "kind": "red structure",
+     "direction": "up",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "right",
+   "enemy_adjacent": false,
+   "map_shift": 10.2,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 6.9529,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "No enemies visible; continue toward objective marker up-right on minimap."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-047-before.jpg"
+  },
+  {
+   "cycle": 48,
+   "scene_state": "in_mission",
+   "health_percent": 99,
+   "agent": "combat",
+   "route": "override: holding engagement",
+   "moves": [
+    {
+     "macro": "artifact_2",
+     "dispatched": true,
+     "purpose": "Use artifact in combat."
+    },
+    {
+     "macro": "ranged",
+     "direction": "right",
+     "duration": 0.7,
+     "dispatched": true,
+     "purpose": "Enemy at range: shoot."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_left",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "building",
+     "kind": "stone structure",
+     "direction": "up",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "right",
+   "enemy_adjacent": false,
+   "map_shift": 3.8,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 10.9216,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_left",
+    "reason": "Follow objective marker toward illagers; no immediate threats visible."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-048-before.jpg"
+  },
+  {
+   "cycle": 49,
+   "scene_state": "in_mission",
+   "health_percent": 99,
+   "agent": "combat",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "ranged",
+     "direction": "up_left",
+     "duration": 0.7,
+     "dispatched": true,
+     "purpose": "Enemy at range: shoot."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "enemy",
+     "kind": "illager",
+     "direction": "up_left",
+     "distance_estimate": "far",
+     "is_threat": true,
+     "threatens_villager": false,
+     "x": 0.35,
+     "y": 0.15
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "up_left",
+   "enemy_adjacent": false,
+   "map_shift": 53.6,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 6.5315,
+   "blind_attacker": null,
+   "command": {
+    "to": "combat",
+    "target": "illager",
+    "direction": "up_left",
+    "reason": "Enemy visible upper-left; continue ranged attack to defeat illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-049-before.jpg"
+  },
+  {
+   "cycle": 50,
+   "scene_state": "in_mission",
+   "health_percent": 99,
+   "agent": "combat",
+   "route": "override: holding engagement",
+   "moves": [
+    {
+     "macro": "ranged",
+     "direction": "up_left",
+     "duration": 0.7,
+     "dispatched": true,
+     "purpose": "Enemy at range: shoot."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "up_left",
+   "enemy_adjacent": false,
+   "map_shift": 0.6,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 4.6712,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "No enemies visible; follow objective marker up-right toward illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-050-before.jpg"
+  },
+  {
+   "cycle": 51,
+   "scene_state": "in_mission",
+   "health_percent": 99,
+   "agent": "combat",
+   "route": "override: holding engagement",
+   "moves": [
+    {
+     "macro": "artifact_3",
+     "dispatched": true,
+     "purpose": "Use artifact in combat."
+    },
+    {
+     "macro": "ranged",
+     "direction": "up_left",
+     "duration": 0.7,
+     "dispatched": true,
+     "purpose": "Enemy at range: shoot."
+    }
+   ],
+   "entities": [],
+   "objective": "Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "up_left",
+   "enemy_adjacent": false,
+   "map_shift": 0.8,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 2.0289,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up",
+    "reason": "No enemies visible; follow objective marker upward on minimap."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-051-before.jpg"
+  },
+  {
+   "cycle": 52,
+   "scene_state": "in_mission",
+   "health_percent": 99,
+   "agent": "combat",
+   "route": "override: holding engagement",
+   "moves": [
+    {
+     "macro": "ranged",
+     "direction": "up_left",
+     "duration": 0.7,
+     "dispatched": true,
+     "purpose": "Enemy at range: shoot."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_left",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "up_left",
+   "enemy_adjacent": false,
+   "map_shift": 0.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 5.7281,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_left",
+    "reason": "No enemies visible; continue toward objective marker up_left."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-052-before.jpg"
+  },
+  {
+   "cycle": 53,
+   "scene_state": "in_mission",
+   "health_percent": 99,
+   "agent": "navigator",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "move",
+     "direction": "up_left",
+     "duration": 2.5,
+     "dispatched": true,
+     "purpose": "Navigate up_left (Observer hint)."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "illagers objective",
+     "direction": "up_left",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 1.3,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 10.9055,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_left",
+    "reason": "No enemies visible; navigate toward objective marker up-left."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-053-before.jpg"
+  },
+  {
+   "cycle": 54,
+   "scene_state": "in_mission",
+   "health_percent": 99,
+   "agent": "combat",
+   "route": "override: enemy in reach",
+   "moves": [
+    {
+     "macro": "fight",
+     "direction": "down",
+     "swings": 4,
+     "dispatched": true,
+     "purpose": "Enemy in reach: swing burst + sidestep."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective",
+     "direction": "up",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "enemy",
+     "kind": "illager",
+     "direction": "down",
+     "distance_estimate": "very_close",
+     "is_threat": true,
+     "threatens_villager": false,
+     "x": 0.5,
+     "y": 0.55
+    },
+    {
+     "category": "enemy",
+     "kind": "illager",
+     "direction": "down_right",
+     "distance_estimate": "close",
+     "is_threat": true,
+     "threatens_villager": false,
+     "x": 0.6,
+     "y": 0.58
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 2,
+   "enemy_direction": "down",
+   "enemy_adjacent": true,
+   "map_shift": 6.4,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 11.6009,
+   "blind_attacker": null,
+   "command": {
+    "to": "combat",
+    "target": "illager",
+    "direction": "down",
+    "reason": "Two illagers adjacent, attacking. Defeat objective requires eliminating them."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-054-before.jpg"
+  },
+  {
+   "cycle": 55,
+   "scene_state": "in_mission",
+   "health_percent": 99,
+   "agent": "combat",
+   "route": "override: enemy in reach",
+   "moves": [
+    {
+     "macro": "artifact_1",
+     "dispatched": true,
+     "purpose": "Use artifact in combat."
+    },
+    {
+     "macro": "fight",
+     "direction": "down",
+     "swings": 4,
+     "dispatched": true,
+     "purpose": "Enemy in reach: swing burst + sidestep."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "enemy",
+     "kind": "illager/pillager",
+     "direction": "down",
+     "distance_estimate": "very_close",
+     "is_threat": true,
+     "threatens_villager": false,
+     "x": 0.5,
+     "y": 0.55
+    },
+    {
+     "category": "enemy",
+     "kind": "illager/pillager",
+     "direction": "down_right",
+     "distance_estimate": "close",
+     "is_threat": true,
+     "threatens_villager": false,
+     "x": 0.55,
+     "y": 0.65
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 2,
+   "enemy_direction": "down",
+   "enemy_adjacent": true,
+   "map_shift": 16.9,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 11.9536,
+   "blind_attacker": null,
+   "command": {
+    "to": "combat",
+    "target": "illager",
+    "direction": "down",
+    "reason": "Two illagers very close; continue aggressive melee/ranged attack downward to defeat them."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-055-before.jpg"
+  },
+  {
+   "cycle": 56,
+   "scene_state": "in_mission",
+   "health_percent": 99,
+   "agent": "combat",
+   "route": "override: holding engagement",
+   "moves": [
+    {
+     "macro": "ranged",
+     "direction": "down",
+     "duration": 0.7,
+     "dispatched": true,
+     "purpose": "Enemy at range: shoot."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "down",
+   "enemy_adjacent": false,
+   "map_shift": 11.3,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 8.2721,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up",
+    "reason": "No enemies visible; navigate toward objective marker up the map."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-056-before.jpg"
+  },
+  {
+   "cycle": 57,
+   "scene_state": "in_mission",
+   "health_percent": 99,
+   "agent": "combat",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "ranged",
+     "direction": "up_right",
+     "duration": 0.7,
+     "dispatched": true,
+     "purpose": "Enemy at range: shoot."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "enemy",
+     "kind": "fire/lava enemy",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": true,
+     "threatens_villager": false,
+     "x": 0.65,
+     "y": 0.35
+    },
+    {
+     "category": "enemy",
+     "kind": "fire/lava enemy",
+     "direction": "right",
+     "distance_estimate": "far",
+     "is_threat": true,
+     "threatens_villager": false,
+     "x": 0.75,
+     "y": 0.3
+    }
+   ],
+   "objective": "Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "up_right",
+   "enemy_adjacent": false,
+   "map_shift": 10.0,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 9.8421,
+   "blind_attacker": null,
+   "command": {
+    "to": "combat",
+    "target": "fire enemy",
+    "direction": "up_right",
+    "reason": "Two fire enemies visible right side; continue combat engagement."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-057-before.jpg"
+  },
+  {
+   "cycle": 58,
+   "scene_state": "in_mission",
+   "health_percent": 99,
+   "agent": "combat",
+   "route": "override: holding engagement",
+   "moves": [
+    {
+     "macro": "artifact_2",
+     "dispatched": true,
+     "purpose": "Use artifact in combat."
+    },
+    {
+     "macro": "ranged",
+     "direction": "up_right",
+     "duration": 0.7,
+     "dispatched": true,
+     "purpose": "Enemy at range: shoot."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_right",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    }
+   ],
+   "objective": "Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "up_right",
+   "enemy_adjacent": false,
+   "map_shift": 78.8,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 9.0614,
+   "blind_attacker": null,
+   "command": {
+    "to": "navigator",
+    "target": "objective",
+    "direction": "up_right",
+    "reason": "No enemies visible; follow objective marker up-right toward illagers."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-058-before.jpg"
+  },
+  {
+   "cycle": 59,
+   "scene_state": "in_mission",
+   "health_percent": 99,
+   "agent": "combat",
+   "route": "command",
+   "moves": [
+    {
+     "macro": "ranged",
+     "direction": "up",
+     "duration": 0.7,
+     "dispatched": true,
+     "purpose": "Enemy at range: shoot."
+    }
+   ],
+   "entities": [
+    {
+     "category": "objective_marker",
+     "kind": "objective marker",
+     "direction": "up_left",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": null,
+     "y": null
+    },
+    {
+     "category": "enemy",
+     "kind": "illager",
+     "direction": "up_left",
+     "distance_estimate": "far",
+     "is_threat": true,
+     "threatens_villager": false,
+     "x": 0.25,
+     "y": 0.15
+    },
+    {
+     "category": "enemy",
+     "kind": "illager",
+     "direction": "up_left",
+     "distance_estimate": "far",
+     "is_threat": true,
+     "threatens_villager": false,
+     "x": 0.3,
+     "y": 0.2
+    },
+    {
+     "category": "enemy",
+     "kind": "illager",
+     "direction": "left",
+     "distance_estimate": "far",
+     "is_threat": true,
+     "threatens_villager": false,
+     "x": 0.15,
+     "y": 0.35
+    },
+    {
+     "category": "enemy",
+     "kind": "illager",
+     "direction": "up",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": 0.45,
+     "y": 0.1
+    },
+    {
+     "category": "enemy",
+     "kind": "illager",
+     "direction": "left",
+     "distance_estimate": "far",
+     "is_threat": false,
+     "threatens_villager": false,
+     "x": 0.1,
+     "y": 0.25
+    }
+   ],
+   "objective": "THE ILLAGERS FROM THE RIFT - Defeat the Illagers",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "up",
+   "enemy_adjacent": false,
+   "map_shift": 32.2,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 32.7869,
+   "blind_attacker": null,
+   "command": {
+    "to": "combat",
+    "target": "illager",
+    "direction": "up_left",
+    "reason": "Multiple illagers up-left are closest threats; continue ranged attack toward the cluster."
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-059-before.jpg"
+  },
+  {
+   "cycle": 60,
+   "scene_state": "menu_or_prompt",
+   "health_percent": 0,
+   "agent": "scene",
+   "route": "menu_or_prompt",
+   "moves": [
+    {
+     "macro": "advance_prompt",
+     "dispatched": true,
+     "purpose": "Dismiss prompt."
+    }
+   ],
+   "entities": [],
+   "objective": "THE ILLAGERS FROM THE RIFT",
+   "objective_kind": "defeat",
+   "enemy_count": 0,
+   "enemy_direction": "none",
+   "enemy_adjacent": false,
+   "map_shift": 28.6,
+   "hero_occluded": false,
+   "interact_prompt_visible": false,
+   "villager_in_danger": false,
+   "loot_or_door": "",
+   "delta": 19.7206,
+   "blind_attacker": null,
+   "command": {
+    "to": "interaction",
+    "target": "prompt",
+    "direction": "none",
+    "reason": "Dismiss controller disconnected dialog by pressing OKAY"
+   },
+   "frame_before": "<RUNS>/dungeons-fixture/frames/dungeons-060-before.jpg"
+  }
+ ]
+}

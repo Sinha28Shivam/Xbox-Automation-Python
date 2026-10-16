@@ -29,7 +29,8 @@ h2{font-size:18px;margin:30px 0 12px}h3{font-size:15px;margin:0 0 7px}
 padding:4px 12px;border-radius:999px;font-weight:800;font-size:12px;
 letter-spacing:.5px;margin-left:10px;vertical-align:4px}
 .PASS{background:#dcfce7;color:#166534}.FAIL,.FAILED,.ERROR{background:#fee2e2;color:#991b1b}
-.BLOCKED,.INCONCLUSIVE{background:#fef3c7;color:#92400e}
+.BLOCKED,.INCONCLUSIVE,.INCOMPLETE{background:#fef3c7;color:#92400e}
+.NO-SCENARIOS-ENCOUNTERED{background:#e2e8f0;color:#475569}
 .SKIPPED,.NOTTESTED,.NOT-TESTED,.NOT-ENCOUNTERED{background:#e2e8f0;color:#475569}
 .OBSERVED{background:#dbeafe;color:#1d4ed8}.card{background:var(--panel);
 border:1px solid var(--line);border-radius:14px;padding:18px;
@@ -56,7 +57,7 @@ code{background:#eef2f7;padding:2px 5px;border-radius:4px;font-size:12px}
 border-radius:0 10px 10px 0;margin-top:16px;color:#7f1d1d}
 .hero.v-PASS{background:linear-gradient(125deg,#fff 0%,#effdf4 60%,#dcfce7 100%)}
 .hero.v-FAIL,.hero.v-FAILED,.hero.v-ERROR{background:linear-gradient(125deg,#fff 0%,#fff5f5 60%,#fee2e2 100%)}
-.hero.v-BLOCKED,.hero.v-INCONCLUSIVE{background:linear-gradient(125deg,#fff 0%,#fffbeb 60%,#fef3c7 100%)}
+.hero.v-BLOCKED,.hero.v-INCONCLUSIVE,.hero.v-INCOMPLETE{background:linear-gradient(125deg,#fff 0%,#fffbeb 60%,#fef3c7 100%)}
 .kpi{border-top:4px solid var(--blue)}.kpi.g{border-top-color:var(--green)}
 .kpi.r{border-top-color:var(--red)}.kpi.s{border-top-color:var(--slate)}
 .kpi.p{border-top-color:var(--purple)}.kpi.a{border-top-color:var(--amber)}
@@ -294,6 +295,81 @@ def _scenario_extras(data: dict[str, Any]) -> str:
     return "".join(out)
 
 
+def _dungeons_extras(data: dict[str, Any]) -> str:
+    """Learning, key moments with frames, and the per-cycle timeline."""
+    run_dir = data.get("run_dir")
+    out: list[str] = []
+
+    learn = data.get("learning") or {}
+    if learn:
+        lessons = learn.get("lessons") or {}
+        applied = learn.get("applied") or []
+        enforced = learn.get("enforced") or {}
+        body = ""
+        if not learn.get("enabled", True):
+            body += "<p class='small'>Learning is disabled (learning.enabled=false).</p>"
+        if applied:
+            rows = "".join(f"<tr><td><code>{_esc(a.get('id'))}</code></td>"
+                           f"<td><span class='tag OBSERVED'>{_esc(a.get('rule'))}</span></td>"
+                           f"<td>{_esc(a.get('change'))}</td></tr>" for a in applied)
+            body += ("<h3>Applied at the start of this run</h3><table><thead><tr>"
+                     "<th>Lesson</th><th>Rule</th><th>Runtime change</th></tr></thead>"
+                     f"<tbody>{rows}</tbody></table>"
+                     f"<p class='small'>Enforced during play: "
+                     f"{_esc(enforced.get('early_potions', 0))} earlier potion(s), "
+                     f"{_esc(enforced.get('interact_overrides', 0))} learned interaction(s) "
+                     "(moves tagged [learned] in the timeline).</p>")
+        elif learn.get("enabled", True):
+            body += "<p class='small'>No open Dungeons lessons existed when this run started.</p>"
+
+        def _rows(kind: str, label: str, css: str) -> str:
+            return "".join(
+                f"<tr><td><code>{_esc(l.get('id'))}</code></td>"
+                f"<td><span class='tag {css}'>{label}</span></td>"
+                f"<td>{_esc(l.get('scenario'))}</td>"
+                f"<td>{_esc(l.get('primary_cause') if kind != 'resolved' else l.get('resolution'))}"
+                f"<div class='small'>seen {_esc(l.get('occurrences', 1))}x</div></td></tr>"
+                for l in lessons.get(kind) or [])
+        changes = (_rows("recorded", "NEW", "FAIL") + _rows("recurred", "RECURRED", "FAIL")
+                   + _rows("resolved", "RESOLVED", "PASS") + _rows("expired", "EXPIRED", "SKIPPED"))
+        if changes:
+            body += ("<h3 style='margin-top:18px'>Lesson changes from this run</h3><table>"
+                     "<thead><tr><th>Lesson</th><th>Change</th><th>Scenario</th>"
+                     f"<th>Evidence</th></tr></thead><tbody>{changes}</tbody></table>"
+                     "<p class='small'>Open lessons are applied to the next Dungeons run. "
+                     "Manage them with <code>xbox-agentic lessons list</code>.</p>")
+        elif learn.get("enabled", True):
+            body += "<p class='small'>No lesson was recorded, resolved or expired.</p>"
+        out.append(f"<h2>Learning</h2><div class='card'>{body}</div>")
+
+    moments = data.get("moments") or []
+    if moments:
+        css = {"death": "FAIL", "potion": "INCONCLUSIVE", "objective": "PASS",
+               "complete": "PASS"}
+        cards = "".join(
+            f"<div class='navcard'><b>Cycle {_esc(m.get('cycle'))}</b> "
+            f"<span class='tag {css.get(str(m.get('kind')), 'OBSERVED')}'>{_esc(m.get('kind'))}</span>"
+            f"{_img(m.get('frame'), run_dir, cls='')}<div class='small'>{_esc(m.get('text'))}</div></div>"
+            for m in moments[:12])
+        out.append(f"<h2>Key moments</h2><div class='card'><div class='navgrid'>{cards}</div></div>")
+
+    timeline = data.get("timeline") or []
+    if timeline:
+        rows = "".join(
+            f"<tr><td>{_esc(t.get('cycle'))}</td><td>{_esc(t.get('scene'))}</td>"
+            f"<td><b>{_esc(t.get('agent'))}</b><div class='small'>{_esc(t.get('route'))}</div></td>"
+            f"<td>{_esc(t.get('health'))}%</td>"
+            f"<td><code>{_esc(t.get('buttons') or '-')}</code>"
+            + (" <span class='tag OBSERVED'>learned</span>" if t.get("learned") else "")
+            + f"<div class='small'>{_esc(t.get('purpose'))}</div></td>"
+            f"<td>{_img(t.get('frame'), run_dir)}</td></tr>"
+            for t in timeline)
+        out.append("<h2>Cycle timeline</h2><div class='card'><table><thead><tr><th>#</th>"
+                   "<th>Scene</th><th>Agent</th><th>Health</th><th>Action</th>"
+                   f"<th>Frame</th></tr></thead><tbody>{rows}</tbody></table></div>")
+    return "".join(out)
+
+
 def render_dashboard(data: dict[str, Any], mode: str = "scenario") -> str:
     """Render a white, responsive dashboard from a normalized report payload."""
     if mode == "dungeons":
@@ -307,9 +383,22 @@ def render_dashboard(data: dict[str, Any], mode: str = "scenario") -> str:
         duration = (data.get("run") or {}).get("duration_seconds", 0)
         total = len(data.get("scenarios") or [])
         rows = data.get("scenarios") or []
-        ai_summary = data.get("ai_summary") or (
+        ai_summary = data.get("summary") or data.get("ai_summary") or (
             "The dashboard is generated from the saved Dungeons cycle log. "
             "A PASS requires a later observable result frame.")
+        summary_title = "Run summary"
+        frames = {str(k): v for k, v in (data.get("frames") or {}).items()}
+
+        def _cycles(ns: list[Any]) -> str:
+            if not ns:
+                return "-"
+            links = []
+            for n in ns[:12]:
+                src = _frame_src(frames.get(str(n)), data.get("run_dir"))
+                links.append(f"<a href='{_esc(src)}' target='_blank'>{_esc(n)}</a>"
+                             if src else _esc(n))
+            more = f" <span class='small'>+{len(ns) - 12}</span>" if len(ns) > 12 else ""
+            return f"<b>{len(ns)}</b><div class='small'>{', '.join(links)}{more}</div>"
         execution_info = [
             ("Run ID", data.get("run_id", "")),
             ("Cycles", (data.get("run") or {}).get("cycles_run", 0)),
@@ -317,19 +406,23 @@ def render_dashboard(data: dict[str, Any], mode: str = "scenario") -> str:
             ("Mission complete", (data.get("run") or {}).get("mission_complete", False)),
             ("Objective reached", (data.get("run") or {}).get("objective_reached", False)),
             ("Lowest health", f"{(data.get('survival') or {}).get('min_health', 0)}%"),
+            ("Deaths", (data.get("survival") or {}).get("deaths", 0)),
+            ("Potions (confirmed)", f"{(data.get('survival') or {}).get('potions', 0)} "
+                                    f"({(data.get('survival') or {}).get('potions_confirmed', 0)})"),
         ]
         agent_rows = [
             {"title": name, "summary": f"{len(cycles)} cycles", "duration_seconds": None}
             for name, cycles in (data.get("agents") or {}).items()
         ]
-        headers: tuple[str, ...] = ("Scenario", "Status", "Seen", "Attempted", "Evidence", "Notes")
+        headers: tuple[str, ...] = ("Scenario", "Status", "Seen (cycles)", "Acted",
+                                    "Result shown", "Rule")
         row_html = "".join(
             f"<tr><td>{_esc(row.get('scenario'))}</td>"
             f"<td><span class='tag {_status_class(row.get('status',''))}'>{_esc(row.get('status'))}</span></td>"
-            f"<td>{len(row.get('seen_cycles') or [])}</td>"
-            f"<td>{len(row.get('attempted_cycles') or [])}</td>"
-            f"<td>{len(row.get('evidence_cycles') or [])}</td>"
-            f"<td>{_esc('; '.join(row.get('notes') or []))}</td></tr>"
+            f"<td>{_cycles(row.get('seen_cycles') or [])}</td>"
+            f"<td>{_cycles(row.get('attempted_cycles') or [])}</td>"
+            f"<td>{_cycles(row.get('evidence_cycles') or [])}</td>"
+            f"<td class='small'>{_esc('; '.join(row.get('notes') or []))}</td></tr>"
             for row in rows)
     elif mode == "mechanics":
         title = f"{data.get('game_name', 'Game')} mechanics execution"
@@ -352,6 +445,7 @@ def render_dashboard(data: dict[str, Any], mode: str = "scenario") -> str:
         ai_summary = (
             "Mechanic outcomes combine deterministic action-log checks with "
             "saved-frame AI diagnostics; INCONCLUSIVE is kept separate from PASS.")
+        summary_title = "Verifier summary"
         execution_info = [
             ("Session ID", data.get("session_id", "")),
             ("Level", data.get("level", "")),
@@ -380,6 +474,7 @@ def render_dashboard(data: dict[str, Any], mode: str = "scenario") -> str:
         rows = data.get("criteria") or []
         ai_summary = data.get("verifier_summary") or (
             "No AI verifier summary was saved for this execution.")
+        summary_title = "Verifier summary"
         execution_info = [
             ("Run ID", data.get("run_id", "")),
             ("Scenario ID", data.get("scenario_id", "")),
@@ -406,6 +501,8 @@ def render_dashboard(data: dict[str, Any], mode: str = "scenario") -> str:
         ("Failed", failed, "#dc2626"),
         ("Not tested", not_tested, "#94a3b8"),
     ]
+    if _status_count(counts, "OBSERVED"):
+        status_bars.insert(2, ("Seen, not tried", _status_count(counts, "OBSERVED"), "#2563eb"))
     bars = "".join(
         f"<div class='barrow'><span>{label}</span><div class='bar'><i style='width:"
         f"{(value / max(total, 1)) * 100:.1f}%;background:{color}'></i></div>"
@@ -423,7 +520,8 @@ def render_dashboard(data: dict[str, Any], mode: str = "scenario") -> str:
     f_end = p_end + failed / denom * 100
     donut = (f"conic-gradient(#16a34a 0 {p_end:.1f}%,#dc2626 {p_end:.1f}% {f_end:.1f}%,"
              f"#cbd5e1 {f_end:.1f}% 100%)")
-    extras = _scenario_extras(data) if mode == "scenario" else ""
+    extras = (_scenario_extras(data) if mode == "scenario"
+              else _dungeons_extras(data) if mode == "dungeons" else "")
     abort = ""
     if mode == "scenario" and data.get("aborted"):
         abort = (f"<div class='alert'><b>Execution aborted.</b> "
@@ -444,7 +542,7 @@ def render_dashboard(data: dict[str, Any], mode: str = "scenario") -> str:
 <div class="card kpi a"><span class="label">Duration</span><strong>{float(duration or 0):.1f}s</strong></div>
 <div class="card kpi"><span class="label">Total checks</span><strong>{total}</strong></div>
 </div></section>
-<div class="grid layout"><section><h2>Verifier summary</h2><div class="card quote">{_esc(ai_summary)}</div>
+<div class="grid layout"><section><h2>{_esc(summary_title)}</h2><div class="card quote">{_esc(ai_summary)}</div>
 <h2>Execution information</h2><div class="card"><div class="grid two">{info}</div></div></section>
 <section><h2>Outcome graph</h2><div class="card"><div class="donut" style="background:{donut}">
 <b>{rate:.0f}%</b></div><div class="rate"><i style="width:{rate:.1f}%"></i></div>
