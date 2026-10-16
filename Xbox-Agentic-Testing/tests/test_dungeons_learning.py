@@ -71,6 +71,14 @@ def test_dashboard_shows_real_counts_and_sections(payload, tmp_path):
         assert section in page, section
 
 
+def test_combat_speed_baseline(payload, tmp_path):
+    sp = rep.build(payload)["combat_speed"]
+    assert sp["combat_cycles"] == 18 and sp["avg_combat_think_s"] == 5.56
+    assert sp["attacks_per_combat_cycle"] == 0.94 and sp["sustain_seconds"] == 0
+    page = render_dashboard({**rep.build(payload), "run_dir": str(tmp_path)}, mode="dungeons")
+    assert "Combat speed" in page and "5.56s" in page
+
+
 def test_write_keeps_old_report_name(payload, tmp_path):
     rep.write(payload, tmp_path / "reports")
     for name in ("execution-report.html", "dungeons-scenarios.html",

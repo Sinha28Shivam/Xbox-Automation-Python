@@ -57,13 +57,21 @@ far = [e for e in d.entities if e.x == 0.1][0]
 assert far.distance_estimate == "far" and far.direction == "up_left", far
 print("geometry       : OK")
 
-# 3. Confirmation: one far sighting does not trigger a volley; two do.
+# 3. Confirmation: a FAR enemy never starts a fight without damage
+#    (dungeons-20261016-130821: 45 cycles shooting at far/phantom sightings
+#    instead of walking to the objective). A close one is confirmed over
+#    two frames.
 c = PROFILE.initial_counters()
-# (0.72, 0.1): 0.39 right x 16/9 vs 0.38 up -> a true 45-degree up_right.
-_, a1, mv1 = cycle(c, entities=[enemy(0.72, 0.1)])
+for _ in range(3):
+    _, a0, mv0 = cycle(c, entities=[enemy(0.72, 0.1)])
+    assert a0 == "navigator", (a0, mv0)
+assert c["far_ignored"] == 3 and c["engagements"] == 0, c
+c = PROFILE.initial_counters()
+# (0.62, 0.40): 0.21 right x 16/9 vs 0.08 up -> close (not adjacent), right.
+_, a1, mv1 = cycle(c, entities=[enemy(0.62, 0.40)])
 assert a1 == "navigator" and c["unconfirmed_sightings"] == 1, (a1, mv1)
-_, a2, mv2 = cycle(c, entities=[enemy(0.72, 0.1)])
-assert a2 == "combat" and ("ranged", "up_right") in mv2, (a2, mv2)
+_, a2, mv2 = cycle(c, entities=[enemy(0.62, 0.40)])
+assert a2 == "combat" and any(m[0] == "ranged" for m in mv2), (a2, mv2)
 print("confirm        : OK", mv2)
 
 # 4. Hold: a missed read mid-fight keeps attacking the last direction for

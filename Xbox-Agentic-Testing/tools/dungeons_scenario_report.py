@@ -90,10 +90,13 @@ def objective_stages(cycles: list[dict[str, Any]]) -> list[tuple[int, str]]:
         if any(_same_objective(o, s) for _, s in stages):
             continue
         if stages:
-            # Ignore a one-cycle flicker: require the next reading to agree.
+            # A new stage must be read the same way on 2 of the next 3 frames.
+            # One agreeing frame let misreads through ("find the way again" at
+            # c41 of dungeons-20261016-133419 among "key gem/golem/guem").
             idx = cycles.index(c)
-            nxt = [_norm_objective(str(x.get("objective") or "")) for x in cycles[idx + 1:idx + 3]]
-            if nxt and not any(_same_objective(o, n) for n in nxt if len(n) >= 6):
+            nxt = [_norm_objective(str(x.get("objective") or "")) for x in cycles[idx + 1:idx + 4]]
+            nxt = [n for n in nxt if len(n) >= 6]
+            if nxt and sum(_same_objective(o, n) for n in nxt) < min(2, len(nxt)):
                 continue
         stages.append((c["cycle"], o))
     return stages
@@ -110,9 +113,42 @@ def _timeline(payload: dict[str, Any]) -> list[dict[str, Any]]:
             "buttons": ", ".join(str(m.get("macro")) + (f"({m['direction']})" if m.get("direction") else "")
                                  for m in _moves(c)),
             "learned": any("[learned" in str(m.get("purpose", "")) for m in _moves(c)),
+            "think_s": c.get("think_s"),
+            "decide_mode": c.get("decide_mode"),
+            "sustain": c.get("sustain") or {},
             "purpose": "; ".join(str(m.get("purpose", "")) for m in _moves(c))[:200],
             "frame": c.get("frame_before")})
     return rows
+
+
+def combat_speed(payload: dict[str, Any]) -> dict[str, Any]:
+    """Decide latency and attacks per combat cycle, from the cycle log."""
+    cycles = payload.get("cycles") or []
+    fights = [c for c in cycles if c.get("agent") == "combat"]
+
+    def avg(vals: list[float]) -> float | None:
+        return round(sum(vals) / len(vals), 2) if vals else None
+
+    def attacks(c: dict[str, Any]) -> int:
+        own = sum(1 for m in _moves(c) if m.get("macro") in ("fight", "ranged", "melee"))
+        s = c.get("sustain") or {}
+        return own + int(s.get("slices", 0))
+    fast = [float(c["think_s"]) for c in cycles
+            if c.get("decide_mode") == "fast" and c.get("think_s") is not None]
+    full = [float(c["think_s"]) for c in cycles
+            if c.get("decide_mode") != "fast" and c.get("think_s") is not None]
+    sustains = [c.get("sustain") or {} for c in cycles if c.get("sustain")]
+    return {
+        "combat_cycles": len(fights),
+        "avg_combat_think_s": avg([float(c["think_s"]) for c in fights
+                                   if c.get("think_s") is not None]),
+        "avg_fast_think_s": avg(fast), "avg_full_think_s": avg(full),
+        "fast_decisions": len(fast),
+        "attacks_per_combat_cycle": avg([float(attacks(c)) for c in fights]),
+        "sustain_seconds": round(sum(float(s.get("seconds", 0)) for s in sustains), 1),
+        "longest_sustain_s": max((float(s.get("seconds", 0)) for s in sustains), default=0.0),
+        "sustain_danger_stops": sum(1 for s in sustains if "danger_hp" in s),
+    }
 
 
 def _moments(payload: dict[str, Any],
@@ -166,6 +202,14 @@ def _summary(scenarios: list[dict[str, Any]], payload: dict[str, Any],
                  f"lowest health {payload.get('min_health')}%.")
     if len(stages) <= 1:
         parts.append("The objective banner never moved to a new stage.")
+    sp = combat_speed(payload)
+    if sp["combat_cycles"]:
+        think = (f"{sp['avg_combat_think_s']}s average decision, "
+                 if sp["avg_combat_think_s"] is not None else "")
+        parts.append(f"Combat: {sp['combat_cycles']} cycles, {think}"
+                     f"{sp['attacks_per_combat_cycle']} attacks per combat cycle"
+                     + (f", {sp['sustain_seconds']}s of attacks while the model thought"
+                        if sp["sustain_seconds"] else "") + ".")
     return " ".join(parts)
 
 
@@ -205,10 +249,25 @@ def build(payload: dict[str, Any]) -> dict[str, Any]:
     seen = [c["cycle"] for c in cycles if (c.get("enemy_count") or 0) > 0
             or _ents(c, "enemy")]
     tried = [c["cycle"] for c in cycles if _did(c, "fight", "melee", "ranged")]
-    done = [n for n in tried if n in nxt
-            and (nxt[n].get("enemy_count") or 0) < (by_n[n].get("enemy_count") or 0)]
+
+    def visible_enemies(c: dict[str, Any]) -> int:
+        return len(_ents(c, "enemy"))
+
+    def cleared(n: int) -> bool:
+        """Close-range: fewer enemies nearby. Ranged (enemy_count is 0 at range,
+        dungeons-20261016-133419): fewer enemies visible and no health lost."""
+        if n not in nxt:
+            return False
+        a, b = by_n[n], nxt[n]
+        if (b.get("enemy_count") or 0) < (a.get("enemy_count") or 0):
+            return True
+        hp_a, hp_b = a.get("health_percent") or 0, b.get("health_percent") or 0
+        return (visible_enemies(b) < visible_enemies(a) and visible_enemies(a) > 0
+                and hp_b >= hp_a - 5)
+    done = [n for n in tried if cleared(n)]
     fight = _scenario("Fighting mobs", seen, tried, done,
-                      ["evidence = nearby enemy count fell after the attack"])
+                      ["evidence = after the attack the next frame shows fewer enemies "
+                       "nearby, or fewer enemies on screen with no health lost"])
 
     # Exploring villages: village structures/objective seen while the map moved.
     # Objective text alone ("Find Honeycomb Farm") is not a sighting.
@@ -241,12 +300,15 @@ def build(payload: dict[str, Any]) -> dict[str, Any]:
         return [e for e in _ents(c, "loot", near) if "chest" in str(e.get("kind", "")).lower()]
     seen = [c["cycle"] for c in cycles if chest(c) or "chest" in _text(c)]
     tried = [c["cycle"] for c in cycles if _pressed_at(c, "loot", "chest")]
+    def coins(c: dict[str, Any]) -> bool:
+        return any(w in str(e.get("kind", "")).lower() for e in _ents(c, "loot")
+                   for w in ("coin", "emerald", "gold"))
     done = [n for n in tried if n in nxt and (
-        not chest(nxt[n], near=True)
+        not chest(nxt[n], near=True) or coins(nxt[n])
         or any("open" in str(e.get("kind", "")).lower() for e in chest(nxt[n])))]
     loot = _scenario("Looting chests", seen, tried, done,
-                     ["PASS = A pressed at a chest, then the chest is gone or "
-                      "shown open on the next frame"])
+                     ["PASS = A pressed at a chest, then on the next frame the chest "
+                      "is gone, shown open, or glowing coins spilled out"])
 
     # Interacting with villagers (not a rescue): A aimed at a calm villager.
     seen = [c["cycle"] for c in cycles if _ents(c, "villager")]
@@ -308,6 +370,7 @@ def build(payload: dict[str, Any]) -> dict[str, Any]:
             "summary": _summary(scenarios, payload, stages),
             "timeline": _timeline(payload),
             "moments": _moments(payload, stages),
+            "combat_speed": combat_speed(payload),
             "learning": payload.get("learning") or {},
             "agents": agents,
             "messages": messages,

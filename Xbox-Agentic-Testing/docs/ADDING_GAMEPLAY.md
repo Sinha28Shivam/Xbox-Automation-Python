@@ -149,6 +149,20 @@ the cycle log PROVES went wrong), `assess` (fixed / quiet / untested),
 `xbox-agentic lessons list gameplay-<game>`. Tests:
 `tests/test_dungeons_learning.py`.
 
+### 10. Speed hooks (optional)
+
+`GameProfile` has optional hooks for fast games. They default to off, and are
+used in `tools/game_profiles/dungeons_speed.py`:
+
+- `sustain` + `merge_sustain`: keep acting on the input thread while the
+  model thinks. It needs `overlap_act=True` and must return soon after its
+  stop event is set.
+- `fast_frame_model` + `fast_system_prompt` + `use_fast_decision` +
+  `to_full_decision`: a smaller schema for hot situations.
+- `vision_size`: the frame width and JPEG quality sent to the model.
+
+Tests: `tests/test_dungeons_speed.py`.
+
 ## Rules for gameplay code
 
 - **Only the `Literal` actions in the Move model can ever be pressed.** Keep

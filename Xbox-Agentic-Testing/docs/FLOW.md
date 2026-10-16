@@ -387,6 +387,7 @@ Both ways then follow the same path:
 tools/dungeons_gameplay.py:vision_guided_dungeons_gameplay_impl
   resolve_profile(agents)          # game_profiles/dungeons_agents.PROFILE or dungeons_profile.PROFILE
   _load_learning(ctx)              # open lessons -> counters + prompt hint -> lessons-applied.json
+  dungeons_speed.load_speed/apply_tuning/with_speed  # settings gameplay.dungeons: sustain, fast schema, frame size, timing
   _with_lessons(profile, learning) # profile starts with the learned knobs
   _mirrored_pads / _encoder
   tools/gameplay_engine.py:run_gameplay_loop(ctx, profile, goal, ...)
@@ -394,11 +395,15 @@ tools/dungeons_gameplay.py:vision_guided_dungeons_gameplay_impl
      loop per cycle:
         before = grab_nonblank(camera)
         image  = encode_frame(profile.prepare_vision_frame(before))
-        decision = decide(decider, prompt, image)      # vision LLM -> frame_model
+        fast = profile.use_fast_decision(counters)      # engaged: compact combat schema, small frame
+        decision = decide(fast_decider or decider, prompt, image)  # vision LLM
+        _end_sustain()                                  # stop the attacks run while thinking, merge their result
         profile.annotate_decision(decision, before)
         if profile.confirm_success(decision, counters): stop (goal reached)
         moves = profile.forced_moves(decision, counters)  # Supervisor overrides (stuck, low HP)
         profile.execute_moves(ctx, batch)  or  profile.execute_move(ctx, m)
+             then profile.sustain(...) on the input thread: repeat fight/ranged until the
+             next decision, a health drop (drink + roll), HUD loss, or sustain_max_s
              -> buttons from config/dungeons_controls.yaml
         after = grab_nonblank(camera)
         profile.update_stuck_counters(counters, moves, progressed)

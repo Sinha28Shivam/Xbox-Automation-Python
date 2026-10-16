@@ -47,6 +47,19 @@ _ARTIFACT_EVERY = 3          # fight/ranged cycles between artifact uses
 _CROWD_SIZE = 3              # enemies within reach that trigger a retreat
 _MAX_RETREAT_RUN = 2         # consecutive retreats before fighting anyway
 _RANGED_HOLD = 0.7
+
+# Combat speed knobs, set once per run from settings gameplay.dungeons by
+# tools/dungeons_gameplay.py (apply_tuning). These defaults are what runs when
+# no settings are given; the pre-speed-up behaviour is LEGACY_TUNING.
+LEGACY_TUNING: dict[str, Any] = {
+    "ranged_hold_s": _RANGED_HOLD, "fight_swings": 4, "sidestep_every": 1,
+    "artifact_cooldown_s": 0.0}
+TUNING: dict[str, Any] = {
+    "ranged_hold_s": 1.2,         # longer volley: more bolts per decision
+    "fight_swings": 6,            # longer melee burst
+    "sidestep_every": 2,          # roll after every 2nd burst, not every one
+    "artifact_cooldown_s": 8.0,   # artifacts as soon as they are likely ready
+}
 # Health monitor: drink (LT) when health is at/below the threshold or fell by
 # _POTION_DROP since the last reading. In-game potion cooldown is ~30s.
 # Live run 2026-10-05: 61% -> 4% and 68% -> 35% -> 1% within one ~5s cycle each.
@@ -315,9 +328,21 @@ OBSERVATION RULES
   distance_estimate (very_close = touching). Set `threatens_villager` on an
   enemy attacking a villager; `villager_in_danger` when a villager is caged,
   cornered or attacked; `interact_prompt_visible` when a button prompt shows.
+- CHESTS look like a small brown/orange wooden box with a GLOWING GREEN top
+  (often on a stone base). Report them as category "loot", kind "chest" (say
+  "opened chest" if the lid is open). When a chest is opened or broken it
+  spills GLOWING GOLD COINS / emeralds on the ground: report those as "loot",
+  kind "coins" - walking over them collects them.
+- Give `x` and `y` for EVERY chest, coin pile, villager, gate/lever and
+  portal too, not only enemies: the system measures how far each is from
+  the hero and walks there before pressing A.
+- STORY CAPTIONS: a dark text box across the lower screen with a sentence
+  (e.g. "The illagers are just on the other side of the gate!") and the HUD
+  hidden is a cutscene caption: scene_state = menu_or_prompt.
 - Read `objective` and `objective_kind` from the objective banner. Report the
   SAME objective text every cycle until the on-screen text changes.
-- The minimap (top-right): white arrow = hero, yellow diamond = objective.
+- The minimap (top-right): white arrow = hero, YELLOW icon/diamond = the
+  objective to reach. When no enemy is close, always head toward it.
   A flat white/grey silhouette of the hero means a wall is hiding the hero.
 - Leave `moves` empty. Keep every text field short.
 """
@@ -364,24 +389,35 @@ def _face(pad: Any, move: DungeonsMove) -> None:
                        hold=_FACE_HOLD, label="face")
 
 
-def _fight(pad: Any, direction: str) -> dict[str, Any]:
+_burst_count = 0   # fight bursts this process; drives sidestep_every
+
+
+def _fight(pad: Any, direction: str, swings: int | None = None,
+           sidestep: bool | None = None) -> dict[str, Any]:
     """Swing repeatedly toward the enemy (stick held so the hero keeps facing
-    it), then sidestep with a roll (left stick + LB)."""
+    it), then sidestep with a roll (left stick + LB) every
+    TUNING["sidestep_every"] bursts."""
+    global _burst_count
+    n = int(swings if swings is not None else TUNING["fight_swings"])
     x, y = _vec(direction)
     stick = ComboComponent(kind="axis", name="left_stick", x=x * 0.4, y=y * 0.4)
     swing = [stick, _bound("melee")]
     ok = True
-    for _ in range(_FIGHT_SWINGS):
+    for _ in range(n):
         ok = bool(dispatch_combo(pad, swing, hold=_SWING_HOLD, label="fight")["dispatched"]) and ok
-    # Sidestep via the real dodge: left stick toward the sidestep heading plus
-    # LB. A right-stick flick here only opened the emote wheel.
-    sx, sy = _vec(_PERPENDICULAR.get(direction, "down"))
-    dispatch_combo(pad,
-                   [ComboComponent(kind="axis", name="left_stick", x=sx, y=sy),
-                    _bound("forward_dodge")],
-                   hold=0.15, label="fight_dodge")
-    return {"macro": "fight", "direction": direction, "swings": _FIGHT_SWINGS,
-            "dispatched": ok}
+    _burst_count += 1
+    if sidestep is None:
+        sidestep = _burst_count % max(1, int(TUNING["sidestep_every"])) == 0
+    if sidestep:
+        # Sidestep via the real dodge: left stick toward the sidestep heading
+        # plus LB. A right-stick flick here only opened the emote wheel.
+        sx, sy = _vec(_PERPENDICULAR.get(direction, "down"))
+        dispatch_combo(pad,
+                       [ComboComponent(kind="axis", name="left_stick", x=sx, y=sy),
+                        _bound("forward_dodge")],
+                       hold=0.15, label="fight_dodge")
+    return {"macro": "fight", "direction": direction, "swings": n,
+            "sidestep": bool(sidestep), "dispatched": ok}
 
 
 def execute_move(ctx: ToolContext, move: DungeonsMove) -> dict[str, Any]:
@@ -611,6 +647,8 @@ _CONFIRM_FRAMES = 2             # sightings before a non-adjacent engagement
 _ENGAGE_HOLD = 3                # cycles an engagement survives a missed read
 _BLIND_MEMORY = 8               # cycles a last sighting still aims a blind hit
 _DAMAGE_DROP = 8                # health % lost since last cycle = being hit
+_HIT_MEMORY = 2                 # cycles after a hit in which far enemies still count
+_MAX_RANGED_STREAK = 3          # ranged-only cycles (no hit, nobody close) before a push
 # Xbox "toast" notification over the HUD: saturated green fills the bottom
 # bar. Measured: 0.67 on a toast frame, <= 0.021 on every other frame.
 _TOAST_BOX = (650 / 1920, 900 / 1080, 1280 / 1920, 1010 / 1080)
@@ -678,7 +716,33 @@ def _enemy_geometry(decision: DungeonsFrameDecision) -> dict[str, Any] | None:
             "visible": len(real) + len(unplaced)}
 
 
+# Interactables measured from x/y like enemies. Frame 058 of run
+# dungeons-20261016-133419: the model called two chests ~3 hero-widths away
+# "very_close", so A was pressed at nothing. A press needs the hero this
+# close (frame-height units); anything further is "close" and is walked to.
+_REACH_RADIUS = 0.11
+_PLACED_CATEGORIES = ("loot", "villager", "door_or_lever", "portal")
+
+
+def _object_geometry(decision: DungeonsFrameDecision) -> int:
+    """Recompute direction/distance of placed interactables. Returns how many."""
+    hx, hy = _HERO_XY
+    n = 0
+    for e in decision.entities:
+        if e.category not in _PLACED_CATEGORIES or e.x is None or e.y is None:
+            continue
+        dx, dy = (e.x - hx) * 16 / 9, e.y - hy
+        dist = math.hypot(dx, dy)
+        if dist >= _SELF_RADIUS * 0.5:
+            e.direction = _heading_of(dx, dy)
+        e.distance_estimate = ("very_close" if dist <= _REACH_RADIUS else
+                               "close" if dist <= _NEAR_RADIUS * 1.6 else "far")
+        n += 1
+    return n
+
+
 def _apply_enemy_geometry(decision: DungeonsFrameDecision) -> None:
+    decision._nav["placed_objects"] = _object_geometry(decision)
     geo = _enemy_geometry(decision)
     decision._nav["enemy_geo"] = geo
     if geo is None:
@@ -702,6 +766,28 @@ def _combat_state(decision: DungeonsFrameDecision,
     """
     seen = decision.enemy_direction != "none"
     hit = bool(decision._nav.get("damage"))
+    counters["_hit_age"] = 0 if hit else counters.get("_hit_age", _HIT_MEMORY + 1) + 1
+    geo = decision._nav.get("enemy_geo") or {}
+    nearest = geo.get("nearest")
+    far_only = (seen and not decision.enemy_adjacent and nearest is not None
+                and nearest > _NEAR_RADIUS)
+    if far_only and counters["_hit_age"] > _HIT_MEMORY:
+        # Every enemy is far and nothing has hit us lately. Run
+        # dungeons-20261016-130821 spent cycles 16-60 shooting at 'far'
+        # sightings (many at the screen edges, often phantoms) and never
+        # followed the minimap. A far enemy neither starts nor renews a fight:
+        # keep walking to the objective; a real attacker shows up as damage.
+        counters["far_ignored"] = counters.get("far_ignored", 0) + 1
+        # Still remembered: if it later hits us unseen, aim back at it.
+        counters["_last_enemy_dir"] = decision.enemy_direction
+        counters["_seen_age"] = 0
+        counters["_sightings"] = 0
+        if counters.get("_engage_left", 0) > 0:
+            counters["_engage_left"] -= 1
+        decision.enemy_direction = "none"
+        decision.enemy_adjacent = False
+        decision._nav["far_ignored"] = True
+        return
     if seen:
         counters["_sightings"] = counters.get("_sightings", 0) + 1
         counters["_last_enemy_dir"] = decision.enemy_direction
@@ -803,11 +889,25 @@ def _annotate(decision: DungeonsFrameDecision, frame: Any) -> None:
             f"model said {claimed}%, heart gauge reads {hp}% (using {hp}%)")
         print(f"  [health] model {claimed}% vs pixel {hp}% -> trusting pixel",
               flush=True)
+    hud = _hud_visible(frame)
+    decision._nav["hud"] = hud
+    if (hp == 0 and not hud and decision.scene_state == "in_mission"
+            and claimed > 0):
+        # Story caption (frame 008 of dungeons-20261016-133419): the HUD is
+        # hidden behind a dialogue box, the heart reads 0, yet the model
+        # says in_mission. Walking/pressing A at the scenery wasted 8 cycles;
+        # it is a prompt to advance. Health is not trusted on this frame.
+        decision.scene_state = "menu_or_prompt"
+        decision.moves = []
+        decision._nav["caption"] = True
+        decision.health_mismatch = "HUD hidden behind a story caption"
+        print("  [scene] HUD hidden + heart 0 while 'in_mission' -> story caption",
+              flush=True)
+        return
     # The pixel reading stays authoritative: it is measured, not inferred.
     decision.health_percent = hp
     if hp > 0:
         decision.health_low = hp <= _POTION_THRESHOLD
-    decision._nav["hud"] = _hud_visible(frame)
 
 
 # Blue artifact hexagon right of the hotbar: 0.39-0.73 blue fill in gameplay,
@@ -1043,6 +1143,10 @@ def _forced_moves(decision: DungeonsFrameDecision,
     counters["_downed"] = False
     if state == "loading_or_cutscene":
         return [DungeonsMove(action="wait", duration=1.5, purpose="Wait out loading.")]
+    if decision._nav.get("caption"):
+        counters["captions_skipped"] = counters.get("captions_skipped", 0) + 1
+        return [DungeonsMove(action="advance_prompt",
+                             purpose="Story caption over the HUD: advance it.")]
     if state == "menu_or_prompt" and not decision.moves:
         return [DungeonsMove(action="advance_prompt", purpose="Dismiss prompt.")]
     if state != "in_mission":
@@ -1068,12 +1172,25 @@ def _forced_moves(decision: DungeonsFrameDecision,
     return _combat_moves(decision, counters)
 
 
+def _artifact_due(counters: dict[str, Any]) -> bool:
+    """Artifacts on a time cooldown (TUNING) instead of every Nth combat cycle.
+    artifact_cooldown_s = 0 keeps the old every-_ARTIFACT_EVERY-cycles rule."""
+    cooldown = float(TUNING["artifact_cooldown_s"])
+    if cooldown <= 0:
+        return counters["combat_cycles"] % _ARTIFACT_EVERY == 1
+    now = time.monotonic()
+    if now - float(counters.get("_last_artifact_t", float("-inf"))) < cooldown:
+        return False
+    counters["_last_artifact_t"] = now
+    return True
+
+
 def _combat_moves(decision: DungeonsFrameDecision,
                   counters: dict[str, Any]) -> list[DungeonsMove]:
     """Reflex combat toward `enemy_direction` (must not be 'none')."""
     enemy_dir = decision.enemy_direction
     counters["combat_cycles"] += 1
-    use_artifact = counters["combat_cycles"] % _ARTIFACT_EVERY == 1
+    use_artifact = _artifact_due(counters)
     if decision.health_low and decision.enemy_adjacent:
         return [_next_artifact(counters),
                 DungeonsMove(action="dodge", direction=_OPPOSITE.get(enemy_dir, "down"),
@@ -1092,9 +1209,28 @@ def _combat_moves(decision: DungeonsFrameDecision,
                              purpose=f"Crowd of {decision.enemy_count}: dodge out."),
                 DungeonsMove(action="move", direction=away, duration=1.0,
                              purpose="Crowd: open distance."),
-                DungeonsMove(action="ranged", direction=enemy_dir, duration=_RANGED_HOLD,
+                DungeonsMove(action="ranged", direction=enemy_dir, duration=float(TUNING["ranged_hold_s"]),
                              purpose="Crowd: shoot the chasers.")]
     counters["_retreat_run"] = 0
+    if decision.enemy_adjacent or decision._nav.get("damage"):
+        counters["_ranged_streak"] = 0
+    else:
+        counters["_ranged_streak"] = counters.get("_ranged_streak", 0) + 1
+    bearing = decision._nav.get("bearing") or (
+        decision.objective_bearing if decision.objective_bearing != "none" else None)
+    if counters["_ranged_streak"] > _MAX_RANGED_STREAK and bearing:
+        # Shooting from a distance without being hit and without anyone
+        # closing in is not progress: push toward the objective and let a
+        # real attacker re-engage us.
+        counters["_ranged_streak"] = 0
+        counters["combat_pushes"] = counters.get("combat_pushes", 0) + 1
+        counters["_engage_left"] = 0
+        # Shot first, walk last: the last move is what a sustain repeats, and
+        # a move clears it, so the hero keeps walking instead of shooting.
+        return [DungeonsMove(action="ranged", direction=enemy_dir, duration=0.5,
+                             purpose="Covering shot before moving on."),
+                DungeonsMove(action="move", direction=bearing, duration=2.0,
+                             purpose=f"Combat stalled at range: push to objective ({bearing}).")]
     if decision.enemy_adjacent:
         counters["reflex_attacks"] += 1
         moves = [DungeonsMove(action="fight", direction=enemy_dir,
@@ -1104,7 +1240,7 @@ def _combat_moves(decision: DungeonsFrameDecision,
         return moves
     # Enemy visible but not adjacent: shoot, then let the model's moves follow
     # on alternate cycles so the hero still advances.
-    moves = [DungeonsMove(action="ranged", direction=enemy_dir, duration=_RANGED_HOLD,
+    moves = [DungeonsMove(action="ranged", direction=enemy_dir, duration=float(TUNING["ranged_hold_s"]),
                           purpose="Enemy at range: shoot.")]
     if use_artifact:
         moves.insert(0, _next_artifact(counters))
@@ -1126,12 +1262,18 @@ def _fallback_moves(decision: DungeonsFrameDecision) -> list[DungeonsMove]:
 
 
 def _on_move_dispatched(move: DungeonsMove, counters: dict[str, Any]) -> None:
+    # What dungeons_speed.sustain repeats while the model thinks: the batch's
+    # last attack, cleared by anything that is not an attack or an artifact.
+    if move.action in ("fight", "ranged") and move.direction != "none":
+        counters["_sustain_action"] = (move.action, move.direction)
+    elif move.action not in _TAP_ACTIONS:
+        counters["_sustain_action"] = None
     if move.action == "move" and move.direction != "none":
         counters["_last_move_dir"] = move.direction
     if move.action == "melee":
         counters["melee"] += 1
     elif move.action == "fight":
-        counters["melee"] += _FIGHT_SWINGS
+        counters["melee"] += int(TUNING["fight_swings"])
         counters["dodges"] += 1
     elif move.action in ("dodge", "forward_dodge"):
         counters["dodges"] += 1
@@ -1203,7 +1345,9 @@ _SUMMARY_KEYS = ("deaths", "melee", "dodges", "reflex_attacks", "ranged",
                  "rescue_approaches", "model_yields", "interactions",
                  "wall_escapes", "map_steers", "occluded_cycles", "map_travel_px",
                  "engagements", "unconfirmed_sightings", "blind_hits",
-                 "held_engagements", "self_sightings", "learn_early_potions",
+                 "held_engagements", "self_sightings", "far_ignored",
+                 "combat_pushes", "coin_pickups", "captions_skipped",
+                 "committed_approaches", "learn_early_potions",
                  "learn_interact_overrides")
 
 

@@ -9,6 +9,24 @@ versions follow [Semantic Versioning].
 ## [Unreleased]
 
 ### Added
+- Faster Dungeons combat (`tools/game_profiles/dungeons_speed.py`, settings
+  `gameplay.dungeons`, every change has its own flag). Baseline
+  dungeons-20261016-114012: 5.56 s per combat decision and 0.94 attacks per
+  combat cycle; the hero was idle about 4 s of every 5.5 s.
+  - The hero keeps attacking while the model thinks, up to 12 s. It checks
+    the heart gauge between bursts and breaks off to drink or roll. In the
+    offline fake rig (2.5 s model delay, 8 cycles) this went from 7 to 31
+    volleys.
+  - While engaged, the model gets a 9-field combat schema and a short prompt,
+    with a full reading every 3rd cycle.
+  - Frames sent to the model are 640 px while engaged.
+  - Combat timing: 1.2 s volley, 6-swing burst, roll after every 2nd burst,
+    artifacts on an 8 s cooldown.
+  - The report gains a Combat speed card, and each cycle in the timeline
+    shows decision mode, decision time and the attacks made while thinking.
+- Optional engine hooks `GameProfile.sustain`, `fast_frame_model`,
+  `vision_size` and `encode_frame(width, quality)`. Max and Minecraft are
+  unchanged.
 - Learning for Dungeons gameplay (`core/gameplay_lessons.py`,
   `tools/game_profiles/dungeons_learning.py`). Lessons for deaths, skipped
   chests/items, and actions with no visible result are recorded from the cycle
@@ -21,6 +39,13 @@ versions follow [Semantic Versioning].
   `dungeons-scenarios-raw.html`.
 
 ### Fixed
+- Fixes from Dungeons run dungeons-20261016-133419:
+  - Story captions are detected: the model said in_mission while the HUD was hidden and the heart read 0. They are now advanced with A instead of walked through (cycles 7-14 were wasted).
+  - Chests, coins, villagers, gates and portals get x/y positions, and their distance is measured from them. A is pressed only within reach (frame 058 had 'very_close' chests about 3 hero-widths away). A chest approach is now finished instead of handed back to the navigator after one cycle.
+  - 'Fighting mobs' can now pass for ranged fights: the next frame shows fewer enemies on screen and no health lost.
+  - No 'Saving villagers' lesson is recorded for a calm villager. False lessons G006 and G007 were resolved by hand.
+  - The death lesson stays mild (80% / -18%) unless the last run had 2+ deaths. Previously it drank at 90% and broke off attacks for a 10% hit.
+  - A new objective stage needs 2 of the next 3 readings to agree, which removes misread stages.
 - Dungeons report showed Passed 0 / Total 9 for a 4-PASS run (counts were
   never passed to the dashboard).
 - 'Objective reached' was a false PASS: "Defeat the Illagers from the Rift"

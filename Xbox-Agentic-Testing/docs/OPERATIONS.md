@@ -66,6 +66,11 @@ xbox-agentic lessons list <scenario-id> --all
 xbox-agentic lessons resolve <scenario-id> L002 --reason "fixed in code"
 ```
 
+To compare against the old combat behaviour, turn the speed-ups off one at
+a time in `config/settings.yaml` under `gameplay.dungeons`, or set
+`DUNGEONS_SUSTAIN=false` or `DUNGEONS_FAST_SCHEMA=false`. The report's
+**Combat speed** card shows the decision time and the attacks per combat cycle.
+
 Dungeons runs keep their lessons in `gameplay-dungeons`. Each run lists them under
 **Learning** in `reports/execution-report.html`, along with how many times
 they changed play.
